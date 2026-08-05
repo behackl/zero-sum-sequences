@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  plain-python:
+    name: Plain Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - run: python -m pip install --editable '.[dev]'
+      - name: Confirm that Sage is absent
+        run: >-
+          python -c "import importlib.util;
+          assert importlib.util.find_spec('sage') is None"
+      - run: python -m pytest
+
+  tutorial:
+    name: Tutorial
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install --editable '.[tutorial]' nbconvert ipykernel
+      - run: >-
+          python -m jupyter nbconvert --execute --to notebook
+          --output-dir /tmp --output tutorial-executed.ipynb
+          notebooks/tutorial.ipynb
+
+  sage-integration:
+    name: Sage integration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install --editable '.[dev,sage]'
+      - run: python -m pytest
