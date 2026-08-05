@@ -101,6 +101,16 @@ catalogue = AtomCatalogue(Sequences, atoms)
 solver = FactorizationSolver(sequence, atom_catalogue=catalogue)
 ```
 
+For a small finite parent, a complete reduced catalogue can instead be
+generated exhaustively through the configured Davenport bound:
+
+```python
+catalogue = Sequences.enumerate_atom_catalogue()
+```
+
+The parent must be finite and iterable. Enumeration is combinatorial, and its
+completeness depends on the configured Davenport bound being valid.
+
 The caller is responsible for catalogue completeness. A catalogue used for a
 complete result must contain every atom divisor relevant to the input.
 

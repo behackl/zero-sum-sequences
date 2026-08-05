@@ -9,7 +9,10 @@ from copy import copy
 from functools import reduce
 from operator import add
 from operator import index
-from typing import Generic, Self, TypeVar
+from typing import TYPE_CHECKING, Generic, Self, TypeVar
+
+if TYPE_CHECKING:
+    from .atom_catalogue import AtomCatalogue
 
 Element = TypeVar("Element")
 
@@ -115,6 +118,41 @@ class AdditiveSequenceSpace(Generic[Element]):
                 ) from None
             terms.extend(itertools.repeat(term, count))
         return self(terms)
+
+    def enumerate_atom_catalogue(self) -> AtomCatalogue[Element]:
+        """Exhaustively enumerate reduced atoms through the configured bound.
+
+        The base parent must be finite and iterable.  The identity singleton
+        is omitted, matching the reduced-factorization convention of
+        :class:`AtomCatalogue`.  The result is complete only when
+        ``davenport_bound`` is a valid upper bound for the base parent.
+        """
+
+        from .atom_catalogue import AtomCatalogue
+
+        is_finite = getattr(self._parent, "is_finite", None)
+        if not callable(is_finite) or not is_finite():
+            raise ValueError(
+                "atom catalogue enumeration requires a finite parent"
+            )
+
+        zero = self._parent.zero()
+        try:
+            nonzero_terms = tuple(term for term in self._parent if term != zero)
+        except TypeError:
+            raise TypeError(
+                "atom catalogue enumeration requires an iterable parent"
+            ) from None
+
+        atoms = []
+        for length in range(2, self._davenport_bound + 1):
+            for terms in itertools.combinations_with_replacement(
+                nonzero_terms, length
+            ):
+                candidate = self(terms)
+                if candidate.is_atom():
+                    atoms.append(candidate)
+        return AtomCatalogue(self, atoms)
 
     def __repr__(self) -> str:
         return (
