@@ -14,7 +14,7 @@ authors = [
   { name = "Benjamin Hackl" },
 ]
 dependencies = [
-  "sagemath==10.8",
+  "networkx>=3.2",
 ]
 
 [project.urls]
@@ -23,6 +23,12 @@ Repository = "https://github.com/behackl/zero-sum-sequences"
 [project.optional-dependencies]
 dev = [
   "pytest>=8.3",
+]
+sage = [
+  "sagelite==10.9.post1",
+]
+tutorial = [
+  "matplotlib>=3.8",
 ]
 
 [tool.hatch.build.targets.wheel]

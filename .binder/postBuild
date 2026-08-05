@@ -1,4 +1,4 @@
 #!/bin/bash
 set -euo pipefail
 
-python -m pip install --no-deps --editable .
+python -m pip install --editable '.[tutorial]'

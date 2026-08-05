@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from itertools import product
 
-from sage.all import GF, Zmod
-
-from zero_sum_sequences import AdditiveSequence, AdditiveSequenceSpace
+from zero_sum_sequences import (
+    AdditiveSequence,
+    AdditiveSequenceSpace,
+    FiniteAdditiveGroup,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,20 +25,33 @@ class FactorizationBenchmarkCase:
 def factorization_benchmark_cases() -> tuple[FactorizationBenchmarkCase, ...]:
     """Return deterministic benchmark inputs with mathematical expectations."""
 
-    c3 = Zmod(3)
+    c3 = FiniteAdditiveGroup(
+        range(3),
+        zero=0,
+        add=lambda left, right: (left + right) % 3,
+        coerce=lambda value: int(value) % 3,
+    )
     c3_sequences = AdditiveSequenceSpace(c3, davenport_bound=3)
-    positive_atom = c3_sequences([c3(1)] * 3)
-    negative_atom = c3_sequences([c3(2)] * 3)
+    positive_atom = c3_sequences([1] * 3)
+    negative_atom = c3_sequences([2] * 3)
     balanced_block = positive_atom + negative_atom
 
-    group = GF(3) ** 3
+    group = FiniteAdditiveGroup(
+        product(range(3), repeat=3),
+        zero=(0, 0, 0),
+        add=lambda left, right: tuple(
+            (left[index] + right[index]) % 3 for index in range(3)
+        ),
+        coerce=tuple,
+    )
     c3_cubed_sequences = AdditiveSequenceSpace(group, davenport_bound=7)
-    e1, e2, e3 = group.basis()
+    e1, e2, e3 = (1, 0, 0), (0, 1, 0), (0, 0, 1)
     rank_three_atom = c3_cubed_sequences(
-        [e1, e1, e2, e2, e3, e3, e1 + e2 + e3]
+        [e1, e1, e2, e2, e3, e3, (1, 1, 1)]
     )
     negative_rank_three_atom = c3_cubed_sequences(
-        -term for term in rank_three_atom
+        tuple(-coordinate % 3 for coordinate in term)
+        for term in rank_three_atom
     )
     rank_three_inverse_pair = rank_three_atom + negative_rank_three_atom
 

@@ -1,5 +1,6 @@
+from fractions import Fraction
+
 import pytest
-from sage.all import Integer, QQ, Zmod
 
 from zero_sum_sequences import (
     AdditiveSequenceSpace,
@@ -7,17 +8,19 @@ from zero_sum_sequences import (
     FactorizationSolver,
 )
 
+from groups import IndexableInteger, cyclic_group
+
 
 def test_solver_uses_the_space_davenport_bound():
-    complete = AdditiveSequenceSpace(Zmod(3), davenport_bound=3)
-    truncated = AdditiveSequenceSpace(Zmod(3), davenport_bound=2)
+    complete = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=3)
+    truncated = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=2)
 
     assert complete([1, 1, 1]).length_set() == {1}
     assert truncated([1, 1, 1]).length_set() == set()
 
 
 def test_targeted_factorization_witness_honors_generic_predicate():
-    space = AdditiveSequenceSpace(Zmod(4), davenport_bound=4)
+    space = AdditiveSequenceSpace(cyclic_group(4), davenport_bound=4)
     short = space([2, 2])
     long = space([1, 1, 1, 1])
     sequence = short * 2 + long
@@ -44,22 +47,28 @@ def test_targeted_factorization_witness_honors_generic_predicate():
     assert solver.factorization_witness(2) is None
 
 
-def test_targeted_factorization_witness_accepts_sage_integers():
-    space = AdditiveSequenceSpace(Zmod(3), davenport_bound=Integer(3))
+def test_targeted_factorization_witness_accepts_indexable_integers():
+    space = AdditiveSequenceSpace(
+        cyclic_group(3),
+        davenport_bound=IndexableInteger(3),
+    )
     sequence = space([1, 1, 1, 2, 2, 2])
     solver = FactorizationSolver(sequence)
 
     witness = solver.factorization_witness(
-        Integer(3),
-        minimum_matching_factors=Integer(3),
+        IndexableInteger(3),
+        minimum_matching_factors=IndexableInteger(3),
         factor_predicate=lambda factor: len(factor) == 2,
     )
 
     assert witness == (space([1, 2]),) * 3
     with pytest.raises(ValueError, match="factor count"):
-        solver.factorization_witness(QQ(3) / 2)
+        solver.factorization_witness(Fraction(3, 2))
     with pytest.raises(ValueError, match="minimum matching factors"):
-        solver.factorization_witness(3, minimum_matching_factors=QQ(3) / 2)
+        solver.factorization_witness(
+            3,
+            minimum_matching_factors=Fraction(3, 2),
+        )
 
 
 @pytest.mark.parametrize(
@@ -80,7 +89,7 @@ def test_targeted_factorization_witness_accepts_sage_integers():
 def test_targeted_factorization_witness_rejects_invalid_constraints(
     arguments, message
 ):
-    space = AdditiveSequenceSpace(Zmod(3), davenport_bound=3)
+    space = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=3)
     solver = FactorizationSolver(space())
 
     with pytest.raises(ValueError, match=message):
@@ -88,8 +97,8 @@ def test_targeted_factorization_witness_rejects_invalid_constraints(
 
 
 def test_solver_requires_a_catalogue_from_the_same_space():
-    space = AdditiveSequenceSpace(Zmod(3), davenport_bound=3)
-    other_space = AdditiveSequenceSpace(Zmod(3), davenport_bound=3)
+    space = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=3)
+    other_space = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=3)
 
     with pytest.raises(TypeError, match="AtomCatalogue"):
         FactorizationSolver(space([0]), atom_catalogue=[space([0])])
@@ -101,7 +110,7 @@ def test_solver_requires_a_catalogue_from_the_same_space():
 
 
 def test_reduced_factorization_rejects_sequences_with_zero_terms():
-    space = AdditiveSequenceSpace(Zmod(3), davenport_bound=3)
+    space = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=3)
 
     with pytest.raises(ValueError, match="without zero terms"):
         FactorizationSolver(space([0, 1, 2]))

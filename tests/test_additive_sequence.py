@@ -1,12 +1,15 @@
+from fractions import Fraction
+
 import pytest
-from sage.all import GF, Integer, QQ, Zmod
 
 from zero_sum_sequences import AdditiveSequence, AdditiveSequenceSpace
+
+from groups import IndexableInteger, cyclic_group
 
 
 @pytest.fixture
 def c3_sequences():
-    return AdditiveSequenceSpace(Zmod(3), davenport_bound=3)
+    return AdditiveSequenceSpace(cyclic_group(3), davenport_bound=3)
 
 
 def test_space_validates_parent_and_davenport_bound():
@@ -14,18 +17,21 @@ def test_space_validates_parent_and_davenport_bound():
         AdditiveSequenceSpace(object(), davenport_bound=3)
     for bad_bound in (0, -1, 1.5, True):
         with pytest.raises(ValueError, match="positive integer"):
-            AdditiveSequenceSpace(Zmod(3), davenport_bound=bad_bound)
+            AdditiveSequenceSpace(cyclic_group(3), davenport_bound=bad_bound)
 
 
-def test_space_accepts_sage_exact_integers_for_davenport_bound():
-    space = AdditiveSequenceSpace(Zmod(3), davenport_bound=Integer(3))
+def test_space_accepts_indexable_integers_for_davenport_bound():
+    space = AdditiveSequenceSpace(
+        cyclic_group(3),
+        davenport_bound=IndexableInteger(3),
+    )
 
     assert space.davenport_bound == 3
     assert type(space.davenport_bound) is int
 
-    for bad_bound in (Integer(0), QQ(3) / 2):
+    for bad_bound in (IndexableInteger(0), Fraction(3, 2)):
         with pytest.raises(ValueError, match="positive integer"):
-            AdditiveSequenceSpace(Zmod(3), davenport_bound=bad_bound)
+            AdditiveSequenceSpace(cyclic_group(3), davenport_bound=bad_bound)
 
 
 def test_construction_is_canonical_and_retains_space(c3_sequences):
@@ -37,16 +43,6 @@ def test_construction_is_canonical_and_retains_space(c3_sequences):
     assert sequence.multiplicity(1) == 2
     assert sequence.multiplicity(0) == 0
     assert hash(sequence) == hash(c3_sequences([1, 2, 1]))
-
-
-def test_mutable_sage_terms_are_copied_before_becoming_immutable():
-    space = AdditiveSequenceSpace(GF(3) ** 1, davenport_bound=3)
-    term = space.base_parent([1])
-    sequence = space([term])
-
-    assert term.is_mutable()
-    assert not next(iter(sequence)).is_mutable()
-    assert sequence.multiplicity(term) == 1
 
 
 def test_sequence_arithmetic_preserves_space(c3_sequences):
@@ -66,20 +62,20 @@ def test_sequence_arithmetic_preserves_space(c3_sequences):
         -1 * right
 
 
-def test_sequence_arithmetic_accepts_sage_integer_repetitions(c3_sequences):
+def test_sequence_arithmetic_accepts_indexable_integer_repetitions(c3_sequences):
     right = c3_sequences([2])
 
-    assert Integer(2) * right == c3_sequences([2, 2])
-    assert right * Integer(0) == c3_sequences()
+    assert IndexableInteger(2) * right == c3_sequences([2, 2])
+    assert right * IndexableInteger(0) == c3_sequences()
     with pytest.raises(ValueError, match="non-negative"):
-        Integer(-1) * right
-    assert right.__mul__(QQ(3) / 2) is NotImplemented
+        IndexableInteger(-1) * right
+    assert right.__mul__(Fraction(3, 2)) is NotImplemented
     assert right.__mul__(1.5) is NotImplemented
 
 
 def test_arithmetic_rejects_different_sequence_spaces():
-    left_space = AdditiveSequenceSpace(Zmod(3), davenport_bound=3)
-    right_space = AdditiveSequenceSpace(Zmod(3), davenport_bound=3)
+    left_space = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=3)
+    right_space = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=3)
 
     with pytest.raises(TypeError, match="different spaces"):
         left_space([1]) + right_space([2])
@@ -134,12 +130,14 @@ def test_multiplicity_validation(c3_sequences, bad_count):
         c3_sequences.from_multiplicities({c3_sequences.base_parent(1): bad_count})
 
 
-def test_multiplicities_accept_sage_integers_but_not_nonintegral_values(c3_sequences):
+def test_multiplicities_accept_indexable_integers(c3_sequences):
     one = c3_sequences.base_parent(1)
 
-    assert c3_sequences.from_multiplicities({one: Integer(2)}) == c3_sequences([1, 1])
+    assert c3_sequences.from_multiplicities(
+        {one: IndexableInteger(2)}
+    ) == c3_sequences([1, 1])
     with pytest.raises(ValueError, match="non-negative integers"):
-        c3_sequences.from_multiplicities({one: QQ(3) / 2})
+        c3_sequences.from_multiplicities({one: Fraction(3, 2)})
 
 
 def test_direct_sequence_construction_requires_a_space():

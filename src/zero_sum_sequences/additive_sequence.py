@@ -1,4 +1,4 @@
-"""Immutable finite sequences over a configured additive Sage parent."""
+"""Immutable finite sequences over a configured additive parent."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from collections import Counter
 from collections.abc import Iterable, Iterator, Mapping
 from copy import copy
 from functools import reduce
-from operator import add
+from operator import add as default_add
 from operator import index
 from typing import TYPE_CHECKING, Generic, Self, TypeVar
 
@@ -44,7 +44,7 @@ def _positive_integer(value: object, *, name: str) -> int:
 
 
 def _immutable_term(term: Element) -> Element:
-    """Return a hashable term, copying mutable Sage elements when necessary."""
+    """Return a hashable term, copying supported mutable elements if necessary."""
 
     try:
         hash(term)
@@ -60,12 +60,15 @@ def _immutable_term(term: Element) -> Element:
 
 
 class AdditiveSequenceSpace(Generic[Element]):
-    """Configured constructor for sequences over one additive Sage parent.
+    """Configured constructor for sequences over one additive parent.
 
     Parameters
     ----------
     parent:
-        The Sage parent containing every sequence term.
+        A callable parent containing every sequence term and providing
+        ``zero()``.  Elements must be hashable and mutually orderable.  They
+        may implement addition themselves, or the parent may provide
+        ``add(left, right)``.
     davenport_bound:
         A positive upper bound for the parent's Davenport constant.
     """
@@ -86,7 +89,7 @@ class AdditiveSequenceSpace(Generic[Element]):
 
     @property
     def base_parent(self):
-        """Return the configured Sage parent of the sequence terms."""
+        """Return the configured additive parent of the sequence terms."""
 
         return self._parent
 
@@ -97,7 +100,7 @@ class AdditiveSequenceSpace(Generic[Element]):
         return self._davenport_bound
 
     def __call__(self, terms: Iterable[Element] = ()) -> AdditiveSequence[Element]:
-        """Construct a sequence, coercing every term through the Sage parent."""
+        """Construct a sequence, coercing every term through the parent."""
 
         if isinstance(terms, AdditiveSequence) and terms.parent() is self:
             return terms
@@ -165,7 +168,7 @@ class AdditiveSequence(Generic[Element]):
     """An immutable finite multiset in an :class:`AdditiveSequenceSpace`.
 
     Construct sequences by calling their configured space. Terms are coerced
-    through its Sage parent, copied when necessary to make them immutable, and
+    through its parent, copied when necessary to make them immutable, and
     stored as a sorted multiplicity table.
     """
 
@@ -222,14 +225,20 @@ class AdditiveSequence(Generic[Element]):
     def total(self):
         """Return the additive sum of the terms in the base parent."""
 
-        return reduce(add, self, self._space.base_parent.zero())
+        parent = self._space.base_parent
+        operation = getattr(parent, "add", default_add)
+        if not callable(operation):
+            operation = default_add
+        return reduce(operation, self, parent.zero())
 
     def is_zero_sum(self) -> bool:
         """Return whether the sum of the sequence is zero."""
 
         total = self.total()
         is_zero = getattr(total, "is_zero", None)
-        return bool(is_zero()) if callable(is_zero) else total == 0
+        if callable(is_zero):
+            return bool(is_zero())
+        return total == self._space.base_parent.zero()
 
     def subsequences(
         self,
@@ -325,7 +334,7 @@ class AdditiveSequence(Generic[Element]):
         ).factorization_witnesses()
 
     def factorization_digraph(self, *, atom_catalogue=None):
-        """Return the memoized remainder DAG as a Sage directed graph."""
+        """Return the memoized remainder DAG as a NetworkX directed graph."""
 
         return self.factorization_solver(atom_catalogue=atom_catalogue).digraph()
 

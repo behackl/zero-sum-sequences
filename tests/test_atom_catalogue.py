@@ -1,13 +1,14 @@
 from collections import Counter
 
 import pytest
-from sage.all import AdditiveAbelianGroup, ZZ, Zmod
 
 from zero_sum_sequences import AdditiveSequenceSpace, AtomCatalogue
 
+from groups import cyclic_group
+
 
 def sequence_space():
-    return AdditiveSequenceSpace(Zmod(3), davenport_bound=3)
+    return AdditiveSequenceSpace(cyclic_group(3), davenport_bound=3)
 
 
 def test_catalogue_support_index_finds_exact_divisors():
@@ -52,16 +53,17 @@ def test_catalogue_rejects_zero_and_non_atoms():
 
 
 @pytest.mark.parametrize(
-    ("invariants", "davenport_bound", "expected_counts"),
+    ("modulus", "davenport_bound", "expected_counts"),
     [
-        ([2, 2], 3, {2: 3, 3: 1}),
-        ([2, 4], 5, {2: 5, 3: 9, 4: 16, 5: 8}),
+        (2, 2, {2: 1}),
+        (3, 3, {2: 1, 3: 2}),
+        (4, 4, {2: 2, 3: 2, 4: 2}),
     ],
 )
 def test_space_enumerates_complete_catalogue_for_finite_groups(
-    invariants, davenport_bound, expected_counts
+    modulus, davenport_bound, expected_counts
 ):
-    group = AdditiveAbelianGroup(invariants)
+    group = cyclic_group(modulus)
     space = AdditiveSequenceSpace(
         group,
         davenport_bound=davenport_bound,
@@ -76,7 +78,7 @@ def test_space_enumerates_complete_catalogue_for_finite_groups(
 
 
 def test_space_enumerates_empty_catalogue_for_trivial_group():
-    group = AdditiveAbelianGroup([])
+    group = cyclic_group(1)
     space = AdditiveSequenceSpace(group, davenport_bound=1)
 
     catalogue = space.enumerate_atom_catalogue()
@@ -86,13 +88,23 @@ def test_space_enumerates_empty_catalogue_for_trivial_group():
 
 
 def test_enumeration_respects_the_configured_bound():
-    space = AdditiveSequenceSpace(Zmod(3), davenport_bound=2)
+    space = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=2)
 
     assert tuple(space.enumerate_atom_catalogue()) == (space([1, 2]),)
 
 
 def test_enumeration_rejects_an_infinite_parent():
-    space = AdditiveSequenceSpace(ZZ, davenport_bound=3)
+    class InfiniteIntegerParent:
+        def __call__(self, value):
+            return int(value)
+
+        def zero(self):
+            return 0
+
+        def is_finite(self):
+            return False
+
+    space = AdditiveSequenceSpace(InfiniteIntegerParent(), davenport_bound=3)
 
     with pytest.raises(ValueError, match="requires a finite parent"):
         space.enumerate_atom_catalogue()

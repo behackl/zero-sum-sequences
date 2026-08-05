@@ -6,7 +6,7 @@ from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
 from typing import Generic, TypeAlias
 
-from sage.all import DiGraph
+import networkx as nx
 
 from .additive_sequence import AdditiveSequence, Element, _non_negative_integer
 from .atom_catalogue import AtomCatalogue
@@ -362,7 +362,10 @@ class FactorizationSolver(Generic[Element]):
                 stack.append((tuple(remainder), next_atom))
 
     def digraph(self):
-        """Return the memoized remainder graph as a Sage ``DiGraph``."""
+        """Return the memoized remainder graph as a NetworkX ``DiGraph``.
+
+        Each edge stores the removed atom in its ``"atom"`` attribute.
+        """
 
         self._build_state_graph()
         assert self._transitions is not None
@@ -370,13 +373,13 @@ class FactorizationSolver(Generic[Element]):
             state: self._sequence_from_state(state)
             for state in self._transitions
         }
-        graph = DiGraph()
-        graph.add_vertices(sequences.values())
+        graph = nx.DiGraph()
+        graph.add_nodes_from(sequences.values())
         for state, transitions in self._transitions.items():
             for atom_index, remainder in transitions:
                 graph.add_edge(
                     sequences[state],
                     sequences[remainder],
-                    self._atoms[atom_index].sequence,
+                    atom=self._atoms[atom_index].sequence,
                 )
         return graph

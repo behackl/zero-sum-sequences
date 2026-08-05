@@ -117,9 +117,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     arguments = build_parser().parse_args(argv)
     if arguments.repeats < 1:
         raise SystemExit("--repeats must be positive")
-    from sage.version import version as sage_version
-
-    print(f"SageMath {sage_version}; Python {platform.python_version()}")
+    print(f"Python {platform.python_version()}")
     print()
     cases = factorization_benchmark_cases()
     rows = [

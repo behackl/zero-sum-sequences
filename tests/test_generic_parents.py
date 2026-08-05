@@ -2,9 +2,33 @@
 
 from collections import Counter
 
-from sage.all import AdditiveAbelianGroup, GF
+import pytest
+
+pytest.importorskip("sage.all")
+
+from sage.all import AdditiveAbelianGroup, GF, Integer, QQ, Zmod
 
 from zero_sum_sequences import AdditiveSequenceSpace
+
+
+def test_sage_exact_integer_protocols_are_supported():
+    space = AdditiveSequenceSpace(Zmod(3), davenport_bound=Integer(3))
+    one = space.base_parent(1)
+
+    assert space.davenport_bound == 3
+    assert space.from_multiplicities({one: Integer(2)}) == space([1, 1])
+    with pytest.raises(ValueError, match="positive integer"):
+        AdditiveSequenceSpace(Zmod(3), davenport_bound=QQ(3) / 2)
+
+
+def test_mutable_sage_terms_are_copied_before_becoming_immutable():
+    space = AdditiveSequenceSpace(GF(3) ** 1, davenport_bound=3)
+    term = space.base_parent([1])
+    sequence = space([term])
+
+    assert term.is_mutable()
+    assert not next(iter(sequence)).is_mutable()
+    assert sequence.multiplicity(term) == 1
 
 
 def assert_factorization_profiles(sequence, expected_profiles):

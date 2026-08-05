@@ -2,8 +2,8 @@ import itertools
 from functools import reduce
 from operator import add
 
+import networkx as nx
 import pytest
-from sage.all import Zmod
 
 from zero_sum_sequences import (
     AdditiveSequenceSpace,
@@ -11,7 +11,9 @@ from zero_sum_sequences import (
     FactorizationSolver,
 )
 
-C3 = AdditiveSequenceSpace(Zmod(3), davenport_bound=3)
+from groups import cyclic_group
+
+C3 = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=3)
 
 
 def c3(*values: int):
@@ -55,16 +57,16 @@ def test_remainder_digraph_records_states_and_atom_edges():
     graph = sequence.factorization_digraph()
 
     assert graph.is_directed()
-    assert graph.is_directed_acyclic()
+    assert nx.is_directed_acyclic_graph(graph)
     assert sequence in graph
     assert empty in graph
     assert graph.out_degree(empty) == 0
     assert {
-        len(path) - 1 for path in graph.all_paths(sequence, empty)
+        len(path) - 1 for path in nx.all_simple_paths(graph, sequence, empty)
     } == sequence.length_set()
     assert all(
         source - atom == target
-        for source, target, atom in graph.edge_iterator(labels=True)
+        for source, target, atom in graph.edges(data="atom")
     )
 
 

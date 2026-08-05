@@ -28,5 +28,5 @@ and safe exhaustive-enumeration timings while validating all expected results.
 Run:
 
 ```console
-sage -python -m benchmarks.benchmark_factorization --enumerate
+python -m benchmarks.benchmark_factorization --enumerate
 ```
