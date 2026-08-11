@@ -62,6 +62,15 @@ def test_sequence_arithmetic_preserves_space(c3_sequences):
         -1 * right
 
 
+def test_sequences_can_be_summed_without_an_explicit_start(c3_sequences):
+    sequences = [c3_sequences([1]), c3_sequences([2]), c3_sequences([1, 1])]
+
+    assert sum(sequences) == c3_sequences([1, 1, 1, 2])
+    assert sequences[0].__radd__(False) is NotImplemented
+    with pytest.raises(TypeError):
+        1 + sequences[0]
+
+
 def test_sequence_arithmetic_accepts_indexable_integer_repetitions(c3_sequences):
     right = c3_sequences([2])
 

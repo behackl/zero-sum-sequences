@@ -608,6 +608,12 @@ class AdditiveSequence(Generic[Element]):
             counts[term] = counts.get(term, 0) + count
         return self._space.from_multiplicities(counts)
 
+    def __radd__(self, other: object) -> Self:
+        # sum() starts with the integer zero when no explicit start is given.
+        if type(other) is int and other == 0:
+            return self
+        return NotImplemented
+
     def __sub__(self, other: object) -> Self:
         if not isinstance(other, AdditiveSequence):
             return NotImplemented
