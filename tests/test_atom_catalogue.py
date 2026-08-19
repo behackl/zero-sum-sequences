@@ -2,7 +2,11 @@ from collections import Counter
 
 import pytest
 
-from zero_sum_sequences import AdditiveSequenceSpace, AtomCatalogue
+from zero_sum_sequences import (
+    AdditiveSequenceSpace,
+    AtomCatalogue,
+    FiniteAdditiveGroup,
+)
 
 from groups import cyclic_group
 
@@ -85,6 +89,15 @@ def test_space_enumerates_empty_catalogue_for_trivial_group():
 
     assert catalogue.space is space
     assert tuple(catalogue) == ()
+
+
+def test_enumeration_uses_additive_inverses_for_tuple_elements():
+    group = FiniteAdditiveGroup.cyclic_product(2, 2)
+    space = AdditiveSequenceSpace(group, davenport_bound=3)
+
+    catalogue = space.enumerate_atom_catalogue()
+
+    assert Counter(map(len, catalogue)) == Counter({2: 3, 3: 1})
 
 
 def test_enumeration_respects_the_configured_bound():

@@ -127,10 +127,12 @@ class AdditiveSequenceSpace(Generic[Element]):
     def enumerate_atom_catalogue(self) -> AtomCatalogue[Element]:
         """Exhaustively enumerate reduced atoms through the configured bound.
 
-        The base parent must be finite and iterable.  The identity singleton
-        is omitted, matching the reduced-factorization convention of
-        :class:`AtomCatalogue`.  The result is complete only when
-        ``davenport_bound`` is a valid upper bound for the base parent.
+        The base parent must be a finite iterable additive group.  For each
+        candidate length, sorted prefixes are completed by their uniquely
+        determined final term.  The identity singleton is omitted, matching
+        the reduced-factorization convention of :class:`AtomCatalogue`.  The
+        result is complete only when ``davenport_bound`` is a valid upper
+        bound for the base parent.
         """
 
         from .atom_catalogue import AtomCatalogue
@@ -141,20 +143,62 @@ class AdditiveSequenceSpace(Generic[Element]):
                 "atom catalogue enumeration requires a finite parent"
             )
 
-        zero = self._parent.zero()
         try:
-            nonzero_terms = tuple(term for term in self._parent if term != zero)
+            parent_terms = tuple(self._parent)
         except TypeError:
             raise TypeError(
                 "atom catalogue enumeration requires an iterable parent"
             ) from None
 
+        terms = tuple(
+            sorted(
+                _immutable_term(self._parent(term))
+                for term in parent_terms
+            )
+        )
+        zero = _immutable_term(self._parent(self._parent.zero()))
+        operation = getattr(self._parent, "add", default_add)
+        if not callable(operation):
+            operation = default_add
+
+        inverse = {}
+        for term in terms:
+            for candidate in terms:
+                total = _immutable_term(
+                    self._parent(operation(term, candidate))
+                )
+                if total == zero:
+                    inverse[term] = candidate
+                    break
+            else:
+                raise ValueError(
+                    "atom catalogue enumeration requires additive inverses"
+                )
+
+        nonzero_terms = tuple(term for term in terms if term != zero)
+        term_index = {
+            term: position for position, term in enumerate(nonzero_terms)
+        }
+
         atoms = []
         for length in range(2, self._davenport_bound + 1):
-            for terms in itertools.combinations_with_replacement(
-                nonzero_terms, length
+            for prefix_indices in itertools.combinations_with_replacement(
+                range(len(nonzero_terms)), length - 1
             ):
-                candidate = self(terms)
+                prefix = tuple(
+                    nonzero_terms[position] for position in prefix_indices
+                )
+                prefix_total = _immutable_term(
+                    self._parent(reduce(operation, prefix, zero))
+                )
+                final = inverse[prefix_total]
+                final_position = term_index.get(final)
+                if (
+                    final_position is None
+                    or final_position < prefix_indices[-1]
+                ):
+                    continue
+                candidate = self((*prefix, final))
                 if candidate.is_atom():
                     atoms.append(candidate)
         return AtomCatalogue(self, atoms)

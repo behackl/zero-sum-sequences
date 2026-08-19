@@ -126,8 +126,10 @@ generated exhaustively through the configured Davenport bound:
 catalogue = Sequences.enumerate_atom_catalogue()
 ```
 
-The parent must be finite and iterable. Enumeration is combinatorial, and its
-completeness depends on the configured Davenport bound being valid.
+The parent must be a finite iterable additive group. Enumeration completes
+each sorted prefix with its uniquely determined final term, rather than
+testing multisets whose sum is nonzero. Completeness depends on the configured
+Davenport bound being valid.
 
 The caller is responsible for catalogue completeness. A catalogue used for a
 complete result must contain every atom divisor relevant to the input.
