@@ -25,7 +25,7 @@ dev = [
   "pytest>=8.3",
 ]
 sage = [
-  "sagelite==10.9.post1",
+  "sagelite[gap]==10.9.post1",
 ]
 tutorial = [
   "ipykernel>=6.29",

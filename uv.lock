@@ -1811,6 +1811,20 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/c1/14/ad7367821682c0b7e544572797d9fa5a7de221ba06b44eb8efc91ca4db97/sagelite-10.9.post1-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:b27759c1fc3496570b7eca844f5c49917cc766fe68101b3b2ee50537ea623a8d", size = 187881307, upload-time = "2026-06-05T04:04:07.235Z" },
 ]
 
+[package.optional-dependencies]
+gap = [
+    { name = "sagelite-gap-runtime" },
+]
+
+[[package]]
+name = "sagelite-gap-runtime"
+version = "10.9"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4c/cd/451698abfb1ca10a7b3e40b590a725ffb6088eba29130be6ee8367058b66/sagelite_gap_runtime-10.9-py3-none-manylinux_2_28_aarch64.whl", hash = "sha256:1f7ea116e26b903c1d0b88d67cb59eec3525a53f62dd2643ee78de9ba41a7a69", size = 12415052, upload-time = "2026-06-04T08:39:36.145Z" },
+    { url = "https://files.pythonhosted.org/packages/67/ff/b2b163229be72e4a101f36a8315b2ffd1281119079c08e5872235ff56be4/sagelite_gap_runtime-10.9-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:8ff4b0524fe70d96247d4079a5e29f60a712a51aa38fb837b83949802c7bbc29", size = 12415048, upload-time = "2026-06-04T08:39:38.753Z" },
+]
+
 [[package]]
 name = "scipy"
 version = "1.18.0"
@@ -2093,7 +2107,7 @@ dev = [
     { name = "pytest" },
 ]
 sage = [
-    { name = "sagelite" },
+    { name = "sagelite", extra = ["gap"] },
 ]
 tutorial = [
     { name = "ipykernel" },
@@ -2108,6 +2122,6 @@ requires-dist = [
     { name = "nbconvert", marker = "extra == 'tutorial'", specifier = ">=7.16" },
     { name = "networkx", specifier = ">=3.2" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3" },
-    { name = "sagelite", marker = "extra == 'sage'", specifier = "==10.9.post1" },
+    { name = "sagelite", extras = ["gap"], marker = "extra == 'sage'", specifier = "==10.9.post1" },
 ]
 provides-extras = ["dev", "sage", "tutorial"]
