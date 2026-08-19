@@ -158,15 +158,21 @@ other = C2xC4([(0, 1), (1, 0)] + [(1, 1)] * 3)
 
 len(atom.orbit())                         # 8
 atom.is_in_same_orbit(other)              # True
-atom.orbit_witness(other).generator_indices
+witness = atom.orbit_witness(other)
+witness.show()
+# (1, 0) ↦ (1, 0)
+# (0, 1) ↦ (1, 1)
 ```
 
 Automorphism data is resolved only on the first orbit query and then cached on
-the sequence space. `FiniteAdditiveGroup.cyclic_product(...)` supplies
-elementary coordinate scalings and shears. Finite-dimensional Sage vector
-spaces over finite fields are recognized automatically and use generators of
-their general linear group. A custom `FiniteAdditiveGroup` can receive callable
-`automorphism_generators=` at construction; callers can also pass an
+the sequence space. A returned witness retains this context, so `show()` can
+display the induced homomorphism on the base parent's distinguished additive
+generators. `FiniteAdditiveGroup.cyclic_product(...)` supplies both the
+standard additive generators and elementary coordinate scalings and shears.
+Finite-dimensional Sage vector spaces over finite fields are recognized
+automatically and use their basis and generators of their general linear
+group. A custom `FiniteAdditiveGroup` can receive `additive_generators=` and
+callable `automorphism_generators=` at construction; callers can also pass an
 `AutomorphismAction` explicitly through the `action=` keyword.
 
 Orbit traversal is breadth-first and therefore requires a finite orbit.

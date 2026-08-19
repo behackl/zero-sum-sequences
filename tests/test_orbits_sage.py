@@ -38,6 +38,27 @@ def test_sage_matrix_word_materialization_has_application_order():
     )
 
 
+def test_bound_sage_witness_reports_basis_images():
+    group = GF(3) ** 2
+    space = AdditiveSequenceSpace(group, davenport_bound=5)
+    action = automorphism_action(space)
+    source = space([group.basis()[0]])
+    target = next(
+        image
+        for generator_index in range(len(action))
+        if (image := action.apply_sequence(source, generator_index)) != source
+    )
+
+    witness = source.orbit_witness(target)
+    images = witness.additive_generator_images()
+
+    assert tuple(generator for generator, _ in images) == tuple(group.basis())
+    assert all(
+        action.apply_word(space([generator]), witness) == space([image])
+        for generator, image in images
+    )
+
+
 def test_infinite_vector_space_requires_an_explicit_action():
     group = QQ ** 2
     space = AdditiveSequenceSpace(group, davenport_bound=3)

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from collections import deque
 from collections.abc import Callable, Iterable, Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from operator import index
 from typing import Generic, TypeVar
 
@@ -168,8 +168,26 @@ class OrbitWitness:
     """
 
     generator_indices: tuple[int, ...]
+    _sequence_space: object | None = field(
+        default=None,
+        repr=False,
+        compare=False,
+        hash=False,
+    )
+    _action: AutomorphismAction | None = field(
+        default=None,
+        repr=False,
+        compare=False,
+        hash=False,
+    )
 
-    def __init__(self, generator_indices: Iterable[int] = ()) -> None:
+    def __init__(
+        self,
+        generator_indices: Iterable[int] = (),
+        *,
+        _sequence_space=None,
+        _action: AutomorphismAction | None = None,
+    ) -> None:
         try:
             normalized = tuple(
                 _non_negative_index(value, name="generator indices")
@@ -178,6 +196,8 @@ class OrbitWitness:
         except TypeError:
             raise TypeError("generator indices must be iterable") from None
         object.__setattr__(self, "generator_indices", normalized)
+        object.__setattr__(self, "_sequence_space", _sequence_space)
+        object.__setattr__(self, "_action", _action)
 
     def __iter__(self) -> Iterator[int]:
         return iter(self.generator_indices)
@@ -186,7 +206,60 @@ class OrbitWitness:
         return len(self.generator_indices)
 
     def __repr__(self) -> str:
-        return f"{type(self).__name__}({self.generator_indices!r})"
+        return (
+            f"{type(self).__name__}("
+            f"generator_indices={self.generator_indices!r})"
+        )
+
+    def _with_context(self, sequence_space, action) -> OrbitWitness:
+        return type(self)(
+            self.generator_indices,
+            _sequence_space=sequence_space,
+            _action=action,
+        )
+
+    def additive_generator_images(self) -> tuple[tuple[object, object], ...]:
+        """Return the induced images of distinguished additive generators.
+
+        Witnesses returned by :func:`orbit_witness` remember the sequence
+        space and action used to construct them.  The base parent must expose
+        an additive generating set through ``additive_generators()``,
+        ``basis()``, or ``gens()``.
+        """
+
+        if self._sequence_space is None or self._action is None:
+            raise ValueError(
+                "term images require a witness returned by orbit_witness()"
+            )
+        parent = self._sequence_space.base_parent
+        generators = _additive_generators(parent)
+        images = []
+        for generator in generators:
+            image = generator
+            for generator_index in self.generator_indices:
+                image = self._action.apply_term(generator_index, image)
+            images.append((generator, image))
+        return tuple(images)
+
+    def show(self, *, file=None) -> None:
+        """Print the induced map on distinguished additive generators."""
+
+        for generator, image in self.additive_generator_images():
+            print(f"{generator} ↦ {image}", file=file)
+
+
+def _additive_generators(parent) -> tuple:
+    for provider_name in ("additive_generators", "basis", "gens"):
+        provider = getattr(parent, provider_name, None)
+        if not callable(provider):
+            continue
+        try:
+            return tuple(provider())
+        except (AttributeError, NotImplementedError, TypeError, ValueError):
+            continue
+    raise ValueError(
+        "the additive parent does not expose a basis or generating set"
+    )
 
 
 def _action_from_parent_provider(parent) -> AutomorphismAction | None:
@@ -432,7 +505,9 @@ def orbit_witness(
         normalized_action,
         target=target,
     )
-    return witnesses[target] if found else None
+    if not found:
+        return None
+    return witnesses[target]._with_context(source.parent(), normalized_action)
 
 
 __all__ = [

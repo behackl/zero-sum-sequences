@@ -64,6 +64,28 @@ def test_callable_generators_produce_deterministic_orbit_and_witnesses(
     assert sequence.orbit_witness(image, action=action) == witness
 
 
+def test_bound_witness_shows_images_of_additive_generators(capsys):
+    group = FiniteAdditiveGroup.cyclic_product(2, 4)
+    space = AdditiveSequenceSpace(group, davenport_bound=5)
+    source = space([(0, 1)] * 3 + [(1, 0), (1, 1)])
+    target = space([(0, 1), (1, 0)] + [(1, 1)] * 3)
+
+    witness = source.orbit_witness(target)
+
+    assert repr(witness) == "OrbitWitness(generator_indices=(1,))"
+    assert witness.additive_generator_images() == (
+        ((1, 0), (1, 0)),
+        ((0, 1), (1, 1)),
+    )
+    witness.show()
+    assert capsys.readouterr().out == "(1, 0) ↦ (1, 0)\n(0, 1) ↦ (1, 1)\n"
+
+
+def test_unbound_witness_cannot_show_additive_generator_images():
+    with pytest.raises(ValueError, match="returned by orbit_witness"):
+        OrbitWitness((0,)).additive_generator_images()
+
+
 def test_matrix_style_generators_use_apply_term_callback():
     class Shift:
         def __init__(self, amount):

@@ -62,6 +62,7 @@ class FiniteAdditiveGroup(Generic[Element]):
         "_zero",
         "_operation",
         "_coerce",
+        "_additive_generators",
         "_automorphism_generators",
     )
 
@@ -134,11 +135,21 @@ class FiniteAdditiveGroup(Generic[Element]):
                         )
                     )
 
+        additive_generators = tuple(
+            tuple(
+                1 if position == coordinate else 0
+                for position in range(len(normalized_moduli))
+            )
+            for coordinate, modulus in enumerate(normalized_moduli)
+            if modulus > 1
+        )
+
         return cls(
             product(*(range(modulus) for modulus in normalized_moduli)),
             zero=(0,) * len(normalized_moduli),
             add=add,
             coerce=coerce,
+            additive_generators=additive_generators,
             automorphism_generators=generators,
         )
 
@@ -149,6 +160,7 @@ class FiniteAdditiveGroup(Generic[Element]):
         zero: Element,
         add: Callable[[Element, Element], Element],
         coerce: Callable[[object], Element] | None = None,
+        additive_generators: Iterable[Element] | None = None,
         automorphism_generators: (
             Iterable[Callable[[Element], Element]] | None
         ) = None,
@@ -178,6 +190,18 @@ class FiniteAdditiveGroup(Generic[Element]):
         self._element_set = element_set
         self._operation = add
         self._zero = self(zero)
+        if additive_generators is None:
+            self._additive_generators = None
+        else:
+            try:
+                generators = tuple(self(element) for element in additive_generators)
+            except TypeError:
+                raise TypeError("additive generators must be iterable") from None
+            if self._zero in generators:
+                raise ValueError("additive generators must be nonzero")
+            if len(set(generators)) != len(generators):
+                raise ValueError("additive generators must be distinct")
+            self._additive_generators = generators
         if automorphism_generators is None:
             self._automorphism_generators = None
         else:
@@ -210,6 +234,13 @@ class FiniteAdditiveGroup(Generic[Element]):
 
     def is_finite(self) -> bool:
         return True
+
+    def additive_generators(self):
+        """Return a configured generating set for the additive group."""
+
+        if self._additive_generators is None:
+            raise NotImplementedError
+        return self._additive_generators
 
     def automorphism_generators(self):
         """Return explicitly configured automorphism generators.

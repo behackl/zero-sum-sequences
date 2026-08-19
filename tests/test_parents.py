@@ -84,6 +84,7 @@ def test_cyclic_product_constructs_coordinate_group():
     assert group.zero() == (0, 0)
     assert group((3, 5)) == (1, 1)
     assert group.add((1, 3), (1, 2)) == (0, 1)
+    assert group.additive_generators() == ((1, 0), (0, 1))
 
 
 def test_cyclic_product_supplies_full_automorphism_generators():
@@ -133,4 +134,14 @@ def test_finite_group_validates_automorphism_generators():
             zero=0,
             add=lambda left, right: 0,
             automorphism_generators=(object(),),
+        )
+
+
+def test_finite_group_validates_additive_generators():
+    with pytest.raises(ValueError, match="nonzero"):
+        FiniteAdditiveGroup(
+            range(2),
+            zero=0,
+            add=lambda left, right: (left + right) % 2,
+            additive_generators=(0,),
         )
