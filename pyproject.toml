@@ -28,7 +28,9 @@ sage = [
   "sagelite==10.9.post1",
 ]
 tutorial = [
+  "ipykernel>=6.29",
   "matplotlib>=3.8",
+  "nbconvert>=7.16",
 ]
 
 [tool.hatch.build.targets.wheel]

@@ -18,7 +18,15 @@ python -m pip install \
   "zero-sum-sequences @ git+https://github.com/behackl/zero-sum-sequences.git@v0.1.0"
 ```
 
-For development, clone the repository and install it with its test tools:
+For a reproducible development environment using the committed `uv.lock`,
+clone the repository and run:
+
+```console
+uv sync --extra dev
+uv run python -m pytest
+```
+
+Alternatively, install the package and its test tools with `pip`:
 
 ```console
 python -m pip install -e '.[dev]'
@@ -32,12 +40,16 @@ platforms and enables the Sage integration tests:
 python -m pip install -e '.[dev,sage]'
 ```
 
+With `uv`, use `uv sync --extra dev --extra sage` instead.
+
 ## Tutorial
 
 [![Launch the tutorial on Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/behackl/zero-sum-sequences/main?urlpath=lab/tree/notebooks/tutorial.ipynb)
 
 The executable [tutorial](notebooks/tutorial.ipynb) introduces the public API
 with small hand-checkable examples in ordinary Python.
+Its execution dependencies are available through
+`uv sync --extra tutorial` or the corresponding `pip` extra.
 
 ## Additive sequences
 
