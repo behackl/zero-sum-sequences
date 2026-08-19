@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import itertools
 from collections import Counter
-from collections.abc import Iterable, Iterator, Mapping
+from collections.abc import Callable, Iterable, Iterator, Mapping
 from copy import copy
 from functools import reduce
 from operator import add as default_add
@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from .atom_catalogue import AtomCatalogue
 
 Element = TypeVar("Element")
+TargetElement = TypeVar("TargetElement")
 
 
 def _non_negative_integer(value: object, *, name: str) -> int:
@@ -73,7 +74,7 @@ class AdditiveSequenceSpace(Generic[Element]):
         A positive upper bound for the parent's Davenport constant.
     """
 
-    __slots__ = ("_parent", "_davenport_bound")
+    __slots__ = ("_parent", "_davenport_bound", "_automorphism_action")
 
     def __init__(self, parent, *, davenport_bound: int) -> None:
         if not callable(parent):
@@ -86,6 +87,7 @@ class AdditiveSequenceSpace(Generic[Element]):
             davenport_bound,
             name="Davenport bound",
         )
+        self._automorphism_action = None
 
     @property
     def base_parent(self):
@@ -239,6 +241,68 @@ class AdditiveSequence(Generic[Element]):
         if callable(is_zero):
             return bool(is_zero())
         return total == self._space.base_parent.zero()
+
+    def map_terms(
+        self,
+        mapping: Callable[[Element], TargetElement],
+        *,
+        target_space: AdditiveSequenceSpace[TargetElement] | None = None,
+    ) -> AdditiveSequence[TargetElement]:
+        """Apply ``mapping`` to every term and construct the image sequence.
+
+        By default the image is constructed in this sequence's space.  A
+        different ``target_space`` may be supplied when the mapping takes
+        terms to another additive parent.  The result is canonicalized by the
+        target space, so equal images are combined with their multiplicities.
+        """
+
+        if not callable(mapping):
+            raise TypeError("mapping must be callable")
+        if target_space is None:
+            target_space = self._space
+        elif not isinstance(target_space, AdditiveSequenceSpace):
+            raise TypeError("target_space must be an AdditiveSequenceSpace")
+        return target_space(mapping(term) for term in self)
+
+    def orbit(self, *, action=None):
+        """Return this sequence's finite automorphism orbit.
+
+        ``action`` may be an :class:`AutomorphismAction` or an iterable of
+        callable term maps.  When omitted, the action is resolved lazily from
+        the additive parent and cached on the sequence space.
+        """
+
+        from .orbits import orbit
+
+        return orbit(self, action=action)
+
+    def is_in_same_orbit(
+        self,
+        other: AdditiveSequence[Element],
+        *,
+        action=None,
+    ) -> bool:
+        """Return whether ``other`` is in this sequence's action orbit."""
+
+        from .orbits import is_in_same_orbit
+
+        return is_in_same_orbit(self, other, action=action)
+
+    def orbit_witness(
+        self,
+        other: AdditiveSequence[Element],
+        *,
+        action=None,
+    ):
+        """Return a generator word mapping this sequence to ``other``.
+
+        The empty word witnesses equality.  ``None`` is returned when the
+        sequences are not in the same orbit.
+        """
+
+        from .orbits import orbit_witness
+
+        return orbit_witness(self, other, action=action)
 
     def subsequences(
         self,

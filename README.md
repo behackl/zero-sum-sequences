@@ -72,6 +72,9 @@ A sequence is immutable and hashable. Addition combines multisets,
 subtraction removes a subsequence, and multiplication by a non-negative
 integer repeats a sequence. Arithmetic preserves the sequence space, and the
 empty sequence retains the base parent and its zero element.
+`sequence.map_terms(mapping)` applies a map to every term and reconstructs the
+result as a canonical multiset; pass `target_space=` when the image belongs to
+a different sequence space.
 
 The configured bound must not be smaller than the actual Davenport constant
 when complete atom or factorization results are required.
@@ -131,6 +134,43 @@ complete result must contain every atom divisor relevant to the input.
 
 Factorizations are computed in the reduced block monoid: identity terms are
 not accepted by the solver and are not stored in an `AtomCatalogue`.
+
+## Automorphism orbits
+
+Group automorphisms act on sequences term by term. Because an
+`AdditiveSequence` is a multiset, the induced action automatically disregards
+the order of its terms. The package can materialize an orbit, test orbit
+membership, and return a shortest deterministic word in the configured
+automorphism generators.
+
+The convenience constructor for a product of cyclic groups configures the
+coordinate group and generators of its full automorphism group together. For
+example, the eight maximal-length atoms over $C_2\oplus C_4$ form one orbit:
+
+```python
+G = FiniteAdditiveGroup.cyclic_product(2, 4)
+C2xC4 = AdditiveSequenceSpace(G, davenport_bound=5)
+
+atom = C2xC4([(0, 1)] * 3 + [(1, 0), (1, 1)])
+other = C2xC4([(0, 1), (1, 0)] + [(1, 1)] * 3)
+
+len(atom.orbit())                         # 8
+atom.is_in_same_orbit(other)              # True
+atom.orbit_witness(other).generator_indices
+```
+
+Automorphism data is resolved only on the first orbit query and then cached on
+the sequence space. `FiniteAdditiveGroup.cyclic_product(...)` supplies
+elementary coordinate scalings and shears. Finite-dimensional Sage vector
+spaces over finite fields are recognized automatically and use generators of
+their general linear group. A custom `FiniteAdditiveGroup` can receive callable
+`automorphism_generators=` at construction; callers can also pass an
+`AutomorphismAction` explicitly through the `action=` keyword.
+
+Orbit traversal is breadth-first and therefore requires a finite orbit.
+Automatic discovery raises `AutomorphismActionUnavailable` when the parent
+does not expose suitable generators, in which case an explicit action is
+required.
 
 ## Benchmarks
 
