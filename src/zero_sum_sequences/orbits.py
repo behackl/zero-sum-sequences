@@ -474,9 +474,15 @@ def is_in_same_orbit(
     *,
     action: AutomorphismAction[Element, Generator] | Iterable[Generator] | None = None,
 ) -> bool:
-    """Return whether two sequences lie in one automorphism orbit."""
+    """Return whether two sequences lie in one automorphism orbit.
+
+    When ``action`` is omitted, equality is recognized without resolving an
+    action from the additive parent.
+    """
 
     _require_sequence_pair(source, target)
+    if source == target and action is None:
+        return True
     normalized_action = _normalize_action(action, source)
     _, found = _orbit_with_witnesses(
         source,
@@ -494,11 +500,17 @@ def orbit_witness(
 ) -> OrbitWitness | None:
     """Return a shortest deterministic generator word to ``target``.
 
-    The empty word is returned for equal sequences.  If ``target`` is not in
-    the orbit, return ``None``.
+    The empty word is returned for equal sequences.  If ``action`` is omitted,
+    this equality case does not require the additive parent to expose an
+    action.  If ``target`` is not in the orbit, return ``None``.
     """
 
     _require_sequence_pair(source, target)
+    if source == target and action is None:
+        return OrbitWitness()._with_context(
+            source.parent(),
+            AutomorphismAction(()),
+        )
     normalized_action = _normalize_action(action, source)
     witnesses, found = _orbit_with_witnesses(
         source,

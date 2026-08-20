@@ -118,6 +118,14 @@ def test_empty_action_has_singleton_orbit(c3_sequences):
     )
 
 
+def test_equal_sequences_need_no_discoverable_action(c3_sequences):
+    sequence = c3_sequences([1])
+
+    assert sequence.is_in_same_orbit(sequence)
+    assert sequence.orbit_witness(sequence) == OrbitWitness()
+    assert c3_sequences._automorphism_action is None
+
+
 def test_orbit_witness_is_none_for_different_orbits(c3_sequences):
     action = AutomorphismAction([lambda term: -term])
 
