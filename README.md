@@ -201,7 +201,7 @@ python -m benchmarks.benchmark_factorization --enumerate
 ```
 
 The cases and their mathematical expectations are documented in
-[`benchmarks/README.md`](benchmarks/README.md).
+[`benchmarks/README.md`](https://github.com/behackl/zero-sum-sequences/blob/main/benchmarks/README.md).
 
 ## License
 
