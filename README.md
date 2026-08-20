@@ -11,11 +11,17 @@ package does not infer structural invariants from the parent.
 
 ## Installation
 
-Install a tagged source release into Python 3.12 or newer with:
+Install the latest release from PyPI into Python 3.12 or newer:
 
 ```console
-python -m pip install \
-  "zero-sum-sequences @ git+https://github.com/behackl/zero-sum-sequences.git@v0.1.0"
+python -m pip install zero-sum-sequences
+```
+
+The optional `sage` extra installs the `sagelite` runtime on supported
+platforms:
+
+```console
+python -m pip install "zero-sum-sequences[sage]"
 ```
 
 For a reproducible development environment using the committed `uv.lock`,
@@ -33,14 +39,8 @@ python -m pip install -e '.[dev]'
 python -m pytest
 ```
 
-The optional `sage` extra installs the `sagelite` runtime on supported
-platforms and enables the Sage integration tests:
-
-```console
-python -m pip install -e '.[dev,sage]'
-```
-
-With `uv`, use `uv sync --extra dev --extra sage` instead.
+To include the Sage integration tests, use `uv sync --extra dev --extra sage`
+or install the editable `.[dev,sage]` extra.
 
 ## Tutorial
 
