@@ -35,6 +35,14 @@ def test_catalogue_support_index_finds_exact_divisors():
     ]
 
 
+def test_catalogue_ignores_target_terms_absent_from_its_index():
+    space = sequence_space()
+    atom = space([1, 1, 1])
+    catalogue = AtomCatalogue(space, [atom])
+
+    assert list(catalogue.divisors(space([1, 1, 1, 2]))) == [atom]
+
+
 def test_catalogue_rejects_a_sequence_from_another_space():
     space = sequence_space()
     other_space = sequence_space()

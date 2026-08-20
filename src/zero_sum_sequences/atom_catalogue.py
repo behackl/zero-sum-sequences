@@ -76,9 +76,8 @@ class AtomCatalogue(Generic[Element]):
         target_mask = 0
         for term in sequence.support:
             index = self._term_index.get(term)
-            if index is None:
-                return
-            target_mask |= 1 << index
+            if index is not None:
+                target_mask |= 1 << index
 
         candidates = []
         submask = target_mask
