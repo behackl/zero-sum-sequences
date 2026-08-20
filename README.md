@@ -46,7 +46,7 @@ With `uv`, use `uv sync --extra dev --extra sage` instead.
 
 [![Launch the tutorial on Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/behackl/zero-sum-sequences/main?urlpath=lab/tree/notebooks/tutorial.ipynb)
 
-The executable [tutorial](notebooks/tutorial.ipynb) introduces the public API
+The executable [tutorial](https://github.com/behackl/zero-sum-sequences/blob/main/notebooks/tutorial.ipynb) introduces the public API
 with small hand-checkable examples in ordinary Python.
 Its execution dependencies are available through
 `uv sync --extra tutorial` or the corresponding `pip` extra.

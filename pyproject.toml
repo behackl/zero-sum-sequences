@@ -39,6 +39,7 @@ packages = ["src/zero_sum_sequences"]
 [tool.hatch.build.targets.sdist]
 include = [
   "/benchmarks",
+  "/notebooks/tutorial.ipynb",
   "/src/zero_sum_sequences",
   "/tests",
   "/LICENSE",

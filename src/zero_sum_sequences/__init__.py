@@ -1,5 +1,7 @@
 """Tools for finite additive sequences and zero-sum computations."""
 
+from importlib.metadata import version as _distribution_version
+
 from .additive_sequence import AdditiveSequence, AdditiveSequenceSpace
 from .atom_catalogue import AtomCatalogue
 from .factorization import FactorizationSolver
@@ -20,4 +22,4 @@ __all__ = [
     "AutomorphismActionUnavailable",
     "OrbitWitness",
 ]
-__version__ = "0.1.0"
+__version__ = _distribution_version("zero-sum-sequences")
