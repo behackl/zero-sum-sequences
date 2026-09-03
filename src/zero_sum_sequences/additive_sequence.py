@@ -422,17 +422,34 @@ class AdditiveSequence(Generic[Element]):
 
         return FactorizationSolver(self, atom_catalogue=atom_catalogue)
 
-    def factorizations(self, *, atom_catalogue=None):
-        """Yield every unordered reduced factorization exactly once."""
+    def factorizations(
+        self,
+        *,
+        factor_count: int | None = None,
+        atom_catalogue=None,
+    ):
+        """Yield each unordered reduced factorization, optionally of one length."""
 
         yield from self.factorization_solver(
             atom_catalogue=atom_catalogue
-        ).factorizations()
+        ).factorizations(factor_count=factor_count)
 
     def length_set(self, *, atom_catalogue=None) -> set[int]:
         """Return the complete set of attained reduced factorization lengths."""
 
         return self.factorization_solver(atom_catalogue=atom_catalogue).length_set()
+
+    def has_factorization_of_length(
+        self,
+        factor_count: int,
+        *,
+        atom_catalogue=None,
+    ) -> bool:
+        """Return whether a reduced factorization has the requested length."""
+
+        return self.factorization_solver(
+            atom_catalogue=atom_catalogue
+        ).has_factorization_of_length(factor_count)
 
     def factorization_witnesses(self, *, atom_catalogue=None):
         """Return one deterministic factorization per attained length."""

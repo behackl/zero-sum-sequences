@@ -101,14 +101,18 @@ Attained lengths are represented internally as integer bitsets.
 lengths = sequence.length_set()
 witnesses = sequence.factorization_witnesses()
 factorizations = list(sequence.factorizations())
+length_three = list(sequence.factorizations(factor_count=3))
+has_length_three = sequence.has_factorization_of_length(3)
 graph = sequence.factorization_digraph()
 ```
 
 `factorization_witnesses()` retains one factorization for every attained
 length. Exhaustive `factorizations()` is necessarily output-sensitive, but it
-emits each unordered factorization once. `factorization_digraph()` returns a
-NetworkX `DiGraph` whose vertices are remainder sequences and whose edges
-store the removed atom in their `"atom"` attribute.
+emits each unordered factorization once. Pass `factor_count=` to enumerate
+only factorizations of one length; `has_factorization_of_length()` tests that
+length without enumerating its factorizations. `factorization_digraph()`
+returns a NetworkX `DiGraph` whose vertices are remainder sequences and whose
+edges store the removed atom in their `"atom"` attribute.
 
 For several queries against the same remainder DAG, use the public solver:
 
@@ -117,6 +121,8 @@ from zero_sum_sequences import FactorizationSolver
 
 solver = FactorizationSolver(sequence)
 solver.length_set()
+solver.has_factorization_of_length(3)
+list(solver.factorizations(factor_count=3))
 solver.factorization_witnesses()
 solver.statistics
 solver.digraph()

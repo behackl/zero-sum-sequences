@@ -62,6 +62,10 @@ def test_targeted_factorization_witness_accepts_indexable_integers():
     )
 
     assert witness == (space([1, 2]),) * 3
+    assert solver.has_factorization_of_length(IndexableInteger(3))
+    assert list(
+        solver.factorizations(factor_count=IndexableInteger(3))
+    ) == [(space([1, 2]),) * 3]
     with pytest.raises(ValueError, match="factor count"):
         solver.factorization_witness(Fraction(3, 2))
     with pytest.raises(ValueError, match="minimum matching factors"):
@@ -94,6 +98,22 @@ def test_targeted_factorization_witness_rejects_invalid_constraints(
 
     with pytest.raises(ValueError, match=message):
         solver.factorization_witness(**arguments)
+
+
+@pytest.mark.parametrize("factor_count", [-1, True, Fraction(3, 2)])
+def test_fixed_length_queries_reject_invalid_factor_counts(factor_count):
+    space = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=3)
+    sequence = space([1, 1, 1, 2, 2, 2])
+    solver = FactorizationSolver(sequence)
+
+    with pytest.raises(ValueError, match="factor count"):
+        solver.has_factorization_of_length(factor_count)
+    with pytest.raises(ValueError, match="factor count"):
+        list(solver.factorizations(factor_count=factor_count))
+    with pytest.raises(ValueError, match="factor count"):
+        sequence.has_factorization_of_length(factor_count)
+    with pytest.raises(ValueError, match="factor count"):
+        list(sequence.factorizations(factor_count=factor_count))
 
 
 def test_solver_requires_a_catalogue_from_the_same_space():

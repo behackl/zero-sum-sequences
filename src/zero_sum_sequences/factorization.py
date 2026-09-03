@@ -171,21 +171,21 @@ class FactorizationSolver(Generic[Element]):
                     pending.append(remainder)
         self._transitions = transitions
 
-    def _solve_lengths(self) -> None:
-        if self._length_bits is not None:
-            return
-        self._build_state_graph()
-        assert self._transitions is not None
-        length_bits: dict[MultiplicityState, int] = {}
-        for state in sorted(self._transitions, key=sum):
-            if state == self.zero_state:
-                length_bits[state] = 1
-                continue
-            bits = 0
-            for _, remainder in self._transitions[state]:
-                bits |= length_bits[remainder] << 1
-            length_bits[state] = bits
-        self._length_bits = length_bits
+    def _solve_lengths(self) -> dict[MultiplicityState, int]:
+        if self._length_bits is None:
+            self._build_state_graph()
+            assert self._transitions is not None
+            length_bits: dict[MultiplicityState, int] = {}
+            for state in sorted(self._transitions, key=sum):
+                if state == self.zero_state:
+                    length_bits[state] = 1
+                    continue
+                bits = 0
+                for _, remainder in self._transitions[state]:
+                    bits |= length_bits[remainder] << 1
+                length_bits[state] = bits
+            self._length_bits = length_bits
+        return self._length_bits
 
     def _sequence_from_state(
         self, state: MultiplicityState
@@ -221,6 +221,16 @@ class FactorizationSolver(Generic[Element]):
             for length in range(bits.bit_length())
             if bits & (1 << length)
         }
+
+    def has_factorization_of_length(self, factor_count: int) -> bool:
+        """Return whether a factorization has exactly ``factor_count`` factors."""
+
+        factor_count = _non_negative_integer(factor_count, name="factor count")
+        length_bits = self._solve_lengths()
+        bits = length_bits[self.initial_state]
+        return factor_count < bits.bit_length() and bool(
+            bits & (1 << factor_count)
+        )
 
     def factorization_witnesses(self) -> dict[int, Factorization]:
         """Return one deterministic factorization per attained length."""
@@ -332,19 +342,59 @@ class FactorizationSolver(Generic[Element]):
 
         return None
 
-    def factorizations(self) -> Iterator[Factorization]:
-        """Yield every unordered factorization exactly once."""
+    def factorizations(
+        self,
+        *,
+        factor_count: int | None = None,
+    ) -> Iterator[Factorization]:
+        """Yield each unordered factorization, optionally of one length."""
+
+        minimum_factor_length = maximum_factor_length = 0
+        fixed_length_bits: dict[MultiplicityState, int] = {}
+        if factor_count is not None:
+            factor_count = _non_negative_integer(factor_count, name="factor count")
+            if not self.has_factorization_of_length(factor_count):
+                return
+            fixed_length_bits = self._solve_lengths()
+            factor_lengths = tuple(len(atom.sequence) for atom in self._atoms)
+            if factor_count and not factor_lengths:  # pragma: no cover
+                raise RuntimeError("an attained positive length requires an atom")
+            if factor_lengths:
+                minimum_factor_length = min(factor_lengths)
+                maximum_factor_length = max(factor_lengths)
 
         path: list[AdditiveSequence[Element]] = []
         stack: list[tuple[MultiplicityState, int]] = [(self.initial_state, 0)]
         while stack:
             state, next_atom = stack[-1]
             if state == self.zero_state:
-                yield tuple(path)
+                if factor_count is None or len(path) == factor_count:
+                    yield tuple(path)
                 stack.pop()
                 if stack:
                     path.pop()
                 continue
+
+            if factor_count is not None:
+                remaining_factors = factor_count - len(path)
+                state_length_bits = fixed_length_bits.get(state)
+                impossible_length = remaining_factors <= 0
+                if not impossible_length and state_length_bits is not None:
+                    impossible_length = (
+                        remaining_factors >= state_length_bits.bit_length()
+                        or not state_length_bits & (1 << remaining_factors)
+                    )
+                remaining_terms = sum(state)
+                minimum_terms = minimum_factor_length * remaining_factors
+                maximum_terms = maximum_factor_length * remaining_factors
+                if (
+                    impossible_length
+                    or not minimum_terms <= remaining_terms <= maximum_terms
+                ):
+                    stack.pop()
+                    if stack:
+                        path.pop()
+                    continue
 
             if next_atom == len(self._atoms):
                 stack.pop()

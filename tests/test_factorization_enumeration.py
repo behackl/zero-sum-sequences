@@ -80,6 +80,12 @@ def test_factorizations_length_sets_and_witnesses():
         (atom_1, atom_2),
         (pair, pair, pair),
     }
+    assert set(sequence.factorizations(factor_count=2)) == {(atom_1, atom_2)}
+    assert set(sequence.factorizations(factor_count=3)) == {(pair, pair, pair)}
+    assert list(sequence.factorizations(factor_count=4)) == []
+    assert sequence.has_factorization_of_length(2)
+    assert sequence.has_factorization_of_length(3)
+    assert not sequence.has_factorization_of_length(4)
     assert sequence.length_set() == {2, 3}
 
     witnesses = sequence.factorization_witnesses()
@@ -95,7 +101,10 @@ def test_empty_atom_nonzero_and_zero_term_cases():
     zero_times_atom = c3(0) + atom
 
     assert empty.length_set() == {0}
+    assert empty.has_factorization_of_length(0)
     assert list(empty.factorizations()) == [()]
+    assert list(empty.factorizations(factor_count=0)) == [()]
+    assert not atom.has_factorization_of_length(0)
     assert atom.length_set() == {1}
     assert nonzero.length_set() == set()
     with pytest.raises(ValueError, match="without zero terms"):
@@ -115,17 +124,38 @@ def test_memoized_enumeration_agrees_with_naive_on_small_products():
     }
 
     for sequence in sequences:
+        expected_factorizations = tuple(
+            naive_factorizations(sequence, atoms)
+        )
         expected = {
             factorization_profile(factorization, atoms)
-            for factorization in naive_factorizations(sequence, atoms)
+            for factorization in expected_factorizations
         }
-        actual_factorizations = list(sequence.factorizations())
+        solver = FactorizationSolver(sequence)
+        actual_factorizations = list(solver.factorizations())
         actual_profiles = [
             factorization_profile(factorization, atoms)
             for factorization in actual_factorizations
         ]
         assert len(actual_profiles) == len(set(actual_profiles))
         assert set(actual_profiles) == expected
+
+        for factor_count in range(5):
+            expected_at_length = {
+                factorization_profile(factorization, atoms)
+                for factorization in expected_factorizations
+                if len(factorization) == factor_count
+            }
+            actual_at_length = {
+                factorization_profile(factorization, atoms)
+                for factorization in solver.factorizations(
+                    factor_count=factor_count
+                )
+            }
+            assert actual_at_length == expected_at_length
+            assert solver.has_factorization_of_length(factor_count) == bool(
+                expected_at_length
+            )
 
 
 def test_precomputed_atom_catalogue_can_be_reused():
@@ -138,6 +168,19 @@ def test_precomputed_atom_catalogue_can_be_reused():
     sequence = c3(1, 1, 1, 2, 2, 2)
 
     assert sequence.length_set(atom_catalogue=catalogue) == {2, 3}
+    assert sequence.has_factorization_of_length(
+        3,
+        atom_catalogue=catalogue,
+    )
+    assert {
+        factorization_profile(factorization, atoms)
+        for factorization in sequence.factorizations(
+            factor_count=3,
+            atom_catalogue=catalogue,
+        )
+    } == {
+        factorization_profile((c3(1, 2),) * 3, atoms)
+    }
 
 
 def test_targeted_witness_search_agrees_with_exhaustive_factorizations():
