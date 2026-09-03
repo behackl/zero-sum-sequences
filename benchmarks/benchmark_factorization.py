@@ -21,15 +21,21 @@ def elapsed(callable_):
 def benchmark_case(
     case, *, enumerate_factorizations: bool, repeats: int
 ) -> dict[str, object]:
-    best_run = None
-    for _ in range(repeats):
+    if repeats < 1:
+        raise ValueError("repeats must be positive")
+
+    def timed_run():
         solver, preparation_seconds = elapsed(
             lambda: FactorizationSolver(case.sequence)
         )
-        lengths, solve_seconds = elapsed(solver.length_set)
-        if best_run is None or preparation_seconds + solve_seconds < sum(best_run[1:]):
-            best_run = (solver, preparation_seconds, solve_seconds)
-    assert best_run is not None
+        _, solve_seconds = elapsed(solver.length_set)
+        return solver, preparation_seconds, solve_seconds
+
+    best_run = timed_run()
+    for _ in range(1, repeats):
+        candidate = timed_run()
+        if sum(candidate[1:]) < sum(best_run[1:]):
+            best_run = candidate
     solver, preparation_seconds, solve_seconds = best_run
     lengths = solver.length_set()
     if lengths != set(case.expected_lengths):

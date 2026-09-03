@@ -1,5 +1,6 @@
 import pytest
 
+from benchmarks.benchmark_factorization import benchmark_case
 from benchmarks.factorization_cases import factorization_benchmark_cases  # noqa: E402
 from zero_sum_sequences import FactorizationSolver
 
@@ -15,6 +16,15 @@ def test_solver_on_benchmark_corpus(case):
     assert solver.statistics.states >= 1
     expected_bound = 7 if case.name.startswith("rank-three") else 3
     assert solver.davenport_bound == expected_bound
+
+
+def test_benchmark_rejects_nonpositive_repetition_count():
+    with pytest.raises(ValueError, match="repeats must be positive"):
+        benchmark_case(
+            CASES[0],
+            enumerate_factorizations=False,
+            repeats=0,
+        )
 
 
 def test_very_long_factorization_enumeration_is_iterative():

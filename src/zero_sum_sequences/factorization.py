@@ -153,35 +153,36 @@ class FactorizationSolver(Generic[Element]):
                 transitions.append((atom_index, tuple(remainder)))
         return tuple(transitions)
 
-    def _build_state_graph(self) -> None:
-        if self._transitions is not None:
-            return
-        transitions: dict[
-            MultiplicityState, tuple[tuple[int, MultiplicityState], ...]
-        ] = {}
-        pending = [self.initial_state]
-        discovered = {self.initial_state}
-        while pending:
-            state = pending.pop()
-            state_transitions = self._state_transitions(state)
-            transitions[state] = state_transitions
-            for _, remainder in state_transitions:
-                if remainder not in discovered:
-                    discovered.add(remainder)
-                    pending.append(remainder)
-        self._transitions = transitions
+    def _build_state_graph(
+        self,
+    ) -> dict[MultiplicityState, tuple[tuple[int, MultiplicityState], ...]]:
+        if self._transitions is None:
+            transitions: dict[
+                MultiplicityState, tuple[tuple[int, MultiplicityState], ...]
+            ] = {}
+            pending = [self.initial_state]
+            discovered = {self.initial_state}
+            while pending:
+                state = pending.pop()
+                state_transitions = self._state_transitions(state)
+                transitions[state] = state_transitions
+                for _, remainder in state_transitions:
+                    if remainder not in discovered:
+                        discovered.add(remainder)
+                        pending.append(remainder)
+            self._transitions = transitions
+        return self._transitions
 
     def _solve_lengths(self) -> dict[MultiplicityState, int]:
         if self._length_bits is None:
-            self._build_state_graph()
-            assert self._transitions is not None
+            transitions = self._build_state_graph()
             length_bits: dict[MultiplicityState, int] = {}
-            for state in sorted(self._transitions, key=sum):
+            for state in sorted(transitions, key=sum):
                 if state == self.zero_state:
                     length_bits[state] = 1
                     continue
                 bits = 0
-                for _, remainder in self._transitions[state]:
+                for _, remainder in transitions[state]:
                     bits |= length_bits[remainder] << 1
                 length_bits[state] = bits
             self._length_bits = length_bits
@@ -202,20 +203,18 @@ class FactorizationSolver(Generic[Element]):
     def statistics(self) -> FactorizationStatistics:
         """Return atom, state and transition counts for this problem."""
 
-        self._build_state_graph()
-        assert self._transitions is not None
+        transitions = self._build_state_graph()
         return FactorizationStatistics(
             candidate_atoms=len(self._atoms),
-            states=len(self._transitions),
-            transitions=sum(len(edges) for edges in self._transitions.values()),
+            states=len(transitions),
+            transitions=sum(len(edges) for edges in transitions.values()),
         )
 
     def length_set(self) -> set[int]:
         """Return the complete set of attained factorization lengths."""
 
-        self._solve_lengths()
-        assert self._length_bits is not None
-        bits = self._length_bits[self.initial_state]
+        length_bits = self._solve_lengths()
+        bits = length_bits[self.initial_state]
         return {
             length
             for length in range(bits.bit_length())
@@ -235,17 +234,16 @@ class FactorizationSolver(Generic[Element]):
     def factorization_witnesses(self) -> dict[int, Factorization]:
         """Return one deterministic factorization per attained length."""
 
-        self._solve_lengths()
-        assert self._transitions is not None
-        assert self._length_bits is not None
+        length_bits = self._solve_lengths()
+        transitions = self._build_state_graph()
         witnesses = {}
         for length in sorted(self.length_set()):
             state = self.initial_state
             remaining_length = length
             factors = []
             while remaining_length:
-                for atom_index, remainder in self._transitions[state]:
-                    if self._length_bits[remainder] & (1 << (remaining_length - 1)):
+                for atom_index, remainder in transitions[state]:
+                    if length_bits[remainder] & (1 << (remaining_length - 1)):
                         factors.append(self._atoms[atom_index].sequence)
                         state = remainder
                         remaining_length -= 1
@@ -284,10 +282,9 @@ class FactorizationSolver(Generic[Element]):
                 "factor_predicate is required when matching factors are required"
             )
 
-        self._solve_lengths()
-        assert self._transitions is not None
-        assert self._length_bits is not None
-        if not self._length_bits[self.initial_state] & (1 << factor_count):
+        length_bits = self._solve_lengths()
+        transitions = self._build_state_graph()
+        if not length_bits[self.initial_state] & (1 << factor_count):
             return None
 
         frames: list[tuple[MultiplicityState, int, int, int]] = [
@@ -309,8 +306,8 @@ class FactorizationSolver(Generic[Element]):
                     path.pop()
                 continue
 
-            transitions = self._transitions[state]
-            if next_transition >= len(transitions):
+            state_transitions = transitions[state]
+            if next_transition >= len(state_transitions):
                 dead.add(key)
                 frames.pop()
                 if path:
@@ -323,7 +320,7 @@ class FactorizationSolver(Generic[Element]):
                 required_matches,
                 next_transition + 1,
             )
-            atom_index, remainder = transitions[next_transition]
+            atom_index, remainder = state_transitions[next_transition]
             atom = self._atoms[atom_index].sequence
             matches = factor_predicate is not None and factor_predicate(atom)
             next_required_matches = max(0, required_matches - int(matches))
@@ -331,7 +328,7 @@ class FactorizationSolver(Generic[Element]):
             next_key = (remainder, next_remaining, next_required_matches)
             if next_required_matches > next_remaining or next_key in dead:
                 continue
-            if not self._length_bits[remainder] & (1 << next_remaining):
+            if not length_bits[remainder] & (1 << next_remaining):
                 dead.add(next_key)
                 continue
 
@@ -417,15 +414,14 @@ class FactorizationSolver(Generic[Element]):
         Each edge stores the removed atom in its ``"atom"`` attribute.
         """
 
-        self._build_state_graph()
-        assert self._transitions is not None
+        transitions_by_state = self._build_state_graph()
         sequences = {
             state: self._sequence_from_state(state)
-            for state in self._transitions
+            for state in transitions_by_state
         }
         graph = nx.DiGraph()
         graph.add_nodes_from(sequences.values())
-        for state, transitions in self._transitions.items():
+        for state, transitions in transitions_by_state.items():
             for atom_index, remainder in transitions:
                 graph.add_edge(
                     sequences[state],
