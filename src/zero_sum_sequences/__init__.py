@@ -4,18 +4,21 @@ from importlib.metadata import version as _distribution_version
 
 from .additive_sequence import AdditiveSequence, AdditiveSequenceSpace
 from .atom_catalogue import AtomCatalogue
-from .factorization import FactorizationSolver
+from .factorization import Factorization, FactorizationSolver
 from .orbits import (
     AutomorphismAction,
     AutomorphismActionUnavailable,
     OrbitWitness,
 )
 from .parents import FiniteAdditiveGroup
+from .relations import FactorizationRelation
 
 __all__ = [
     "AdditiveSequence",
     "AdditiveSequenceSpace",
     "AtomCatalogue",
+    "Factorization",
+    "FactorizationRelation",
     "FactorizationSolver",
     "FiniteAdditiveGroup",
     "AutomorphismAction",

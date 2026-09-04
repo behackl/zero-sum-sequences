@@ -155,6 +155,45 @@ complete result must contain every atom divisor relevant to the input.
 Factorizations are computed in the reduced block monoid: identity terms are
 not accepted by the solver and are not stored in an `AtomCatalogue`.
 
+## Factorization relations
+
+A `FactorizationRelation` represents an oriented equality between two
+unordered factorizations. It canonicalizes the factors on each side, verifies
+that all factors use one sequence space and have equal products, and provides
+common-factor cancellation and the standard factorization distance.
+
+For example, over $C_3$ let $A=1^3$, $B=2^3$, and $P=1\cdot2$. Since
+$AB=P^3$, adjoining one common factor gives a relation between $ABP$ and
+$P^4$:
+
+```python
+from zero_sum_sequences import FactorizationRelation
+
+A = Sequences([1, 1, 1])
+B = Sequences([2, 2, 2])
+P = Sequences([1, 2])
+
+relation = FactorizationRelation(
+    source=(A, B, P),
+    target=(P, P, P, P),
+)
+relation.common_factor       # (P,)
+relation.reduced_source      # (A, B)
+relation.reduced_target      # (P, P, P)
+relation.distance            # 3
+
+reduced = relation.reduced()
+reduced.is_reduced           # True
+reduced.product == A + B     # True
+```
+
+Relations are immutable and preserve the orientation of their source and
+target. Construction assumes that supplied factors are atoms rather than
+rerunning potentially expensive atomicity tests. Solver-produced
+factorizations and catalogue entries already satisfy that contract. For a
+relation with two empty sides, pass its sequence space explicitly as
+`space=Sequences`.
+
 ## Automorphism orbits
 
 Group automorphisms act on sequences term by term. Because an
