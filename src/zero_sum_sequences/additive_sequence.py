@@ -439,6 +439,20 @@ class AdditiveSequence(Generic[Element]):
 
         return self.factorization_solver(atom_catalogue=atom_catalogue).length_set()
 
+    def minimum_factorization_length(self, *, atom_catalogue=None) -> int | None:
+        """Return the minimum reduced factorization length, if one exists."""
+
+        return self.factorization_solver(
+            atom_catalogue=atom_catalogue
+        ).minimum_factorization_length()
+
+    def maximum_factorization_length(self, *, atom_catalogue=None) -> int | None:
+        """Return the maximum reduced factorization length, if one exists."""
+
+        return self.factorization_solver(
+            atom_catalogue=atom_catalogue
+        ).maximum_factorization_length()
+
     def has_factorization_of_length(
         self,
         factor_count: int,

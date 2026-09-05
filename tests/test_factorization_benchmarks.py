@@ -27,11 +27,16 @@ def test_benchmark_rejects_nonpositive_repetition_count():
         )
 
 
-def test_very_long_factorization_enumeration_is_iterative():
+def test_very_long_factorization_queries_are_iterative():
     [case] = [case for case in CASES if case.name == "c3-pure-power-5000"]
     solver = FactorizationSolver(case.sequence)
-    [factorization] = solver.factorizations()
 
+    assert solver.has_factorization_of_length(5000)
+    assert not solver.has_factorization_of_length(4999)
+    assert solver.minimum_factorization_length() == 5000
+    assert solver.maximum_factorization_length() == 5000
+
+    [factorization] = solver.factorizations()
     assert len(factorization) == 5000
 
 

@@ -86,6 +86,8 @@ def test_factorizations_length_sets_and_witnesses():
     assert sequence.has_factorization_of_length(2)
     assert sequence.has_factorization_of_length(3)
     assert not sequence.has_factorization_of_length(4)
+    assert sequence.minimum_factorization_length() == 2
+    assert sequence.maximum_factorization_length() == 3
     assert sequence.length_set() == {2, 3}
 
     witnesses = sequence.factorization_witnesses()
@@ -102,10 +104,16 @@ def test_empty_atom_nonzero_and_zero_term_cases():
 
     assert empty.length_set() == {0}
     assert empty.has_factorization_of_length(0)
+    assert empty.minimum_factorization_length() == 0
+    assert empty.maximum_factorization_length() == 0
     assert list(empty.factorizations()) == [()]
     assert list(empty.factorizations(factor_count=0)) == [()]
     assert not atom.has_factorization_of_length(0)
+    assert atom.minimum_factorization_length() == 1
+    assert atom.maximum_factorization_length() == 1
     assert atom.length_set() == {1}
+    assert nonzero.minimum_factorization_length() is None
+    assert nonzero.maximum_factorization_length() is None
     assert nonzero.length_set() == set()
     with pytest.raises(ValueError, match="without zero terms"):
         zero_times_atom.length_set()
@@ -157,6 +165,48 @@ def test_memoized_enumeration_agrees_with_naive_on_small_products():
                 expected_at_length
             )
 
+        expected_lengths = {len(factors) for factors in expected_factorizations}
+        expected_minimum = min(expected_lengths) if expected_lengths else None
+        expected_maximum = max(expected_lengths) if expected_lengths else None
+        assert solver.minimum_factorization_length() == expected_minimum
+        assert solver.maximum_factorization_length() == expected_maximum
+
+
+def test_targeted_queries_do_not_solve_the_complete_length_set():
+    sequence = c3(1, 1, 1, 2, 2, 2)
+    solver = FactorizationSolver(sequence)
+
+    assert solver.has_factorization_of_length(3)
+    assert solver._transitions is None
+    assert solver._length_bits is None
+    assert solver.minimum_factorization_length() == 2
+    assert solver._transitions is None
+    assert solver._length_bits is None
+    assert list(solver.factorizations(factor_count=2))
+    assert solver._transitions is None
+    assert solver._length_bits is None
+
+
+def test_maximum_length_uses_integer_dag_dynamic_programming():
+    sequence = c3(1, 1, 1, 2, 2, 2)
+    solver = FactorizationSolver(sequence)
+
+    assert solver.maximum_factorization_length() == 3
+    assert solver.minimum_factorization_length() == 2
+    assert solver._transitions is not None
+    assert solver._length_bits is None
+
+
+def test_extremal_and_exact_queries_reuse_complete_length_bits():
+    sequence = c3(1, 1, 1, 2, 2, 2)
+    solver = FactorizationSolver(sequence)
+
+    assert solver.length_set() == {2, 3}
+    assert solver.minimum_factorization_length() == 2
+    assert solver.maximum_factorization_length() == 3
+    assert solver.has_factorization_of_length(2)
+    assert not solver.has_factorization_of_length(4)
+
 
 def test_precomputed_atom_catalogue_can_be_reused():
     atoms = tuple(
@@ -172,6 +222,8 @@ def test_precomputed_atom_catalogue_can_be_reused():
         3,
         atom_catalogue=catalogue,
     )
+    assert sequence.minimum_factorization_length(atom_catalogue=catalogue) == 2
+    assert sequence.maximum_factorization_length(atom_catalogue=catalogue) == 3
     assert {
         factorization_profile(factorization, atoms)
         for factorization in sequence.factorizations(

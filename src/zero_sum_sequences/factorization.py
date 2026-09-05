@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import deque
 from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
 from typing import Generic, TypeAlias
@@ -103,6 +104,16 @@ class FactorizationSolver(Generic[Element]):
             MultiplicityState, tuple[tuple[int, MultiplicityState], ...]
         ] | None = None
         self._length_bits: dict[MultiplicityState, int] | None = None
+        self._fixed_length_results: dict[
+            tuple[MultiplicityState, int], bool
+        ] = {}
+        factor_lengths = tuple(len(atom.sequence) for atom in self._atoms)
+        self._minimum_factor_length = min(factor_lengths, default=0)
+        self._maximum_factor_length = max(factor_lengths, default=0)
+        self._minimum_length: int | None = None
+        self._maximum_length: int | None = None
+        self._minimum_length_is_solved = False
+        self._maximum_length_is_solved = False
 
     def _index_atoms(
         self, atoms: Iterable[AdditiveSequence[Element]]
@@ -153,6 +164,112 @@ class FactorizationSolver(Generic[Element]):
                 transitions.append((atom_index, tuple(remainder)))
         return tuple(transitions)
 
+    def _query_transitions(
+        self,
+        state: MultiplicityState,
+    ) -> tuple[tuple[int, MultiplicityState], ...]:
+        if self._transitions is not None:
+            known = self._transitions.get(state)
+            if known is not None:
+                return known
+        return self._state_transitions(state)
+
+    def _known_fixed_length_result(
+        self,
+        state: MultiplicityState,
+        factor_count: int,
+    ) -> bool | None:
+        key = state, factor_count
+        if key in self._fixed_length_results:
+            return self._fixed_length_results[key]
+        if self._length_bits is not None:
+            bits = self._length_bits.get(state)
+            if bits is not None:
+                result = factor_count < bits.bit_length() and bool(
+                    bits & (1 << factor_count)
+                )
+                self._fixed_length_results[key] = result
+                return result
+        if factor_count == 0:
+            result = state == self.zero_state
+        elif state == self.zero_state or not self._atoms:
+            result = False
+        else:
+            terms = sum(state)
+            result = None
+            if (
+                terms < self._minimum_factor_length * factor_count
+                or terms > self._maximum_factor_length * factor_count
+            ):
+                result = False
+        if result is not None:
+            self._fixed_length_results[key] = result
+        return result
+
+    def _has_fixed_length_from_state(
+        self,
+        state: MultiplicityState,
+        factor_count: int,
+    ) -> bool:
+        known = self._known_fixed_length_result(state, factor_count)
+        if known is not None:
+            return known
+
+        frames: list[
+            tuple[
+                MultiplicityState,
+                int,
+                tuple[tuple[int, MultiplicityState], ...],
+                int,
+            ]
+        ] = [(state, factor_count, self._query_transitions(state), 0)]
+        while frames:
+            current, remaining, transitions, next_transition = frames[-1]
+            key = current, remaining
+            if next_transition == len(transitions):
+                self._fixed_length_results[key] = False
+                frames.pop()
+                continue
+
+            frames[-1] = (
+                current,
+                remaining,
+                transitions,
+                next_transition + 1,
+            )
+            _, remainder = transitions[next_transition]
+            next_remaining = remaining - 1
+            child_result = self._known_fixed_length_result(
+                remainder,
+                next_remaining,
+            )
+            if child_result is True:
+                self._fixed_length_results[key] = True
+                for ancestor, ancestor_remaining, _, _ in frames:
+                    self._fixed_length_results[
+                        ancestor, ancestor_remaining
+                    ] = True
+                return True
+            if child_result is False:
+                continue
+            frames.append(
+                (
+                    remainder,
+                    next_remaining,
+                    self._query_transitions(remainder),
+                    0,
+                )
+            )
+        return False
+
+    @staticmethod
+    def _extreme_lengths_from_bits(bits: int) -> tuple[int | None, int | None]:
+        if not bits:
+            return None, None
+        minimum = (bits & -bits).bit_length() - 1
+        maximum = bits.bit_length() - 1
+        return minimum, maximum
+
     def _build_state_graph(
         self,
     ) -> dict[MultiplicityState, tuple[tuple[int, MultiplicityState], ...]]:
@@ -188,6 +305,51 @@ class FactorizationSolver(Generic[Element]):
             self._length_bits = length_bits
         return self._length_bits
 
+    def _solve_extreme_lengths(self) -> tuple[int | None, int | None]:
+        if self._minimum_length_is_solved and self._maximum_length_is_solved:
+            return self._minimum_length, self._maximum_length
+
+        if self._length_bits is not None:
+            minimum, maximum = self._extreme_lengths_from_bits(
+                self._length_bits[self.initial_state]
+            )
+        else:
+            transitions = self._build_state_graph()
+            minimum_by_state: dict[MultiplicityState, int | None] = {}
+            maximum_by_state: dict[MultiplicityState, int | None] = {}
+            for state in sorted(transitions, key=sum):
+                if state == self.zero_state:
+                    minimum_by_state[state] = 0
+                    maximum_by_state[state] = 0
+                    continue
+                child_bounds = [
+                    (minimum_by_state[remainder], maximum_by_state[remainder])
+                    for _, remainder in transitions[state]
+                    if minimum_by_state[remainder] is not None
+                ]
+                if child_bounds:
+                    minimum_by_state[state] = 1 + min(
+                        minimum
+                        for minimum, _ in child_bounds
+                        if minimum is not None
+                    )
+                    maximum_by_state[state] = 1 + max(
+                        maximum
+                        for _, maximum in child_bounds
+                        if maximum is not None
+                    )
+                else:
+                    minimum_by_state[state] = None
+                    maximum_by_state[state] = None
+            minimum = minimum_by_state[self.initial_state]
+            maximum = maximum_by_state[self.initial_state]
+
+        self._minimum_length = minimum
+        self._maximum_length = maximum
+        self._minimum_length_is_solved = True
+        self._maximum_length_is_solved = True
+        return minimum, maximum
+
     def _sequence_from_state(
         self, state: MultiplicityState
     ) -> AdditiveSequence[Element]:
@@ -221,14 +383,51 @@ class FactorizationSolver(Generic[Element]):
             if bits & (1 << length)
         }
 
+    def minimum_factorization_length(self) -> int | None:
+        """Return the minimum factorization length, or ``None`` if absent."""
+
+        if self._minimum_length_is_solved:
+            return self._minimum_length
+        if self._length_bits is not None:
+            minimum, _ = self._extreme_lengths_from_bits(
+                self._length_bits[self.initial_state]
+            )
+            self._minimum_length = minimum
+            self._minimum_length_is_solved = True
+            return minimum
+
+        pending = deque(((self.initial_state, 0),))
+        discovered = {self.initial_state}
+        while pending:
+            state, length = pending.popleft()
+            if state == self.zero_state:
+                self._minimum_length = length
+                self._minimum_length_is_solved = True
+                return length
+            for _, remainder in self._query_transitions(state):
+                if remainder not in discovered:
+                    discovered.add(remainder)
+                    pending.append((remainder, length + 1))
+
+        self._minimum_length = None
+        self._minimum_length_is_solved = True
+        return None
+
+    def maximum_factorization_length(self) -> int | None:
+        """Return the maximum factorization length, or ``None`` if absent."""
+
+        if self._maximum_length_is_solved:
+            return self._maximum_length
+        _, maximum = self._solve_extreme_lengths()
+        return maximum
+
     def has_factorization_of_length(self, factor_count: int) -> bool:
         """Return whether a factorization has exactly ``factor_count`` factors."""
 
         factor_count = _non_negative_integer(factor_count, name="factor count")
-        length_bits = self._solve_lengths()
-        bits = length_bits[self.initial_state]
-        return factor_count < bits.bit_length() and bool(
-            bits & (1 << factor_count)
+        return self._has_fixed_length_from_state(
+            self.initial_state,
+            factor_count,
         )
 
     def factorization_witnesses(self) -> dict[int, Factorization]:
@@ -346,19 +545,10 @@ class FactorizationSolver(Generic[Element]):
     ) -> Iterator[Factorization]:
         """Yield each unordered factorization, optionally of one length."""
 
-        minimum_factor_length = maximum_factor_length = 0
-        fixed_length_bits: dict[MultiplicityState, int] = {}
         if factor_count is not None:
             factor_count = _non_negative_integer(factor_count, name="factor count")
             if not self.has_factorization_of_length(factor_count):
                 return
-            fixed_length_bits = self._solve_lengths()
-            factor_lengths = tuple(len(atom.sequence) for atom in self._atoms)
-            if factor_count and not factor_lengths:  # pragma: no cover
-                raise RuntimeError("an attained positive length requires an atom")
-            if factor_lengths:
-                minimum_factor_length = min(factor_lengths)
-                maximum_factor_length = max(factor_lengths)
 
         path: list[AdditiveSequence[Element]] = []
         stack: list[tuple[MultiplicityState, int]] = [(self.initial_state, 0)]
@@ -374,19 +564,9 @@ class FactorizationSolver(Generic[Element]):
 
             if factor_count is not None:
                 remaining_factors = factor_count - len(path)
-                state_length_bits = fixed_length_bits.get(state)
-                impossible_length = remaining_factors <= 0
-                if not impossible_length and state_length_bits is not None:
-                    impossible_length = (
-                        remaining_factors >= state_length_bits.bit_length()
-                        or not state_length_bits & (1 << remaining_factors)
-                    )
-                remaining_terms = sum(state)
-                minimum_terms = minimum_factor_length * remaining_factors
-                maximum_terms = maximum_factor_length * remaining_factors
-                if (
-                    impossible_length
-                    or not minimum_terms <= remaining_terms <= maximum_terms
+                if not self._has_fixed_length_from_state(
+                    state,
+                    remaining_factors,
                 ):
                     stack.pop()
                     if stack:
