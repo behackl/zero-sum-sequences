@@ -99,6 +99,8 @@ Attained lengths are represented internally as integer bitsets.
 
 ```python
 lengths = sequence.length_set()
+minimum = sequence.minimum_factorization_length()
+maximum = sequence.maximum_factorization_length()
 witnesses = sequence.factorization_witnesses()
 factorizations = list(sequence.factorizations())
 length_three = list(sequence.factorizations(factor_count=3))
@@ -110,9 +112,13 @@ graph = sequence.factorization_digraph()
 length. Exhaustive `factorizations()` is necessarily output-sensitive, but it
 emits each unordered factorization once. Pass `factor_count=` to enumerate
 only factorizations of one length; `has_factorization_of_length()` tests that
-length without enumerating its factorizations. `factorization_digraph()`
-returns a NetworkX `DiGraph` whose vertices are remainder sequences and whose
-edges store the removed atom in their `"atom"` attribute.
+length with a targeted search unless complete length data is already cached.
+`minimum_factorization_length()` uses a shortest-path search, while
+`maximum_factorization_length()` uses integer dynamic programming on the
+remainder DAG. Both return `None` when no factorization exists.
+`factorization_digraph()` returns a NetworkX `DiGraph` whose vertices are
+remainder sequences and whose edges store the removed atom in their `"atom"`
+attribute.
 
 For several queries against the same remainder DAG, use the public solver:
 
@@ -121,12 +127,38 @@ from zero_sum_sequences import FactorizationSolver
 
 solver = FactorizationSolver(sequence)
 solver.length_set()
+solver.minimum_factorization_length()
+solver.maximum_factorization_length()
 solver.has_factorization_of_length(3)
+solver.factorization_witness(3)
 list(solver.factorizations(factor_count=3))
 solver.factorization_witnesses()
 solver.statistics
 solver.digraph()
 ```
+
+To find just one factorization, use `solver.factorization_witness(k)`. It
+returns a deterministic tuple of atoms, or `None` if the requested length is
+absent, without first constructing the full remainder DAG or computing the
+complete length set. Existing fixed-length answers and complete length data
+are reused when available. An optional predicate can constrain the witness:
+
+```python
+solver.factorization_witness(
+    3,
+    minimum_matching_factors=2,
+    factor_predicate=lambda atom: len(atom) == 2,
+)
+```
+
+This asks for three factors, at least two of which have term length two.
+`None` means that no witness satisfies both constraints; it does not imply
+that length three itself is absent. Profile-constrained searches are also
+targeted, but may need to explore more alternatives. For the empty sequence,
+the length-zero witness is `()` rather than `None`.
+
+Inspecting `solver.statistics` or calling `solver.digraph()` materializes the
+full remainder graph, even if preceding queries were targeted.
 
 A complete precomputed catalogue can avoid rediscovering atoms:
 
@@ -148,6 +180,29 @@ The parent must be a finite iterable additive group. Enumeration completes
 each sorted prefix with its uniquely determined final term, rather than
 testing multisets whose sum is nonzero. Completeness depends on the configured
 Davenport bound being valid.
+
+To enumerate only atoms supported on a subset of the ambient group, pass
+`support=`:
+
+```python
+# Here Sequences is the C_3 space from the first example.
+restricted = Sequences.enumerate_atom_catalogue(support=[1])
+list(restricted)  # Only the atom 1^3; 2 need not belong to the support.
+Sequences([1] * 6).length_set(atom_catalogue=restricted)  # {2}
+```
+
+The support can be any iterable of terms, not necessarily a subgroup or a
+set closed under negation. Terms are coerced through the ambient parent;
+duplicates and zero are ignored. An empty or zero-only support gives an empty
+reduced catalogue. Omitting `support` (or passing `None`) enumerates over the
+whole ambient group as before.
+
+Only prefixes on the chosen support are generated; the final completing term
+must also belong to it. Sums and inverses are still computed in the ambient
+group, which must remain finite and iterable. The bound must cover all atom
+lengths on the chosen support; a valid ambient Davenport bound suffices. Such
+a catalogue is complete for sequences supported there, but is not generally
+complete for sequences containing other terms.
 
 The caller is responsible for catalogue completeness. A catalogue used for a
 complete result must contain every atom divisor relevant to the input.
