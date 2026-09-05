@@ -462,9 +462,11 @@ class FactorizationSolver(Generic[Element]):
         """Find a factorization of a requested length and optional profile.
 
         When ``minimum_matching_factors`` is positive, at least that many
-        factors must satisfy ``factor_predicate``. The search reuses the
-        remainder DAG and its length bitsets rather than enumerating every
-        factorization.
+        factors must satisfy ``factor_predicate``. The search visits only
+        remainders needed for the requested length and profile, reusing cached
+        fixed-length answers or complete length bitsets when available. It
+        does not build the full remainder DAG or solve the complete length
+        set merely to obtain one witness.
         """
 
         factor_count = _non_negative_integer(factor_count, name="factor count")
@@ -481,19 +483,33 @@ class FactorizationSolver(Generic[Element]):
                 "factor_predicate is required when matching factors are required"
             )
 
-        length_bits = self._solve_lengths()
-        transitions = self._build_state_graph()
-        if not length_bits[self.initial_state] & (1 << factor_count):
+        if not self._has_fixed_length_from_state(self.initial_state, factor_count):
             return None
 
-        frames: list[tuple[MultiplicityState, int, int, int]] = [
-            (self.initial_state, factor_count, minimum_matching_factors, 0)
+        frames: list[
+            tuple[
+                MultiplicityState,
+                int,
+                int,
+                tuple[tuple[int, MultiplicityState], ...],
+                int,
+            ]
+        ] = [
+            (
+                self.initial_state,
+                factor_count,
+                minimum_matching_factors,
+                self._query_transitions(self.initial_state),
+                0,
+            )
         ]
         path: list[int] = []
         dead: set[tuple[MultiplicityState, int, int]] = set()
 
         while frames:
-            state, remaining, required_matches, next_transition = frames[-1]
+            state, remaining, required_matches, state_transitions, next_transition = (
+                frames[-1]
+            )
             key = (state, remaining, required_matches)
 
             if remaining == 0:
@@ -505,7 +521,6 @@ class FactorizationSolver(Generic[Element]):
                     path.pop()
                 continue
 
-            state_transitions = transitions[state]
             if next_transition >= len(state_transitions):
                 dead.add(key)
                 frames.pop()
@@ -517,6 +532,7 @@ class FactorizationSolver(Generic[Element]):
                 state,
                 remaining,
                 required_matches,
+                state_transitions,
                 next_transition + 1,
             )
             atom_index, remainder = state_transitions[next_transition]
@@ -527,13 +543,19 @@ class FactorizationSolver(Generic[Element]):
             next_key = (remainder, next_remaining, next_required_matches)
             if next_required_matches > next_remaining or next_key in dead:
                 continue
-            if not length_bits[remainder] & (1 << next_remaining):
+            if not self._has_fixed_length_from_state(remainder, next_remaining):
                 dead.add(next_key)
                 continue
 
             path.append(atom_index)
             frames.append(
-                (remainder, next_remaining, next_required_matches, 0)
+                (
+                    remainder,
+                    next_remaining,
+                    next_required_matches,
+                    self._query_transitions(remainder),
+                    0,
+                )
             )
 
         return None
