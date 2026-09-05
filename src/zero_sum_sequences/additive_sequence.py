@@ -124,15 +124,24 @@ class AdditiveSequenceSpace(Generic[Element]):
             terms.extend(itertools.repeat(term, count))
         return self(terms)
 
-    def enumerate_atom_catalogue(self) -> AtomCatalogue[Element]:
-        """Exhaustively enumerate reduced atoms through the configured bound.
+    def enumerate_atom_catalogue(
+        self, *, support: Iterable[Element] | None = None
+    ) -> AtomCatalogue[Element]:
+        """Enumerate reduced atoms on a support through the configured bound.
 
-        The base parent must be a finite iterable additive group.  For each
-        candidate length, sorted prefixes are completed by their uniquely
-        determined final term.  The identity singleton is omitted, matching
-        the reduced-factorization convention of :class:`AtomCatalogue`.  The
-        result is complete only when ``davenport_bound`` is a valid upper
-        bound for the base parent.
+        The base parent must be a finite iterable additive group. With
+        ``support=None``, use all its nonzero elements. Otherwise coerce the
+        supplied terms through the parent, discard duplicates and zero, and
+        enumerate only atoms supported on that subset. The subset need not
+        be a subgroup: all sums and inverses use the ambient group.
+
+        Sorted prefixes on the chosen support are completed by their uniquely
+        determined final term, which must also lie in the support. The
+        identity singleton is omitted, matching :class:`AtomCatalogue`.
+        Completeness on the chosen support requires ``davenport_bound`` to
+        bound the lengths of all atoms on that support; a valid bound for
+        the ambient group suffices. A restricted catalogue is not generally
+        complete for sequences with terms outside the chosen support.
         """
 
         from .atom_catalogue import AtomCatalogue
@@ -161,21 +170,30 @@ class AdditiveSequenceSpace(Generic[Element]):
         if not callable(operation):
             operation = default_add
 
-        inverse = {}
-        for term in terms:
+        if support is None:
+            allowed_terms = terms
+        else:
+            allowed_terms = self(support).support
+            if not set(allowed_terms).issubset(terms):
+                raise ValueError("support terms must belong to the ambient group")
+        nonzero_terms = tuple(term for term in allowed_terms if term != zero)
+
+        # Only prefix sums whose inverse belongs to the chosen support can
+        # complete an atom. Compute inverses in the ambient group, not in the
+        # support (which need not be closed under negation or addition).
+        completions = {}
+        for term in nonzero_terms:
             for candidate in terms:
                 total = _immutable_term(
                     self._parent(operation(term, candidate))
                 )
                 if total == zero:
-                    inverse[term] = candidate
+                    completions[candidate] = term
                     break
             else:
                 raise ValueError(
                     "atom catalogue enumeration requires additive inverses"
                 )
-
-        nonzero_terms = tuple(term for term in terms if term != zero)
         term_index = {
             term: position for position, term in enumerate(nonzero_terms)
         }
@@ -191,12 +209,10 @@ class AdditiveSequenceSpace(Generic[Element]):
                 prefix_total = _immutable_term(
                     self._parent(reduce(operation, prefix, zero))
                 )
-                final = inverse[prefix_total]
-                final_position = term_index.get(final)
-                if (
-                    final_position is None
-                    or final_position < prefix_indices[-1]
-                ):
+                if prefix_total not in completions:
+                    continue
+                final = completions[prefix_total]
+                if term_index[final] < prefix_indices[-1]:
                     continue
                 candidate = self((*prefix, final))
                 if candidate.is_atom():
