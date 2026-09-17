@@ -351,3 +351,56 @@ def test_sequence_order_is_length_then_terms():
     with pytest.raises(TypeError):
         _ = a < space_for(6, bound=7)([(1,)])
     assert not isinstance(AdditiveSequence.__lt__(a, 3), bool)
+
+
+# subgroups, words and transporters
+
+
+@pytest.mark.parametrize("moduli, bound", [((2, 4), 5), ((4, 4), 7), ((3, 3), 5), ((42,), 8)])
+def test_subgroup_generators_generate_and_are_few(moduli, bound):
+    space = space_for(*moduli, bound=bound)
+    group = space.automorphism_group()
+    rng = random.Random(str(moduli))
+    x = random_sequence(space, 3, rng)
+    stabilizer = group.stabilizer(x)
+    assert len(stabilizer.generators) <= max(1, len(stabilizer).bit_length())
+    closure = {stabilizer.identity}
+    pending = [stabilizer.identity]
+    while pending:
+        current = pending.pop()
+        for g in stabilizer.generators:
+            image = stabilizer.compose(g, current)
+            if image not in closure:
+                closure.add(image)
+                pending.append(image)
+    assert closure == set(stabilizer.elements)
+    with pytest.raises(ValueError):
+        group.subgroup(group.elements[1:3])  # not closed
+
+
+def test_orbit_words_and_materialize():
+    space = space_for(2, 4, bound=5)
+    group = space.automorphism_group()
+    x = space([(1, 1), (1, 1), (0, 2)])
+    words = group.orbit_words(x)
+    assert set(words) == set(group.orbit(x)) and words[x] == ()
+    for image, word in words.items():
+        assert group.apply(group.materialize(word), x) == image
+        assert all(0 <= i < len(group.generators) for i in word)
+
+
+@pytest.mark.parametrize("moduli, bound", [((2, 4), 5), ((6,), 6), ((2, 2, 2), 4)])
+def test_catalogue_representatives_and_transporters(moduli, bound):
+    space = space_for(*moduli, bound=bound)
+    catalogue = space.enumerate_atom_catalogue()
+    group = space.automorphism_group()
+    for atom in catalogue:
+        representative = catalogue.representative(atom)
+        assert representative == group.canonical(atom)
+        transporter = catalogue.transporter(atom)
+        assert group.apply(transporter, atom) == representative
+    assert {catalogue.representative(a) for a in catalogue} == {
+        orbit.representative for orbit in catalogue.orbits()
+    }
+    with pytest.raises(ValueError):
+        catalogue.transporter(catalogue[0] + catalogue[1])

@@ -11,6 +11,7 @@ from .automorphisms import (
     CanonicalForm,
 )
 from .factorization import Factorization, FactorizationSolver
+from .oracle import AnchoredCanonicalizer, FactorizationOracle
 from .orbits import (
     AutomorphismAction,
     AutomorphismActionUnavailable,
@@ -26,6 +27,8 @@ __all__ = [
     "AtomOrbit",
     "Factorization",
     "FactorizationRelation",
+    "AnchoredCanonicalizer",
+    "FactorizationOracle",
     "FactorizationSolver",
     "FiniteAdditiveGroup",
     "Automorphism",

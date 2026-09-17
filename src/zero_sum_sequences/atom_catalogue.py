@@ -207,21 +207,61 @@ class AtomCatalogue(Generic[Element]):
 
         return self._group(group).canonical_form(atom)
 
+    def _orbit_data(self, group):
+        """Per group: ``atom -> (representative, word from the representative)``."""
+
+        cache = getattr(self, "_orbit_cache", None)
+        if cache is None:
+            cache = self._orbit_cache = {}
+        data = cache.get(id(group))
+        if data is not None and data[0] is group:
+            return data[1]
+        buckets = group.orbit_representatives(self.atoms)
+        mapping = {}
+        for representative in sorted(buckets):
+            words = group.orbit_words(representative)
+            members = buckets[representative]
+            if len(members) != len(words):
+                raise ValueError("the catalogue is not closed under the group")
+            for atom in members:
+                mapping[atom] = (representative, words[atom])
+        cache[id(group)] = (group, mapping)
+        return mapping
+
     def orbits(self, *, group=None) -> tuple[AtomOrbit[Element], ...]:
         """The automorphism orbits of the catalogue, sorted by representative."""
 
         group = self._group(group)
-        buckets = group.orbit_representatives(self.atoms)
-        result = []
-        for representative in sorted(buckets):
-            members = buckets[representative]
-            indices = tuple(sorted(self._index[atom] for atom in members))
-            if len(members) != len(group.orbit(representative)):
-                raise ValueError("the catalogue is not closed under the group")
-            result.append(
-                AtomOrbit(representative, indices, len(group.stabilizer(representative)))
-            )
-        return tuple(result)
+        mapping = self._orbit_data(group)
+        members: dict = {}
+        for atom, (representative, _) in mapping.items():
+            members.setdefault(representative, []).append(self._index[atom])
+        return tuple(
+            AtomOrbit(representative, tuple(sorted(indices)), len(group.stabilizer(representative)))
+            for representative, indices in sorted(members.items())
+        )
+
+    def representative(self, atom: AdditiveSequence[Element], *, group=None):
+        """The orbit minimum of a catalogue atom (precomputed for all atoms)."""
+
+        return self._orbit_data(self._group(group))[self._require(atom)][0]
+
+    def transporter(self, atom: AdditiveSequence[Element], *, group=None):
+        """An automorphism mapping ``atom`` to its orbit representative.
+
+        It is the inverse of the breadth-first generator word from the
+        representative, so it is deterministic for a fixed generator list
+        and cheap for all atoms at once (needs ``compose`` and ``inverse``).
+        """
+
+        group = self._group(group)
+        representative, word = self._orbit_data(group)[self._require(atom)]
+        return group.inverse(group.materialize(word))
+
+    def _require(self, atom):
+        if atom not in self._index:
+            raise ValueError("the sequence is not in the catalogue")
+        return atom
 
     # serialization
 

@@ -198,9 +198,13 @@ class AutomorphismGroup(Generic[Element, Auto]):
         identity: Auto | None = None,
         generators: Iterable[Auto] | None = None,
         key: Callable[[Auto], object] | None = None,
+        canonical_images: bool = False,
     ) -> None:
         if not callable(apply_term):
             raise TypeError("apply_term must be callable")
+        # ``canonical_images``: apply_term returns canonical parent elements,
+        # so sequence images need no coercion (true for image tables).
+        self._canonical_images = bool(canonical_images)
         unique = list(dict.fromkeys(elements))
         if not unique:
             raise ValueError("an automorphism group needs at least the identity")
@@ -288,18 +292,48 @@ class AutomorphismGroup(Generic[Element, Auto]):
     def subgroup(self, elements: Iterable[Auto]) -> AutomorphismGroup[Element, Auto]:
         """A group on a subset of the elements, sharing all callbacks.
 
-        The subset is not checked for closure; the generators of the result
-        are all its non-identity elements.
+        The subset is not checked for closure.  When the group can compose,
+        a small generating set of the subgroup is found greedily so that
+        orbit traversals in the subgroup stay cheap; otherwise all
+        non-identity elements serve as generators.
         """
 
+        members = tuple(dict.fromkeys(elements))
+        generators = None
+        if self._compose is not None:
+            generators = self._greedy_generators(members)
         return AutomorphismGroup(
-            elements,
+            members,
             apply_term=self._apply_term,
             compose=self._compose,
             inverse=self._inverse,
             identity=self._identity,
+            generators=generators,
             key=self._key,
+            canonical_images=self._canonical_images,
         )
+
+    def _greedy_generators(self, members: tuple[Auto, ...]) -> tuple[Auto, ...]:
+        member_set = frozenset(members)
+        generators: list[Auto] = []
+        closure = {self._identity}
+        for element in sorted(members, key=self._key):
+            if element in closure:
+                continue
+            generators.append(element)
+            pending = list(closure)
+            while pending:
+                current = pending.pop()
+                for generator in generators:
+                    image = self._compose(generator, current)
+                    if image not in closure:
+                        if image not in member_set:
+                            raise ValueError("the elements are not closed under composition")
+                        closure.add(image)
+                        pending.append(image)
+            if len(closure) == len(member_set):
+                break
+        return tuple(generators)
 
     # actions
 
@@ -310,7 +344,12 @@ class AutomorphismGroup(Generic[Element, Auto]):
         """Apply ``element`` to a sequence or to a tuple of sequences."""
 
         if isinstance(obj, AdditiveSequence):
-            return obj.map_terms(lambda term: self._apply_term(element, term))
+            if self._canonical_images:
+                return obj._mapped_items(lambda term: self._apply_term(element, term))
+            parent = obj.parent().base_parent
+            return obj._mapped_items(
+                lambda term: _immutable_term(parent(self._apply_term(element, term)))
+            )
         if isinstance(obj, tuple):
             images = tuple(self.apply(element, item) for item in obj)
             return images if ordered else tuple(sorted(images))
@@ -338,6 +377,18 @@ class AutomorphismGroup(Generic[Element, Auto]):
         for position in word:
             element = self.compose(self._generators[position], element)
         return element
+
+    def orbit_words(self, obj, *, ordered: bool = False) -> dict:
+        """The orbit of ``obj`` as ``image -> generator word`` (indices into
+        :attr:`generators`, applied left to right); ``obj`` has the empty word."""
+
+        _check_object(obj)
+        return self._traverse(obj, ordered=ordered)
+
+    def materialize(self, word: Iterable[int]) -> Auto:
+        """The product of the generators of ``word`` (needs ``compose``)."""
+
+        return self._materialize(tuple(word))
 
     def orbit(self, obj, *, ordered: bool = False) -> tuple:
         """All distinct images of ``obj``, sorted."""
@@ -459,6 +510,7 @@ class AutomorphismGroup(Generic[Element, Auto]):
             identity=Automorphism(identity, data),
             generators=[Automorphism(t, data) for t in generator_tables if t != identity],
             key=(lambda a: (a.generator_images(), a.table)) if data.generators else None,
+            canonical_images=True,
         )
 
 

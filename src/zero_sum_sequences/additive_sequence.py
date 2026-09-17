@@ -95,6 +95,17 @@ class AdditiveSequenceSpace(Generic[Element]):
         self._automorphism_action = None
         self._automorphism_group = None
 
+    def oracle(self, catalogue, *, group=None, canonicalize=None, maxsize: int | None = 1024):
+        """A :class:`FactorizationOracle` over ``catalogue`` for this space."""
+
+        from .oracle import FactorizationOracle
+
+        if catalogue.space is not self:
+            raise TypeError("the catalogue belongs to a different space")
+        return FactorizationOracle(
+            catalogue, group=group, canonicalize=canonicalize, maxsize=maxsize
+        )
+
     def encode_term(self, term: Element) -> object:
         """JSON-compatible encoding of one term, delegated to the parent."""
 
@@ -297,6 +308,28 @@ class AdditiveSequence(Generic[Element]):
         self._items: tuple[tuple[Element, int], ...] = items
         self._length = sum(count for _, count in items)
         self._hash = hash((space, items))
+
+    @classmethod
+    def _from_items(
+        cls, space: AdditiveSequenceSpace[Element], items: tuple[tuple[Element, int], ...]
+    ) -> AdditiveSequence[Element]:
+        """Fast constructor from sorted ``(term, count)`` items of canonical terms."""
+
+        sequence = cls.__new__(cls)
+        sequence._space = space
+        sequence._items = items
+        sequence._length = sum(count for _, count in items)
+        sequence._hash = hash((space, items))
+        return sequence
+
+    def _mapped_items(self, mapping: Callable[[Element], Element]) -> AdditiveSequence[Element]:
+        """Image under a term map whose values are canonical parent elements."""
+
+        counts: dict[Element, int] = {}
+        for term, count in self._items:
+            image = mapping(term)
+            counts[image] = counts.get(image, 0) + count
+        return AdditiveSequence._from_items(self._space, tuple(sorted(counts.items())))
 
     def parent(self) -> AdditiveSequenceSpace[Element]:
         """Return the configured sequence space."""

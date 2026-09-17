@@ -359,6 +359,37 @@ and cost proportionally to the orbit size; stabilizers and smallest
 transporters scan the group once. `AutomorphismGroupUnavailable` is raised
 when neither a provider nor generators exist.
 
+## Memoized factorization queries
+
+A `FactorizationOracle` answers length-set questions over one catalogue with
+caching, and can exploit automorphism invariance:
+
+```python
+oracle = C2xC4.oracle(catalogue)                    # plain memoization
+oracle.length_set(x), oracle.minimum(x), oracle.maximum(x)
+oracle.has_length(x, 3), oracle.witness(x, 3), oracle.witnesses(x)
+oracle.statistics()                                 # hits, misses, solver builds
+
+aware = C2xC4.oracle(catalogue, group=group)        # one solve per orbit
+aware.length_set(group.apply(a, x)) == aware.length_set(x)
+aware.witness(group.apply(a, x), 3)                 # transported back through a^-1
+
+oracle.to_jsonl("lengths.jsonl")                    # bound to catalogue.digest()
+FactorizationOracle.from_jsonl("lengths.jsonl", catalogue)
+```
+
+Length sets are kept without bound; solver objects are kept in a bounded
+LRU so that follow-up questions about a recent sequence reuse its remainder
+graph. With `group=` every query is keyed by a canonical form. The default
+full canonical form (an orbit traversal of the sequence) is worthwhile when
+solving is expensive; for large groups the `AnchoredCanonicalizer` is the
+cheap alternative: it transports the largest catalogue atom dividing the
+sequence to its orbit representative (`catalogue.transporter`, precomputed
+for all atoms from the orbit words) and reduces under that representative's
+stabilizer, which has a small generating set (`group.subgroup` finds one).
+Any callable returning an automorphic image (optionally with the
+automorphism) can be passed as `canonicalize=`.
+
 ## Benchmarks
 
 Run the short-to-very-long performance corpus with:
