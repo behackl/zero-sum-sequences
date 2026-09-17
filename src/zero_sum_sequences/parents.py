@@ -11,6 +11,21 @@ from typing import Generic, TypeVar
 Element = TypeVar("Element")
 
 
+def default_encode_term(term: object) -> object:
+    """Encode an integer as itself and an iterable of integers as a list."""
+
+    if isinstance(term, bool):
+        raise TypeError("cannot encode a boolean term")
+    if isinstance(term, int):
+        return term
+    try:
+        return [int(coordinate) for coordinate in term]
+    except TypeError:
+        raise TypeError(
+            f"cannot encode {term!r}; supply encode_term/decode_term on the parent"
+        ) from None
+
+
 def _positive_modulus(value: object) -> int:
     if isinstance(value, bool):
         raise ValueError("cyclic moduli must be positive integers")
@@ -66,6 +81,8 @@ class FiniteAdditiveGroup(Generic[Element]):
         "_automorphism_generators",
         "_automorphism_group_provider",
         "_automorphism_group",
+        "_encode_term",
+        "_decode_term",
     )
 
     @classmethod
@@ -167,6 +184,8 @@ class FiniteAdditiveGroup(Generic[Element]):
             Iterable[Callable[[Element], Element]] | None
         ) = None,
         automorphism_group: Callable[[], object] | None = None,
+        encode_term: Callable[[Element], object] | None = None,
+        decode_term: Callable[[object], Element] | None = None,
     ) -> None:
         if not callable(add):
             raise TypeError("the additive operation must be callable")
@@ -216,6 +235,12 @@ class FiniteAdditiveGroup(Generic[Element]):
             raise TypeError("automorphism_group must be callable")
         self._automorphism_group_provider = automorphism_group
         self._automorphism_group = None
+        if (encode_term is None) != (decode_term is None):
+            raise TypeError("encode_term and decode_term must be supplied together")
+        if encode_term is not None and not (callable(encode_term) and callable(decode_term)):
+            raise TypeError("encode_term and decode_term must be callable")
+        self._encode_term = encode_term
+        self._decode_term = decode_term
 
     def __call__(self, value: object) -> Element:
         element = self._coerce(value)
@@ -260,6 +285,24 @@ class FiniteAdditiveGroup(Generic[Element]):
         if self._automorphism_generators is None:
             raise NotImplementedError
         return self._automorphism_generators
+
+    def encode_term(self, term: Element) -> object:
+        """Return a JSON-compatible encoding of ``term``.
+
+        A codec supplied at construction is used; otherwise integers are
+        returned as such and iterable terms as lists of integers.
+        """
+
+        if self._encode_term is not None:
+            return self._encode_term(term)
+        return default_encode_term(term)
+
+    def decode_term(self, data: object) -> Element:
+        """Return the element encoded by ``data`` (see :meth:`encode_term`)."""
+
+        if self._decode_term is not None:
+            return self(self._decode_term(data))
+        return self(data)
 
     def automorphism_group(self):
         """Return the materialized automorphism group of this parent.

@@ -8,6 +8,7 @@ from sage.all import GF, QQ
 
 from zero_sum_sequences import (
     AdditiveSequenceSpace,
+    AtomCatalogue,
     AutomorphismActionUnavailable,
     OrbitWitness,
 )
@@ -96,3 +97,14 @@ def test_sage_vector_space_automorphism_group_by_closure():
     assert len(images) == 3
     atoms = tuple(space.enumerate_atom_catalogue())
     assert len(materialized.orbit_representatives(atoms)) == 3
+
+
+def test_sage_vector_space_catalogue_round_trip(tmp_path):
+    space = AdditiveSequenceSpace(GF(3) ** 2, davenport_bound=5)
+    catalogue = space.enumerate_atom_catalogue()
+    assert len(catalogue) == 68 and len(catalogue.orbits()) == 5
+    path = tmp_path / "catalogue.jsonl"
+    catalogue.to_jsonl(path)
+    loaded = AtomCatalogue.from_jsonl(path, space)
+    assert loaded.atoms == catalogue.atoms
+    assert catalogue[0].encode() == [[0, 1], [0, 2]]

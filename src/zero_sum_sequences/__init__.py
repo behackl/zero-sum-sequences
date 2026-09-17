@@ -3,7 +3,7 @@
 from importlib.metadata import version as _distribution_version
 
 from .additive_sequence import AdditiveSequence, AdditiveSequenceSpace
-from .atom_catalogue import AtomCatalogue
+from .atom_catalogue import AtomCatalogue, AtomOrbit
 from .automorphisms import (
     Automorphism,
     AutomorphismGroup,
@@ -23,6 +23,7 @@ __all__ = [
     "AdditiveSequence",
     "AdditiveSequenceSpace",
     "AtomCatalogue",
+    "AtomOrbit",
     "Factorization",
     "FactorizationRelation",
     "FactorizationSolver",

@@ -95,6 +95,29 @@ class AdditiveSequenceSpace(Generic[Element]):
         self._automorphism_action = None
         self._automorphism_group = None
 
+    def encode_term(self, term: Element) -> object:
+        """JSON-compatible encoding of one term, delegated to the parent."""
+
+        encoder = getattr(self._parent, "encode_term", None)
+        if callable(encoder):
+            return encoder(term)
+        from .parents import default_encode_term
+
+        return default_encode_term(term)
+
+    def decode_term(self, data: object) -> Element:
+        """Inverse of :meth:`encode_term`, delegated to the parent."""
+
+        decoder = getattr(self._parent, "decode_term", None)
+        if callable(decoder):
+            return _immutable_term(decoder(data))
+        return _immutable_term(self._parent(data))
+
+    def decode(self, data: Iterable[object]) -> AdditiveSequence[Element]:
+        """Construct a sequence from a list of encoded terms."""
+
+        return self(self.decode_term(item) for item in data)
+
     def automorphism_group(self):
         """Return the materialized automorphism group of the additive parent.
 
@@ -574,6 +597,11 @@ class AdditiveSequence(Generic[Element]):
 
     def __rmul__(self, repetitions: object) -> Self:
         return self * repetitions
+
+    def encode(self) -> list[object]:
+        """The sorted term list with multiplicities, terms encoded by the space."""
+
+        return [self._space.encode_term(term) for term in self]
 
     def _order_key(self) -> tuple[int, tuple[Element, ...]]:
         return self._length, tuple(self)

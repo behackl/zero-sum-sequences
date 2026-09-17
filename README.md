@@ -292,6 +292,34 @@ Automatic discovery raises `AutomorphismActionUnavailable` when the parent
 does not expose suitable generators, in which case an explicit action is
 required.
 
+## Indexed and serialized catalogues
+
+An `AtomCatalogue` stores its atoms in the sequence order (length first,
+then terms), so `catalogue.index(atom)` and `catalogue[i]` form a stable
+identifier namespace. It can be filtered, restricted to a support or a
+maximum length, classified into automorphism orbits, and written to or read
+from JSON lines:
+
+```python
+catalogue = C2xC4.enumerate_atom_catalogue()
+catalogue.index(atom), catalogue[7], atom in catalogue
+short = catalogue.restrict(max_length=3)
+for orbit in catalogue.orbits():          # AtomOrbit(representative, indices, stabilizer_order)
+    ...
+perm = catalogue.permutation(group.elements[1])   # automorphism as an index permutation
+
+catalogue.to_jsonl("atoms.jsonl", annotate=lambda atom: {"label": ...})
+same = AtomCatalogue.from_jsonl("atoms.jsonl", C2xC4)   # order, indices and digest checked,
+                                                        # every record re-verified as an atom
+same.annotations[atom]["label"]
+catalogue.digest()                        # sha256 of the atoms, annotation-independent
+```
+
+Terms are serialized through the parent: `FiniteAdditiveGroup` accepts
+`encode_term=`/`decode_term=`, coordinate groups and Sage vector spaces use
+lists of integers by default, and `sequence.encode()` / `space.decode(data)`
+apply the codec to whole sequences.
+
 ## Materialized automorphism groups
 
 For a finite parent the whole automorphism group can be materialized, which
