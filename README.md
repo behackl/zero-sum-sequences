@@ -292,34 +292,6 @@ Automatic discovery raises `AutomorphismActionUnavailable` when the parent
 does not expose suitable generators, in which case an explicit action is
 required.
 
-## Indexed and serialized catalogues
-
-An `AtomCatalogue` stores its atoms in the sequence order (length first,
-then terms), so `catalogue.index(atom)` and `catalogue[i]` form a stable
-identifier namespace. It can be filtered, restricted to a support or a
-maximum length, classified into automorphism orbits, and written to or read
-from JSON lines:
-
-```python
-catalogue = C2xC4.enumerate_atom_catalogue()
-catalogue.index(atom), catalogue[7], atom in catalogue
-short = catalogue.restrict(max_length=3)
-for orbit in catalogue.orbits():          # AtomOrbit(representative, indices, stabilizer_order)
-    ...
-perm = catalogue.permutation(group.elements[1])   # automorphism as an index permutation
-
-catalogue.to_jsonl("atoms.jsonl", annotate=lambda atom: {"label": ...})
-same = AtomCatalogue.from_jsonl("atoms.jsonl", C2xC4)   # order, indices and digest checked,
-                                                        # every record re-verified as an atom
-same.annotations[atom]["label"]
-catalogue.digest()                        # sha256 of the atoms, annotation-independent
-```
-
-Terms are serialized through the parent: `FiniteAdditiveGroup` accepts
-`encode_term=`/`decode_term=`, coordinate groups and Sage vector spaces use
-lists of integers by default, and `sequence.encode()` / `space.decode(data)`
-apply the codec to whole sequences.
-
 ## Materialized automorphism groups
 
 For a finite parent the whole automorphism group can be materialized, which
@@ -349,46 +321,76 @@ respect to the total order on sequences (length first, then the sorted term
 list, exposed through `<`), so representatives do not depend on how the group
 was found.
 
-The parent delegates: a `FiniteAdditiveGroup` may receive a callable
-`automorphism_group=` returning an `AutomorphismGroup` built from any element
-type with `apply_term`, `compose`, `inverse` callbacks (for example units
-acting on a cyclic group, or CAS matrices); otherwise the configured
-`automorphism_generators` are closed under composition, with elements stored
-as image tables of the parent. Orbit traversals use the group's generators
-and cost proportionally to the orbit size; stabilizers and smallest
-transporters scan the group once. `AutomorphismGroupUnavailable` is raised
-when neither a provider nor generators exist.
+The parent decides how the group is obtained: a `FiniteAdditiveGroup` may
+receive a callable `automorphism_group=` returning an `AutomorphismGroup`
+built from any element type with `apply_term`, `compose` and `inverse`
+callbacks (for example units acting on a cyclic group, or CAS matrices);
+otherwise its `automorphism_generators` are closed under composition.
+Orbit traversals cost proportionally to the orbit size; stabilizers and
+smallest transporters scan the whole group once, so they are cheap for
+groups of a few thousand elements and expensive beyond that.
+`AutomorphismGroupUnavailable` is raised when neither a provider nor
+generators exist.
+
+## Indexed and serialized catalogues
+
+An `AtomCatalogue` stores its atoms in the sequence order (length first,
+then terms), so `catalogue.index(atom)` and `catalogue[i]` form a stable
+identifier namespace. It can be filtered, classified into automorphism
+orbits, and written to or read from JSON lines:
+
+```python
+catalogue = C2xC4.enumerate_atom_catalogue()
+catalogue.index(atom), catalogue[7], atom in catalogue
+short = catalogue.restrict(max_length=3)            # also restrict(support=...)
+for orbit in catalogue.orbits():                    # AtomOrbit(representative, indices, stabilizer_order)
+    ...
+catalogue.representative(atom)                      # orbit minimum of an atom
+catalogue.transporter(atom)                         # an automorphism mapping atom to it
+catalogue.permutation(group.elements[1])            # an automorphism as an index permutation
+
+catalogue.to_jsonl("atoms.jsonl", annotate=lambda atom: {"label": ...})
+same = AtomCatalogue.from_jsonl("atoms.jsonl", C2xC4)
+same.annotations[atom]["label"]
+catalogue.digest()                                  # sha256 of the atoms, annotation-independent
+```
+
+`from_jsonl` checks the order, the indices and the digest, and re-verifies
+every record as an atom unless `verify=False`. Terms are serialized through
+the parent: `FiniteAdditiveGroup` accepts `encode_term=`/`decode_term=`,
+coordinate groups and Sage vector spaces use lists of integers by default,
+and `sequence.encode()` / `space.decode(data)` apply the codec to whole
+sequences.
 
 ## Memoized factorization queries
 
 A `FactorizationCache` answers length-set questions over one catalogue with
-caching, and can exploit automorphism invariance:
+caching, and can exploit that length sets are automorphism invariants:
 
 ```python
-cache = C2xC4.factorization_cache(catalogue)            # plain memoization
+cache = C2xC4.factorization_cache(catalogue)
 cache.length_set(x), cache.minimum(x), cache.maximum(x)
 cache.has_length(x, 3), cache.witness(x, 3), cache.witnesses(x)
 cache.statistics()                                      # hits, misses, solver builds
 
-aware = C2xC4.factorization_cache(catalogue, group=group)   # one solve per orbit
-aware.length_set(group.apply(a, x)) == aware.length_set(x)
+aware = C2xC4.factorization_cache(catalogue, group=group)
+aware.length_set(group.apply(a, x)) == aware.length_set(x)   # one solve per orbit
 aware.witness(group.apply(a, x), 3)                     # transported back through a^-1
 
 cache.to_jsonl("lengths.jsonl")                         # bound to catalogue.digest()
 FactorizationCache.from_jsonl("lengths.jsonl", catalogue)
 ```
 
-Length sets are kept without bound; solver objects are kept in a bounded
-LRU so that follow-up questions about a recent sequence reuse its remainder
-graph. With `group=` every query is keyed by a canonical form. The default
-full canonical form (an orbit traversal of the sequence) is worthwhile when
-solving is expensive; for large groups the `AnchoredCanonicalizer` is the
-cheap alternative: it transports the largest catalogue atom dividing the
-sequence to its orbit representative (`catalogue.transporter`, precomputed
-for all atoms from the orbit words) and reduces under that representative's
-stabilizer, which has a small generating set (`group.subgroup` finds one).
-Any callable returning an automorphic image (optionally with the
-automorphism) can be passed as `canonicalize=`.
+Length sets are kept without bound; solvers are kept in a bounded LRU
+(`maxsize=`) so that follow-up questions about a recent sequence reuse its
+remainder graph. With `group=` every query is keyed by a canonical form.
+The default is the full canonical form, whose orbit traversal is worthwhile
+when solving is the expensive part; for large groups pass
+`canonicalize=AnchoredCanonicalizer(catalogue, group)`, which only
+transports the largest atom dividing the sequence to its orbit
+representative and reduces under that representative's stabilizer. Any
+callable returning an automorphic image of its argument (optionally with the
+automorphism) is accepted as `canonicalize=`.
 
 ## Benchmarks
 
