@@ -1,4 +1,4 @@
-"""The memoizing, optionally group-aware factorization oracle."""
+"""The memoizing, optionally group-aware factorization cache."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import pytest
 from zero_sum_sequences import (
     AdditiveSequenceSpace,
     AtomCatalogue,
-    FactorizationOracle,
+    FactorizationCache,
     FactorizationSolver,
     FiniteAdditiveGroup,
 )
@@ -46,22 +46,22 @@ def pairs(catalogue, rng, count):
 
 def test_answers_match_the_solver(setup):
     space, catalogue = setup
-    oracle = space.oracle(catalogue)
+    cache = space.factorization_cache(catalogue)
     rng = random.Random(1)
     for left, right in pairs(catalogue, rng, 25):
         sequence = left + right
         solver = FactorizationSolver(sequence, atom_catalogue=catalogue)
-        assert oracle.length_set(sequence) == frozenset(solver.length_set())
-        assert oracle.minimum(sequence) == solver.minimum_factorization_length()
-        assert oracle.maximum(sequence) == solver.maximum_factorization_length()
+        assert cache.length_set(sequence) == frozenset(solver.length_set())
+        assert cache.minimum(sequence) == solver.minimum_factorization_length()
+        assert cache.maximum(sequence) == solver.maximum_factorization_length()
         for length in range(1, 6):
-            assert oracle.has_length(sequence, length) == solver.has_factorization_of_length(length)
-            witness = oracle.witness(sequence, length)
-            assert (witness is None) == (length not in oracle.length_set(sequence))
+            assert cache.has_length(sequence, length) == solver.has_factorization_of_length(length)
+            witness = cache.witness(sequence, length)
+            assert (witness is None) == (length not in cache.length_set(sequence))
             if witness is not None:
                 assert product(space, witness) == sequence and len(witness) == length
-        assert set(oracle.witnesses(sequence)) == oracle.length_set(sequence)
-        assert sum(1 for _ in oracle.factorizations(sequence)) == sum(
+        assert set(cache.witnesses(sequence)) == cache.length_set(sequence)
+        assert sum(1 for _ in cache.factorizations(sequence)) == sum(
             1 for _ in solver.factorizations()
         )
 
@@ -69,34 +69,34 @@ def test_answers_match_the_solver(setup):
 def test_caching_and_statistics():
     space = space_for(2, 4, bound=5)
     catalogue = space.enumerate_atom_catalogue()
-    oracle = space.oracle(catalogue, maxsize=2)
+    cache = space.factorization_cache(catalogue, maxsize=2)
     a, b, c = catalogue[-1], catalogue[-2], catalogue[-3]
     x, y, z = a + b, a + c, b + c
-    assert oracle.length_set(x) == oracle.length_set(x)
-    stats = oracle.statistics()
+    assert cache.length_set(x) == cache.length_set(x)
+    stats = cache.statistics()
     assert stats["hits"] == 1 and stats["misses"] == 1 and stats["solver_builds"] == 1
-    oracle.length_set(y)
-    oracle.length_set(z)
-    stats = oracle.statistics()
+    cache.length_set(y)
+    cache.length_set(z)
+    stats = cache.statistics()
     assert stats["cached_length_sets"] == 3 and stats["cached_solvers"] == 2  # LRU bound
     # a length set is answered from the cache even after its solver was evicted
-    assert oracle.minimum(x) == min(oracle.length_set(x))
-    assert oracle.statistics()["solver_builds"] == 3
-    oracle.clear()
-    assert oracle.statistics()["cached_length_sets"] == 0
+    assert cache.minimum(x) == min(cache.length_set(x))
+    assert cache.statistics()["solver_builds"] == 3
+    cache.clear()
+    assert cache.statistics()["cached_length_sets"] == 0
     with pytest.raises(ValueError):
-        space.oracle(catalogue, maxsize=0)
+        space.factorization_cache(catalogue, maxsize=0)
     with pytest.raises(TypeError):
-        oracle.length_set(space_for(2, 4, bound=6)([(0, 1), (0, 3)]))
+        cache.length_set(space_for(2, 4, bound=6)([(0, 1), (0, 3)]))
     with pytest.raises(TypeError):
-        space.oracle(space_for(2, 4, bound=6).enumerate_atom_catalogue())
+        space.factorization_cache(space_for(2, 4, bound=6).enumerate_atom_catalogue())
 
 
-def test_group_aware_oracle_answers_orbits_from_one_solve(setup):
+def test_group_aware_cache_answers_orbits_from_one_solve(setup):
     space, catalogue = setup
     group = space.automorphism_group()
-    plain = space.oracle(catalogue)
-    aware = space.oracle(catalogue, group=group)
+    plain = space.factorization_cache(catalogue)
+    aware = space.factorization_cache(catalogue, group=group)
     rng = random.Random(2)
     for left, right in pairs(catalogue, rng, 10):
         sequence = left + right
@@ -126,70 +126,70 @@ def test_group_without_compose_answers_length_sets_only():
     restricted = AutomorphismGroup(
         full.elements, apply_term=full.apply_term, identity=full.identity
     )
-    oracle = space.oracle(catalogue, group=restricted)
+    cache = space.factorization_cache(catalogue, group=restricted)
     sequence = catalogue[-1] + catalogue[-3]
-    assert oracle.length_set(sequence) == space.oracle(catalogue).length_set(sequence)
+    assert cache.length_set(sequence) == space.factorization_cache(catalogue).length_set(sequence)
     with pytest.raises(TypeError):  # transporting a witness needs compose/inverse
-        oracle.witness(sequence, min(oracle.length_set(sequence)))
+        cache.witness(sequence, min(cache.length_set(sequence)))
 
 
 def test_product_helper(setup):
     space, catalogue = setup
-    oracle = space.oracle(catalogue)
+    cache = space.factorization_cache(catalogue)
     atoms = (catalogue[0], catalogue[-1], catalogue[-1])
-    assert oracle.product(atoms) == product(space, atoms)
-    assert oracle.product(()) == space(())
-    assert oracle.length_set(oracle.product(atoms)) == oracle.length_set(product(space, atoms))
+    assert cache.product(atoms) == product(space, atoms)
+    assert cache.product(()) == space(())
+    assert cache.length_set(cache.product(atoms)) == cache.length_set(product(space, atoms))
 
 
 def test_persistence_round_trip(setup, tmp_path):
     space, catalogue = setup
     group = space.automorphism_group()
-    oracle = space.oracle(catalogue, group=group)
+    cache = space.factorization_cache(catalogue, group=group)
     rng = random.Random(3)
     queried = [left + right for left, right in pairs(catalogue, rng, 15)]
-    expected = {sequence: oracle.length_set(sequence) for sequence in queried}
+    expected = {sequence: cache.length_set(sequence) for sequence in queried}
     path = tmp_path / "lengths.jsonl"
-    count = oracle.to_jsonl(path)
-    assert count == oracle.statistics()["cached_length_sets"]
+    count = cache.to_jsonl(path)
+    assert count == cache.statistics()["cached_length_sets"]
 
-    loaded = FactorizationOracle.from_jsonl(path, catalogue, group=group)
+    loaded = FactorizationCache.from_jsonl(path, catalogue, group=group)
     for sequence, lengths in expected.items():
         assert loaded.length_set(sequence) == lengths
     assert loaded.statistics()["misses"] == 0 and loaded.statistics()["solver_builds"] == 0
     records = list(loaded.records())
-    assert records == list(oracle.records())
+    assert records == list(cache.records())
     assert [r["sequence"] for r in records] == [
         r["sequence"] for r in sorted(records, key=lambda r: (len(r["sequence"]), r["sequence"]))
     ]
     # the file is bound to the catalogue and to the group
     with pytest.raises(ValueError):
-        FactorizationOracle.from_jsonl(path, catalogue)
+        FactorizationCache.from_jsonl(path, catalogue)
     with pytest.raises(ValueError):
-        FactorizationOracle.from_jsonl(path, catalogue.restrict(max_length=2), group=group)
+        FactorizationCache.from_jsonl(path, catalogue.restrict(max_length=2), group=group)
 
 
 def test_preload_accepts_external_tables():
     space = space_for(6, bound=6)
     catalogue = space.enumerate_atom_catalogue()
-    oracle = space.oracle(catalogue)
+    cache = space.factorization_cache(catalogue)
     sequence = catalogue[-1] + catalogue[-2]
     truth = FactorizationSolver(sequence, atom_catalogue=catalogue).length_set()
-    assert oracle.preload([(sequence, sorted(truth))]) == 1
-    assert oracle.length_set(sequence) == frozenset(truth)
-    assert oracle.statistics()["solver_builds"] == 0
+    assert cache.preload([(sequence, sorted(truth))]) == 1
+    assert cache.length_set(sequence) == frozenset(truth)
+    assert cache.statistics()["solver_builds"] == 0
     with pytest.raises(TypeError):
-        oracle.preload([("not a sequence", [1])])
+        cache.preload([("not a sequence", [1])])
 
 
 def test_exhaustive_pair_table_is_consistent_with_orbit_classification():
-    # every pair of atoms of C_2 x C_4: the group-aware oracle needs one solve
-    # per orbit of unordered pairs and agrees with the plain oracle
+    # every pair of atoms of C_2 x C_4: the group-aware cache needs one solve
+    # per orbit of unordered pairs and agrees with the plain cache
     space = space_for(2, 4, bound=5)
     catalogue = space.enumerate_atom_catalogue()
     group = space.automorphism_group()
-    plain = space.oracle(catalogue, maxsize=None)
-    aware = space.oracle(catalogue, group=group, maxsize=None)
+    plain = space.factorization_cache(catalogue, maxsize=None)
+    aware = space.factorization_cache(catalogue, group=group, maxsize=None)
     pair_orbits = group.orbit_representatives(
         [(a, b) for a, b in itertools.combinations_with_replacement(catalogue.atoms, 2)]
     )
@@ -221,13 +221,13 @@ def test_anchored_canonicalizer_gives_automorphic_images(setup):
         assert anchored(atom_free) == (atom_free, group.identity)
 
 
-def test_oracle_with_anchored_canonicalizer(setup):
+def test_cache_with_anchored_canonicalizer(setup):
     from zero_sum_sequences import AnchoredCanonicalizer
 
     space, catalogue = setup
     group = space.automorphism_group()
-    plain = space.oracle(catalogue)
-    oracle = space.oracle(
+    plain = space.factorization_cache(catalogue)
+    cache = space.factorization_cache(
         catalogue, group=group, canonicalize=AnchoredCanonicalizer(catalogue, group)
     )
     rng = random.Random(5)
@@ -236,15 +236,15 @@ def test_oracle_with_anchored_canonicalizer(setup):
         lengths = plain.length_set(sequence)
         for element in group.elements[:: max(1, len(group) // 5)]:
             image = group.apply(element, sequence)
-            assert oracle.length_set(image) == lengths
-            witness = oracle.witness(image, min(lengths))
+            assert cache.length_set(image) == lengths
+            witness = cache.witness(image, min(lengths))
             assert product(space, witness) == image
     # a canonicalizer returning only the image works too (transporter is searched)
-    plain_key = space.oracle(catalogue, group=group, canonicalize=lambda s: group.canonical(s))
+    plain_key = space.factorization_cache(catalogue, group=group, canonicalize=lambda s: group.canonical(s))
     sequence = catalogue[-1] + catalogue[-2]
     witness = plain_key.witness(sequence, min(plain.length_set(sequence)))
     assert product(space, witness) == sequence
     with pytest.raises(ValueError):
-        space.oracle(catalogue, canonicalize=lambda s: s)
+        space.factorization_cache(catalogue, canonicalize=lambda s: s)
     with pytest.raises(TypeError):
-        space.oracle(catalogue, group=group, canonicalize="no")
+        space.factorization_cache(catalogue, group=group, canonicalize="no")

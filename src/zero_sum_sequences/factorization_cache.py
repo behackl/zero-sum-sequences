@@ -1,6 +1,6 @@
 """A memoizing, optionally group-aware front end to factorization solvers.
 
-A :class:`FactorizationOracle` answers length-set questions about many
+A :class:`FactorizationCache` answers length-set questions about many
 sequences over one atom catalogue.  It caches complete length sets without
 bound (they are small), keeps a bounded number of solver objects so that
 follow-up questions (minimum, maximum, witnesses) about a recently seen
@@ -26,7 +26,7 @@ from .additive_sequence import AdditiveSequence, Element
 from .atom_catalogue import AtomCatalogue
 from .factorization import Factorization, FactorizationSolver
 
-ORACLE_SCHEMA = "length-set-cache-v1"
+CACHE_SCHEMA = "length-set-cache-v1"
 
 
 class AnchoredCanonicalizer(Generic[Element]):
@@ -71,14 +71,14 @@ class AnchoredCanonicalizer(Generic[Element]):
         return form.image, self.group.compose(form.automorphism, transporter)
 
 
-class FactorizationOracle(Generic[Element]):
+class FactorizationCache(Generic[Element]):
     """Cached factorization queries over one catalogue.
 
     Parameters
     ----------
     catalogue:
         The atom catalogue used by every solver.  It must be complete for the
-        sequences that will be queried; the oracle does not check this.
+        sequences that will be queried; the cache does not check this.
     group:
         Optional :class:`AutomorphismGroup` of the space.  When given, every
         query is canonicalized first and witnesses are transported back.
@@ -127,7 +127,7 @@ class FactorizationOracle(Generic[Element]):
         if not isinstance(sequence, AdditiveSequence):
             raise TypeError("expected an additive sequence")
         if sequence.parent() is not self.space:
-            raise TypeError("the sequence does not belong to the oracle's space")
+            raise TypeError("the sequence does not belong to the cache's space")
 
     def _key(self, sequence):
         """The cache key: the canonical form when a group is configured."""
@@ -159,7 +159,7 @@ class FactorizationOracle(Generic[Element]):
         return tuple(self.group.apply(inverse, atom) for atom in factorization)
 
     def product(self, atoms: Iterable[AdditiveSequence[Element]]) -> AdditiveSequence[Element]:
-        """The product (sum of multisets) of ``atoms`` in the oracle's space."""
+        """The product (sum of multisets) of ``atoms`` in the cache's space."""
 
         result = self.space(())
         for atom in atoms:
@@ -299,7 +299,7 @@ class FactorizationOracle(Generic[Element]):
 
         path = Path(path)
         metadata = {
-            "schema": ORACLE_SCHEMA,
+            "schema": CACHE_SCHEMA,
             "catalogue_digest": self.catalogue.digest(),
             "group_order": None if self.group is None else len(self.group),
             "count": len(self._length_sets),
@@ -318,7 +318,7 @@ class FactorizationOracle(Generic[Element]):
         *,
         group=None,
         maxsize: int | None = 1024,
-    ) -> FactorizationOracle[Element]:
+    ) -> FactorizationCache[Element]:
         """Read cached length sets written by :meth:`to_jsonl`.
 
         The catalogue digest must match; the stored group order, if any,
@@ -332,19 +332,19 @@ class FactorizationOracle(Generic[Element]):
         if not lines:
             raise ValueError("empty length-set cache")
         metadata = json.loads(lines[0])
-        if metadata.get("schema") != ORACLE_SCHEMA:
+        if metadata.get("schema") != CACHE_SCHEMA:
             raise ValueError("not a length-set cache file")
         if metadata.get("catalogue_digest") != catalogue.digest():
             raise ValueError("the cache was computed against a different catalogue")
         stored_order = metadata.get("group_order")
         if stored_order != (None if group is None else len(group)):
             raise ValueError("the cache was computed with a different automorphism group")
-        oracle = cls(catalogue, group=group, maxsize=maxsize)
+        cache = cls(catalogue, group=group, maxsize=maxsize)
         space = catalogue.space
-        count = oracle.preload(
+        count = cache.preload(
             (space.decode(json.loads(line)["sequence"]), json.loads(line)["length_set"])
             for line in lines[1:]
         )
         if count != metadata.get("count"):
             raise ValueError("cache count does not match its metadata")
-        return oracle
+        return cache

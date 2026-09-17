@@ -361,21 +361,21 @@ when neither a provider nor generators exist.
 
 ## Memoized factorization queries
 
-A `FactorizationOracle` answers length-set questions over one catalogue with
+A `FactorizationCache` answers length-set questions over one catalogue with
 caching, and can exploit automorphism invariance:
 
 ```python
-oracle = C2xC4.oracle(catalogue)                    # plain memoization
-oracle.length_set(x), oracle.minimum(x), oracle.maximum(x)
-oracle.has_length(x, 3), oracle.witness(x, 3), oracle.witnesses(x)
-oracle.statistics()                                 # hits, misses, solver builds
+cache = C2xC4.factorization_cache(catalogue)            # plain memoization
+cache.length_set(x), cache.minimum(x), cache.maximum(x)
+cache.has_length(x, 3), cache.witness(x, 3), cache.witnesses(x)
+cache.statistics()                                      # hits, misses, solver builds
 
-aware = C2xC4.oracle(catalogue, group=group)        # one solve per orbit
+aware = C2xC4.factorization_cache(catalogue, group=group)   # one solve per orbit
 aware.length_set(group.apply(a, x)) == aware.length_set(x)
-aware.witness(group.apply(a, x), 3)                 # transported back through a^-1
+aware.witness(group.apply(a, x), 3)                     # transported back through a^-1
 
-oracle.to_jsonl("lengths.jsonl")                    # bound to catalogue.digest()
-FactorizationOracle.from_jsonl("lengths.jsonl", catalogue)
+cache.to_jsonl("lengths.jsonl")                         # bound to catalogue.digest()
+FactorizationCache.from_jsonl("lengths.jsonl", catalogue)
 ```
 
 Length sets are kept without bound; solver objects are kept in a bounded

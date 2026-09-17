@@ -96,14 +96,14 @@ class AdditiveSequenceSpace(Generic[Element]):
         self._automorphism_action = None
         self._automorphism_group = None
 
-    def oracle(self, catalogue, *, group=None, canonicalize=None, maxsize: int | None = 1024):
-        """A :class:`FactorizationOracle` over ``catalogue`` for this space."""
+    def factorization_cache(self, catalogue, *, group=None, canonicalize=None, maxsize: int | None = 1024):
+        """A :class:`FactorizationCache` over ``catalogue`` for this space."""
 
-        from .oracle import FactorizationOracle
+        from .factorization_cache import FactorizationCache
 
         if catalogue.space is not self:
             raise TypeError("the catalogue belongs to a different space")
-        return FactorizationOracle(
+        return FactorizationCache(
             catalogue, group=group, canonicalize=canonicalize, maxsize=maxsize
         )
 
