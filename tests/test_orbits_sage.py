@@ -79,3 +79,20 @@ def test_zero_dimensional_vector_space_has_trivial_action():
 def action_matrix_shape(space):
     identity = automorphism_action(space).materialize_word(OrbitWitness())
     return identity.nrows(), identity.ncols()
+
+
+def test_sage_vector_space_automorphism_group_by_closure():
+    group = GF(2) ** 3
+    space = AdditiveSequenceSpace(group, davenport_bound=4)
+    materialized = space.automorphism_group()
+    assert len(materialized) == 168  # GL(3, 2)
+    assert space.automorphism_group() is materialized
+    e1, e2, e3 = group.basis()
+    line = space([e1, e2, e1 + e2])
+    assert len(materialized.orbit(line)) * len(materialized.stabilizer(line)) == 168
+    assert len(materialized.orbit(line)) == 7
+    # generator images come from the Sage basis, so elements are in "matrix order"
+    images = materialized.elements[1].generator_images()
+    assert len(images) == 3
+    atoms = tuple(space.enumerate_atom_catalogue())
+    assert len(materialized.orbit_representatives(atoms)) == 3

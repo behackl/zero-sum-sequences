@@ -74,7 +74,12 @@ class AdditiveSequenceSpace(Generic[Element]):
         A positive upper bound for the parent's Davenport constant.
     """
 
-    __slots__ = ("_parent", "_davenport_bound", "_automorphism_action")
+    __slots__ = (
+        "_parent",
+        "_davenport_bound",
+        "_automorphism_action",
+        "_automorphism_group",
+    )
 
     def __init__(self, parent, *, davenport_bound: int) -> None:
         if not callable(parent):
@@ -88,6 +93,18 @@ class AdditiveSequenceSpace(Generic[Element]):
             name="Davenport bound",
         )
         self._automorphism_action = None
+        self._automorphism_group = None
+
+    def automorphism_group(self):
+        """Return the materialized automorphism group of the additive parent.
+
+        The parent may supply the group itself; otherwise it is the closure
+        of the parent's automorphism generators.  The result is cached.
+        """
+
+        from .automorphisms import automorphism_group
+
+        return automorphism_group(self)
 
     @property
     def base_parent(self):
@@ -557,6 +574,35 @@ class AdditiveSequence(Generic[Element]):
 
     def __rmul__(self, repetitions: object) -> Self:
         return self * repetitions
+
+    def _order_key(self) -> tuple[int, tuple[Element, ...]]:
+        return self._length, tuple(self)
+
+    def __lt__(self, other: object) -> bool:
+        """Total order: shorter sequences first, then the sorted term lists."""
+
+        if not isinstance(other, AdditiveSequence):
+            return NotImplemented
+        self._require_same_space(other)
+        return self._order_key() < other._order_key()
+
+    def __le__(self, other: object) -> bool:
+        if not isinstance(other, AdditiveSequence):
+            return NotImplemented
+        self._require_same_space(other)
+        return self._order_key() <= other._order_key()
+
+    def __gt__(self, other: object) -> bool:
+        if not isinstance(other, AdditiveSequence):
+            return NotImplemented
+        self._require_same_space(other)
+        return self._order_key() > other._order_key()
+
+    def __ge__(self, other: object) -> bool:
+        if not isinstance(other, AdditiveSequence):
+            return NotImplemented
+        self._require_same_space(other)
+        return self._order_key() >= other._order_key()
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, AdditiveSequence):

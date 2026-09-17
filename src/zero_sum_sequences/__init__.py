@@ -4,6 +4,12 @@ from importlib.metadata import version as _distribution_version
 
 from .additive_sequence import AdditiveSequence, AdditiveSequenceSpace
 from .atom_catalogue import AtomCatalogue
+from .automorphisms import (
+    Automorphism,
+    AutomorphismGroup,
+    AutomorphismGroupUnavailable,
+    CanonicalForm,
+)
 from .factorization import Factorization, FactorizationSolver
 from .orbits import (
     AutomorphismAction,
@@ -21,8 +27,12 @@ __all__ = [
     "FactorizationRelation",
     "FactorizationSolver",
     "FiniteAdditiveGroup",
+    "Automorphism",
     "AutomorphismAction",
     "AutomorphismActionUnavailable",
+    "AutomorphismGroup",
+    "AutomorphismGroupUnavailable",
+    "CanonicalForm",
     "OrbitWitness",
 ]
 __version__ = _distribution_version("zero-sum-sequences")

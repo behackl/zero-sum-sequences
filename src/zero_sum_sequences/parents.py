@@ -64,6 +64,8 @@ class FiniteAdditiveGroup(Generic[Element]):
         "_coerce",
         "_additive_generators",
         "_automorphism_generators",
+        "_automorphism_group_provider",
+        "_automorphism_group",
     )
 
     @classmethod
@@ -164,6 +166,7 @@ class FiniteAdditiveGroup(Generic[Element]):
         automorphism_generators: (
             Iterable[Callable[[Element], Element]] | None
         ) = None,
+        automorphism_group: Callable[[], object] | None = None,
     ) -> None:
         if not callable(add):
             raise TypeError("the additive operation must be callable")
@@ -209,6 +212,10 @@ class FiniteAdditiveGroup(Generic[Element]):
             if not all(callable(generator) for generator in generators):
                 raise TypeError("automorphism generators must be callable")
             self._automorphism_generators = generators
+        if automorphism_group is not None and not callable(automorphism_group):
+            raise TypeError("automorphism_group must be callable")
+        self._automorphism_group_provider = automorphism_group
+        self._automorphism_group = None
 
     def __call__(self, value: object) -> Element:
         element = self._coerce(value)
@@ -253,6 +260,31 @@ class FiniteAdditiveGroup(Generic[Element]):
         if self._automorphism_generators is None:
             raise NotImplementedError
         return self._automorphism_generators
+
+    def automorphism_group(self):
+        """Return the materialized automorphism group of this parent.
+
+        A group supplied at construction takes precedence; otherwise the
+        configured automorphism generators are closed under composition.
+        The result is cached.
+        """
+
+        if self._automorphism_group is None:
+            from .automorphisms import AutomorphismGroup
+
+            if self._automorphism_group_provider is not None:
+                group = self._automorphism_group_provider()
+                if not isinstance(group, AutomorphismGroup):
+                    raise TypeError(
+                        "the automorphism group provider must return an "
+                        "AutomorphismGroup"
+                    )
+            elif self._automorphism_generators is not None:
+                group = AutomorphismGroup.closure(self, self._automorphism_generators)
+            else:
+                raise NotImplementedError
+            self._automorphism_group = group
+        return self._automorphism_group
 
     def __iter__(self) -> Iterator[Element]:
         return iter(self._elements)

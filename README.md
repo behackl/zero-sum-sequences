@@ -292,6 +292,45 @@ Automatic discovery raises `AutomorphismActionUnavailable` when the parent
 does not expose suitable generators, in which case an explicit action is
 required.
 
+## Materialized automorphism groups
+
+For a finite parent the whole automorphism group can be materialized, which
+gives stabilizers, canonical orbit representatives, transporters and
+classification of many objects at once:
+
+```python
+G = FiniteAdditiveGroup.cyclic_product(2, 4)
+C2xC4 = AdditiveSequenceSpace(G, davenport_bound=5)
+group = C2xC4.automorphism_group()        # AutomorphismGroup(order=8)
+
+x = C2xC4([(1, 1), (1, 1), (0, 2)])
+group.orbit(x)                            # the four images, sorted
+len(group.stabilizer(x))                  # 2
+form = group.canonical_form(x)            # orbit minimum + smallest automorphism reaching it
+form.automorphism.generator_images()      # ((1, 0), (1, 1)): the "matrix", column by column
+group.transporter(x, group.apply(form.automorphism, x))
+
+atoms = tuple(C2xC4.enumerate_atom_catalogue())
+group.orbit_representatives(atoms)        # 11 orbits: representative -> members
+```
+
+The group acts on sequences and on tuples of sequences; tuples are treated as
+multisets unless `ordered=True` (the canonical form of a tuple also records
+the permutation that sorts the image). Canonical forms are minima with
+respect to the total order on sequences (length first, then the sorted term
+list, exposed through `<`), so representatives do not depend on how the group
+was found.
+
+The parent delegates: a `FiniteAdditiveGroup` may receive a callable
+`automorphism_group=` returning an `AutomorphismGroup` built from any element
+type with `apply_term`, `compose`, `inverse` callbacks (for example units
+acting on a cyclic group, or CAS matrices); otherwise the configured
+`automorphism_generators` are closed under composition, with elements stored
+as image tables of the parent. Orbit traversals use the group's generators
+and cost proportionally to the orbit size; stabilizers and smallest
+transporters scan the group once. `AutomorphismGroupUnavailable` is raised
+when neither a provider nor generators exist.
+
 ## Benchmarks
 
 Run the short-to-very-long performance corpus with:
