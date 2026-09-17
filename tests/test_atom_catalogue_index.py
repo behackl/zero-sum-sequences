@@ -104,14 +104,6 @@ def test_orbits(moduli, bound, orbits):
     )
 
 
-def test_canonical_delegates_to_the_group():
-    catalogue = space_for(2, 4, bound=5).enumerate_atom_catalogue()
-    atom = catalogue[-1]
-    form = catalogue.canonical(atom)
-    assert form.image in catalogue
-    assert catalogue.space.automorphism_group().apply(form.automorphism, atom) == form.image
-
-
 # serialization
 
 

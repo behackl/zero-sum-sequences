@@ -149,10 +149,7 @@ class FactorizationOracle(Generic[Element]):
             if isinstance(result, tuple):
                 return result
             return result, self.group.transporter(sequence, result)
-        try:
-            form = self.group.canonical_form(sequence, witness="word")
-        except TypeError:  # the group cannot compose: scan for the smallest witness
-            form = self.group.canonical_form(sequence, witness="smallest")
+        form = self.group.canonical_form(sequence, witness="word")
         return form.image, form.automorphism
 
     def _transport(self, automorphism, factorization):
@@ -193,12 +190,17 @@ class FactorizationOracle(Generic[Element]):
 
     # queries
 
-    def length_set(self, sequence: AdditiveSequence[Element]) -> frozenset[int]:
-        """The complete set of factorization lengths of ``sequence``."""
+    def _cached(self, sequence):
+        """``(key, cached length set or None)``."""
 
         self._check(sequence)
         key = self._key(sequence)
-        cached = self._length_sets.get(key)
+        return key, self._length_sets.get(key)
+
+    def length_set(self, sequence: AdditiveSequence[Element]) -> frozenset[int]:
+        """The complete set of factorization lengths of ``sequence``."""
+
+        key, cached = self._cached(sequence)
         if cached is not None:
             self._hits += 1
             return cached
@@ -210,9 +212,7 @@ class FactorizationOracle(Generic[Element]):
     def minimum(self, sequence: AdditiveSequence[Element]) -> int | None:
         """The minimum factorization length, or ``None`` if there is none."""
 
-        self._check(sequence)
-        key = self._key(sequence)
-        cached = self._length_sets.get(key)
+        key, cached = self._cached(sequence)
         if cached is not None:
             return min(cached, default=None)
         return self._solver_for_key(key).minimum_factorization_length()
@@ -220,17 +220,13 @@ class FactorizationOracle(Generic[Element]):
     def maximum(self, sequence: AdditiveSequence[Element]) -> int | None:
         """The maximum factorization length, or ``None`` if there is none."""
 
-        self._check(sequence)
-        key = self._key(sequence)
-        cached = self._length_sets.get(key)
+        key, cached = self._cached(sequence)
         if cached is not None:
             return max(cached, default=None)
         return self._solver_for_key(key).maximum_factorization_length()
 
     def has_length(self, sequence: AdditiveSequence[Element], length: int) -> bool:
-        self._check(sequence)
-        key = self._key(sequence)
-        cached = self._length_sets.get(key)
+        key, cached = self._cached(sequence)
         if cached is not None:
             return length in cached
         return self._solver_for_key(key).has_factorization_of_length(length)

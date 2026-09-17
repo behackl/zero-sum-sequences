@@ -116,7 +116,7 @@ def test_group_aware_oracle_answers_orbits_from_one_solve(setup):
         assert aware.statistics()["solver_builds"] == builds  # the orbit was one solve
 
 
-def test_group_without_compose_falls_back_to_smallest_witness():
+def test_group_without_compose_answers_length_sets_only():
     space = space_for(2, 4, bound=5)
     catalogue = space.enumerate_atom_catalogue()
     full = space.automorphism_group()
@@ -129,7 +129,7 @@ def test_group_without_compose_falls_back_to_smallest_witness():
     oracle = space.oracle(catalogue, group=restricted)
     sequence = catalogue[-1] + catalogue[-3]
     assert oracle.length_set(sequence) == space.oracle(catalogue).length_set(sequence)
-    with pytest.raises(TypeError):  # transporting a witness needs inverse
+    with pytest.raises(TypeError):  # transporting a witness needs compose/inverse
         oracle.witness(sequence, min(oracle.length_set(sequence)))
 
 

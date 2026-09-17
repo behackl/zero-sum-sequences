@@ -50,7 +50,8 @@ class AtomCatalogue(Generic[Element]):
         space: AdditiveSequenceSpace[Element],
         atoms: Iterable[AdditiveSequence[Element]],
         *,
-        annotations: Iterable[dict] | None = None,
+        annotations: Iterable[tuple[AdditiveSequence[Element], dict]] | None = None,
+        verify: bool = True,
     ) -> None:
         if not isinstance(space, AdditiveSequenceSpace):
             raise TypeError("expected an AdditiveSequenceSpace")
@@ -62,10 +63,11 @@ class AtomCatalogue(Generic[Element]):
                 raise TypeError("atom catalogue entries must be additive sequences")
             if atom.parent() is not space:
                 raise TypeError("atom catalogue entries use a different space")
-            if not atom.is_atom():
-                raise ValueError("atom catalogue entries must be atoms")
-            if zero in atom:
-                raise ValueError("atom catalogue entries must not contain zero")
+            if verify:
+                if not atom.is_atom():
+                    raise ValueError("atom catalogue entries must be atoms")
+                if zero in atom:
+                    raise ValueError("atom catalogue entries must not contain zero")
             unique_atoms.add(atom)
         self.atoms = tuple(sorted(unique_atoms))
         self._index = {atom: position for position, atom in enumerate(self.atoms)}
@@ -85,18 +87,12 @@ class AtomCatalogue(Generic[Element]):
             mask: tuple(mask_atoms)
             for mask, mask_atoms in by_support_mask.items()
         }
-        if annotations is None:
-            self.annotations: dict[AdditiveSequence[Element], dict] = {}
-        else:
-            self.annotations = self._check_annotations(annotations)
-
-    def _check_annotations(self, annotations) -> dict:
-        checked = {}
-        for atom, annotation in annotations:
+        self.annotations: dict[AdditiveSequence[Element], dict] = {}
+        for atom, annotation in annotations or ():
             if atom not in self._index:
                 raise ValueError("annotation for a sequence outside the catalogue")
-            checked[atom] = dict(annotation)
-        return checked
+            self.annotations[atom] = dict(annotation)
+        self._orbit_cache: tuple | None = None  # (group, atom -> (representative, word))
 
     # indexing
 
@@ -202,40 +198,27 @@ class AtomCatalogue(Generic[Element]):
             images.append(self._index[image])
         return tuple(images)
 
-    def canonical(self, atom: AdditiveSequence[Element], *, group=None):
-        """The orbit minimum of ``atom`` (see ``AutomorphismGroup.canonical_form``)."""
+    def _orbit_data(self, group) -> dict:
+        """``atom -> (representative, word from the representative)``, cached."""
 
-        return self._group(group).canonical_form(atom)
-
-    def _orbit_data(self, group):
-        """Per group: ``atom -> (representative, word from the representative)``."""
-
-        cache = getattr(self, "_orbit_cache", None)
-        if cache is None:
-            cache = self._orbit_cache = {}
-        data = cache.get(id(group))
-        if data is not None and data[0] is group:
-            return data[1]
-        buckets = group.orbit_representatives(self.atoms)
-        mapping = {}
-        for representative in sorted(buckets):
-            words = group.orbit_words(representative)
-            members = buckets[representative]
-            if len(members) != len(words):
-                raise ValueError("the catalogue is not closed under the group")
-            for atom in members:
-                mapping[atom] = (representative, words[atom])
-        cache[id(group)] = (group, mapping)
-        return mapping
+        if self._orbit_cache is None or self._orbit_cache[0] is not group:
+            mapping = {}
+            for representative, members in group.orbit_representatives(self.atoms).items():
+                words = group.orbit_words(representative)
+                if len(words) != len(members):
+                    raise ValueError("the catalogue is not closed under the group")
+                for atom in members:
+                    mapping[atom] = (representative, words[atom])
+            self._orbit_cache = (group, mapping)
+        return self._orbit_cache[1]
 
     def orbits(self, *, group=None) -> tuple[AtomOrbit[Element], ...]:
         """The automorphism orbits of the catalogue, sorted by representative."""
 
         group = self._group(group)
-        mapping = self._orbit_data(group)
-        members: dict = {}
-        for atom, (representative, _) in mapping.items():
-            members.setdefault(representative, []).append(self._index[atom])
+        members: dict = defaultdict(list)
+        for atom, (representative, _) in self._orbit_data(group).items():
+            members[representative].append(self._index[atom])
         return tuple(
             AtomOrbit(representative, tuple(sorted(indices)), len(group.stabilizer(representative)))
             for representative, indices in sorted(members.items())
@@ -244,7 +227,7 @@ class AtomCatalogue(Generic[Element]):
     def representative(self, atom: AdditiveSequence[Element], *, group=None):
         """The orbit minimum of a catalogue atom (precomputed for all atoms)."""
 
-        return self._orbit_data(self._group(group))[self._require(atom)][0]
+        return self._orbit_data(self._group(group))[self._atom(atom)][0]
 
     def transporter(self, atom: AdditiveSequence[Element], *, group=None):
         """An automorphism mapping ``atom`` to its orbit representative.
@@ -255,10 +238,10 @@ class AtomCatalogue(Generic[Element]):
         """
 
         group = self._group(group)
-        representative, word = self._orbit_data(group)[self._require(atom)]
+        _, word = self._orbit_data(group)[self._atom(atom)]
         return group.inverse(group.materialize(word))
 
-    def _require(self, atom):
+    def _atom(self, atom):
         if atom not in self._index:
             raise ValueError("the sequence is not in the catalogue")
         return atom
@@ -364,27 +347,7 @@ class AtomCatalogue(Generic[Element]):
                 annotations.append((atom, extra))
         if len(atoms) != metadata.get("count"):
             raise ValueError("catalogue count does not match its metadata")
-        if verify:
-            catalogue = cls(space, atoms, annotations=annotations)
-        else:
-            catalogue = cls.__new__(cls)
-            AtomCatalogue._unverified_init(catalogue, space, atoms, annotations)
+        catalogue = cls(space, atoms, annotations=annotations, verify=verify)
         if catalogue.digest() != metadata.get("digest"):
             raise ValueError("catalogue digest does not match its metadata")
         return catalogue
-
-    def _unverified_init(self, space, atoms, annotations) -> None:
-        # identical to __init__ without the per-atom checks
-        self.space = space
-        self.atoms = tuple(atoms)
-        self._index = {atom: position for position, atom in enumerate(self.atoms)}
-        self.terms = tuple(sorted({term for atom in self.atoms for term in atom.support}))
-        self._term_index = {term: index for index, term in enumerate(self.terms)}
-        by_support_mask: dict[int, list] = defaultdict(list)
-        for atom in self.atoms:
-            support_mask = 0
-            for term in atom.support:
-                support_mask |= 1 << self._term_index[term]
-            by_support_mask[support_mask].append(atom)
-        self._by_support_mask = {m: tuple(a) for m, a in by_support_mask.items()}
-        self.annotations = self._check_annotations(annotations)

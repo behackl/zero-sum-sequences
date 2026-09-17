@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 import itertools
 from collections import Counter
 from collections.abc import Callable, Iterable, Iterator, Mapping
@@ -277,6 +278,7 @@ class AdditiveSequenceSpace(Generic[Element]):
         )
 
 
+@functools.total_ordering
 class AdditiveSequence(Generic[Element]):
     """An immutable finite multiset in an :class:`AdditiveSequenceSpace`.
 
@@ -322,7 +324,7 @@ class AdditiveSequence(Generic[Element]):
         sequence._hash = hash((space, items))
         return sequence
 
-    def _mapped_items(self, mapping: Callable[[Element], Element]) -> AdditiveSequence[Element]:
+    def _map_canonical(self, mapping: Callable[[Element], Element]) -> AdditiveSequence[Element]:
         """Image under a term map whose values are canonical parent elements."""
 
         counts: dict[Element, int] = {}
@@ -636,34 +638,13 @@ class AdditiveSequence(Generic[Element]):
 
         return [self._space.encode_term(term) for term in self]
 
-    def _order_key(self) -> tuple[int, tuple[Element, ...]]:
-        return self._length, tuple(self)
-
     def __lt__(self, other: object) -> bool:
         """Total order: shorter sequences first, then the sorted term lists."""
 
         if not isinstance(other, AdditiveSequence):
             return NotImplemented
         self._require_same_space(other)
-        return self._order_key() < other._order_key()
-
-    def __le__(self, other: object) -> bool:
-        if not isinstance(other, AdditiveSequence):
-            return NotImplemented
-        self._require_same_space(other)
-        return self._order_key() <= other._order_key()
-
-    def __gt__(self, other: object) -> bool:
-        if not isinstance(other, AdditiveSequence):
-            return NotImplemented
-        self._require_same_space(other)
-        return self._order_key() > other._order_key()
-
-    def __ge__(self, other: object) -> bool:
-        if not isinstance(other, AdditiveSequence):
-            return NotImplemented
-        self._require_same_space(other)
-        return self._order_key() >= other._order_key()
+        return (self._length, tuple(self)) < (other._length, tuple(other))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, AdditiveSequence):
