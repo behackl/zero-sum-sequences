@@ -28,19 +28,21 @@ For a reproducible development environment using the committed `uv.lock`,
 clone the repository and run:
 
 ```console
-uv sync --extra dev
+uv sync
 uv run python -m pytest
 ```
 
-Alternatively, install the package and its test tools with `pip`:
+The `dev` dependency group, which `uv sync` installs by default, contains the
+test tools, the tutorial dependencies, and JupyterLab. Alternatively, install it with `pip`
+(version 25.1 or newer):
 
 ```console
-python -m pip install -e '.[dev]'
+python -m pip install -e . --group dev
 python -m pytest
 ```
 
-To include the Sage integration tests, use `uv sync --extra dev --extra sage`
-or install the editable `.[dev,sage]` extra.
+To include the Sage integration tests, use `uv sync --extra sage` or
+`python -m pip install -e '.[sage]' --group dev`.
 
 ## Tutorial
 
@@ -48,8 +50,10 @@ or install the editable `.[dev,sage]` extra.
 
 The executable [tutorial](https://github.com/behackl/zero-sum-sequences/blob/main/notebooks/tutorial.ipynb) introduces the public API
 with small hand-checkable examples in ordinary Python.
-Its execution dependencies are available through
-`uv sync --extra tutorial` or the corresponding `pip` extra.
+Its execution dependencies are included in the development environment above,
+and are also available on their own as the `tutorial` extra
+(`python -m pip install "zero-sum-sequences[tutorial]"`). In the development
+environment, open it with `uv run jupyter lab`.
 
 ## Additive sequences
 

@@ -21,9 +21,6 @@ dependencies = [
 Repository = "https://github.com/behackl/zero-sum-sequences"
 
 [project.optional-dependencies]
-dev = [
-  "pytest>=8.3",
-]
 sage = [
   "sagelite[gap]==10.9.post1",
 ]
@@ -31,6 +28,13 @@ tutorial = [
   "ipykernel>=6.29",
   "matplotlib>=3.8",
   "nbconvert>=7.16",
+]
+
+[dependency-groups]
+dev = [
+  "jupyterlab>=4.2",
+  "pytest>=8.3",
+  "zero-sum-sequences[tutorial]",
 ]
 
 [tool.hatch.build.targets.wheel]
