@@ -666,7 +666,13 @@ class AdditiveSequence(Generic[Element]):
     def __str__(self) -> str:
         if not self:
             return "1"
-        return " · ".join(
-            str(term) if count == 1 else f"({term})^{count}"
-            for term, count in self._items
-        )
+
+        factors = []
+        for term, count in self._items:
+            factor = str(term)
+            if count > 1:
+                if not (factor.startswith("(") and factor.endswith(")")):
+                    factor = f"({factor})"
+                factor = f"{factor}^{count}"
+            factors.append(factor)
+        return " · ".join(factors)

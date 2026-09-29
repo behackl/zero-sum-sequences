@@ -2,7 +2,11 @@ from fractions import Fraction
 
 import pytest
 
-from zero_sum_sequences import AdditiveSequence, AdditiveSequenceSpace
+from zero_sum_sequences import (
+    AdditiveSequence,
+    AdditiveSequenceSpace,
+    FiniteAdditiveGroup,
+)
 
 from groups import IndexableInteger, cyclic_group
 
@@ -131,6 +135,15 @@ def test_display_is_unambiguous(c3_sequences):
     assert str(c3_sequences()) == "1"
     assert str(c3_sequences([1, 1, 2])) == "(1)^2 · 2"
     assert "AdditiveSequenceSpace" in repr(c3_sequences([1, 2]))
+
+
+def test_display_does_not_double_parenthesize_repeated_terms():
+    space = AdditiveSequenceSpace(
+        FiniteAdditiveGroup.cyclic_product(2, 4), davenport_bound=5
+    )
+
+    assert str(space([(0, 1), (0, 3)])) == "(0, 1) \u00b7 (0, 3)"
+    assert str(space([(0, 2), (0, 2)])) == "(0, 2)^2"
 
 
 @pytest.mark.parametrize("bad_count", [-1, 1.5, True])
