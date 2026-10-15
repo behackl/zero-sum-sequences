@@ -83,6 +83,8 @@ class FiniteAdditiveGroup(Generic[Element]):
         "_automorphism_group",
         "_encode_term",
         "_decode_term",
+        "_cyclic_moduli",
+        "_arithmetic_context",
     )
 
     @classmethod
@@ -163,7 +165,7 @@ class FiniteAdditiveGroup(Generic[Element]):
             if modulus > 1
         )
 
-        return cls(
+        group = cls(
             product(*(range(modulus) for modulus in normalized_moduli)),
             zero=(0,) * len(normalized_moduli),
             add=add,
@@ -171,6 +173,8 @@ class FiniteAdditiveGroup(Generic[Element]):
             additive_generators=additive_generators,
             automorphism_generators=generators,
         )
+        group._cyclic_moduli = normalized_moduli
+        return group
 
     def __init__(
         self,
@@ -241,6 +245,8 @@ class FiniteAdditiveGroup(Generic[Element]):
             raise TypeError("encode_term and decode_term must be callable")
         self._encode_term = encode_term
         self._decode_term = decode_term
+        self._cyclic_moduli = None
+        self._arithmetic_context = None
 
     def __call__(self, value: object) -> Element:
         element = self._coerce(value)
@@ -263,6 +269,37 @@ class FiniteAdditiveGroup(Generic[Element]):
         left = self(left)
         right = self(right)
         return self(self._operation(left, right))
+
+    def _group_arithmetic(self):
+        """Shared, lazy arithmetic data; lookup tables remain private."""
+
+        if self._arithmetic_context is None:
+            from .group_arithmetic import _GroupArithmetic
+
+            self._arithmetic_context = _GroupArithmetic(
+                self, native=False, moduli=self._cyclic_moduli
+            )
+        return self._arithmetic_context
+
+    def order(self) -> int:
+        """Return the cardinality of the group."""
+
+        return len(self._elements)
+
+    def element_order(self, term: Element) -> int:
+        """Return the additive order of a term, cached after its first query."""
+
+        return self._group_arithmetic().element_order(term)
+
+    def exponent(self) -> int:
+        """Return the exponent, without constructing an addition table."""
+
+        return self._group_arithmetic().exponent()
+
+    def negate(self, term: Element) -> Element:
+        """Return the additive inverse of a term."""
+
+        return self._group_arithmetic().negate(term)
 
     def is_finite(self) -> bool:
         return True

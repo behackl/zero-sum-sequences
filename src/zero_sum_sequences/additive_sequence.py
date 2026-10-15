@@ -72,27 +72,33 @@ class AdditiveSequenceSpace(Generic[Element]):
         may implement addition themselves, or the parent may provide
         ``add(left, right)``.
     davenport_bound:
-        A positive upper bound for the parent's Davenport constant.
+        An optional positive upper bound for the parent's Davenport constant.
+        If omitted, derive a certified bound lazily when an operation needs
+        it. Automatic resolution never starts an exhaustive invariant search.
     """
 
     __slots__ = (
         "_parent",
         "_davenport_bound",
+        "_derived_davenport_bound",
+        "_arithmetic_context",
         "_automorphism_action",
         "_automorphism_group",
     )
 
-    def __init__(self, parent, *, davenport_bound: int) -> None:
+    def __init__(self, parent, *, davenport_bound: int | None = None) -> None:
         if not callable(parent):
             raise TypeError("the additive parent must be callable")
         zero = getattr(parent, "zero", None)
         if not callable(zero):
             raise TypeError("the additive parent must provide zero()")
         self._parent = parent
-        self._davenport_bound = _positive_integer(
-            davenport_bound,
-            name="Davenport bound",
+        self._davenport_bound = (
+            _positive_integer(davenport_bound, name="Davenport bound")
+            if davenport_bound is not None else None
         )
+        self._derived_davenport_bound = None
+        self._arithmetic_context = None
         self._automorphism_action = None
         self._automorphism_group = None
 
@@ -147,11 +153,42 @@ class AdditiveSequenceSpace(Generic[Element]):
 
         return self._parent
 
+    def _group_arithmetic(self):
+        """Use the group's shared context, or retain an adapter for a foreign parent."""
+
+        if self._arithmetic_context is None:
+            from .parents import FiniteAdditiveGroup
+            from .group_arithmetic import _GroupArithmetic
+
+            if isinstance(self._parent, FiniteAdditiveGroup):
+                self._arithmetic_context = self._parent._group_arithmetic()
+            else:
+                self._arithmetic_context = _GroupArithmetic(self._parent)
+        return self._arithmetic_context
+
     @property
     def davenport_bound(self) -> int:
-        """Return the configured upper bound for the Davenport constant."""
+        """A certified bound, supplied explicitly or derived and cached lazily.
 
-        return self._davenport_bound
+        A cached exact Davenport constant supersedes an automatic bound, but
+        never overrides an explicit one. Derivation does not materialize an
+        addition table or start an exhaustive search.
+        """
+
+        if self._davenport_bound is not None:
+            return self._davenport_bound
+        arithmetic = self._group_arithmetic()
+        if arithmetic.exact_davenport_constant is not None:
+            return arithmetic.exact_davenport_constant
+        if self._derived_davenport_bound is None:
+            try:
+                self._derived_davenport_bound = arithmetic.davenport_bound()
+            except (TypeError, ValueError) as error:
+                raise ValueError(
+                    "cannot derive a Davenport bound for this parent; "
+                    "supply davenport_bound explicitly"
+                ) from error
+        return self._derived_davenport_bound
 
     def __call__(self, terms: Iterable[Element] = ()) -> AdditiveSequence[Element]:
         """Construct a sequence, coercing every term through the parent."""
@@ -230,28 +267,15 @@ class AdditiveSequenceSpace(Generic[Element]):
                 raise ValueError("support terms must belong to the ambient group")
         nonzero_terms = tuple(term for term in allowed_terms if term != zero)
 
-        # Only prefix sums whose inverse belongs to the chosen support can
-        # complete an atom. Compute inverses in the ambient group, not in the
-        # support (which need not be closed under negation or addition).
-        completions = {}
-        for term in nonzero_terms:
-            for candidate in terms:
-                total = _immutable_term(
-                    self._parent(operation(term, candidate))
-                )
-                if total == zero:
-                    completions[candidate] = term
-                    break
-            else:
-                raise ValueError(
-                    "atom catalogue enumeration requires additive inverses"
-                )
+        # Compute inverses in the ambient group, not in the chosen support.
+        arithmetic = self._group_arithmetic()
+        completions = {arithmetic.negate(term): term for term in nonzero_terms}
         term_index = {
             term: position for position, term in enumerate(nonzero_terms)
         }
 
         atoms = []
-        for length in range(2, self._davenport_bound + 1):
+        for length in range(2, self.davenport_bound + 1):
             for prefix_indices in itertools.combinations_with_replacement(
                 range(len(nonzero_terms)), length - 1
             ):

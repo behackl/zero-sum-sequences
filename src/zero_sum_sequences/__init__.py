@@ -12,6 +12,14 @@ from .automorphisms import (
 )
 from .factorization import Factorization, FactorizationSolver
 from .factorization_cache import AnchoredCanonicalizer, FactorizationCache
+from .invariants import (
+    ZeroSumConstant,
+    davenport_constant,
+    erdos_ginzburg_ziv_constant,
+    eta_constant,
+    exponent,
+    zero_sum_constant,
+)
 from .orbits import (
     AutomorphismAction,
     AutomorphismActionUnavailable,
@@ -38,5 +46,11 @@ __all__ = [
     "AutomorphismGroupUnavailable",
     "CanonicalForm",
     "OrbitWitness",
+    "ZeroSumConstant",
+    "davenport_constant",
+    "erdos_ginzburg_ziv_constant",
+    "eta_constant",
+    "exponent",
+    "zero_sum_constant",
 ]
 __version__ = _distribution_version("zero-sum-sequences")

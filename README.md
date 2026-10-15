@@ -5,9 +5,10 @@ enumerating their factorizations into minimal zero-sum sequences. The runtime
 is ordinary Python with NetworkX; SageMath is supported as an optional source
 of additive parents, but is not required.
 
-The package keeps group-specific mathematics explicit. Callers configure the
-ambient parent and provide an upper bound for its Davenport constant; the
-package does not infer structural invariants from the parent.
+Callers configure the ambient additive parent. A certified Davenport upper
+bound is derived lazily when needed, or can be supplied explicitly. Group
+arithmetic and exact computed Davenport constants are cached; deriving a
+bound never launches an exhaustive invariant search.
 
 ## Installation
 
@@ -57,9 +58,9 @@ environment, open it with `uv run jupyter lab`.
 
 ## Additive sequences
 
-Configure an ambient parent and a Davenport upper bound once, then use the
-resulting callable space to construct sequences. `FiniteAdditiveGroup` is a
-small convenience adapter for groups represented by ordinary Python values:
+Configure an ambient parent, then use the resulting callable space to
+construct sequences. `FiniteAdditiveGroup` is a small convenience adapter
+for groups represented by ordinary Python values:
 
 ```python
 from zero_sum_sequences import AdditiveSequenceSpace, FiniteAdditiveGroup
@@ -70,7 +71,7 @@ group = FiniteAdditiveGroup(
     add=lambda left, right: (left + right) % 3,
     coerce=lambda value: int(value) % 3,
 )
-Sequences = AdditiveSequenceSpace(group, davenport_bound=3)
+Sequences = AdditiveSequenceSpace(group)
 
 sequence = Sequences([1, 1, 2, 2])
 sequence.is_zero_sum()  # True
@@ -92,8 +93,49 @@ empty sequence retains the base parent and its zero element.
 result as a canonical multiset; pass `target_space=` when the image belongs to
 a different sequence space.
 
-The configured bound must not be smaller than the actual Davenport constant
-when complete atom or factorization results are required.
+An optional explicit bound remains authoritative:
+
+```python
+Sequences = AdditiveSequenceSpace(group, davenport_bound=3)
+```
+
+Without one, `Sequences.davenport_bound` resolves and caches a certified
+upper bound only when requested by an operation. It uses a cached exact
+constant or a supported exact structural formula (cyclic groups, rank-two
+groups and abelian p-groups with known invariant factors). Otherwise, when
+order `n` and exponent `e` are available cheaply, it uses
+`min(n, e * (1 + ceil(log2(n / e))))`, computed with integer arithmetic;
+with only the order available it uses `n`. It does not compute all element
+orders merely to derive a bound. Exact `davenport_constant(Sequences)`
+queries cache their answer and can tighten an automatic bound later; they
+never replace an explicit bound. In general, `1 + sum(n_i - 1)` is a lower
+bound, not a valid upper bound.
+
+Explicit bounds must cover the actual Davenport constant for complete atom
+or factorization results. If a bound cannot be derived for a parent,
+construction and basic sequence operations still work; an operation needing
+one asks the caller to supply `davenport_bound` explicitly.
+
+### Group arithmetic
+
+The dependency-free adapter exposes cardinality, additive orders, exponent
+and inverses directly:
+
+```python
+G = FiniteAdditiveGroup.cyclic_product(2, 4)
+G.order()                      # 8
+G.element_order((1, 1))         # 4
+G.exponent()                   # 4
+G.negate((1, 1))               # (1, 3)
+```
+
+Arithmetic metadata is lazy and cached. Coordinate groups retain their
+moduli; external parents are adapted using native methods when available.
+Indexed addition and subtraction tables stay private and are built only
+when an exhaustive search needs them. Sequence spaces over the same
+`FiniteAdditiveGroup` share its arithmetic context; foreign-parent contexts
+are retained per space. `exponent(Sequences)` remains available for any
+supported finite parent.
 
 ## Factorizations
 
@@ -395,6 +437,61 @@ transports the largest atom dividing the sequence to its orbit
 representative and reduces under that representative's stabilizer. Any
 callable returning an automorphic image of its argument (optionally with the
 automorphism) is accepted as `canonicalize=`.
+
+## Zero-sum constants
+
+For a set `L` of positive integers, `s_L(G)` is the smallest length that
+forces a nonempty zero-sum subsequence with length in `L`. The Davenport
+constant `D(G) = s_N(G)`, the Erdős–Ginzburg–Ziv constant
+`s(G) = s_{exp(G)}(G)` and `η(G) = s_[1, exp(G)](G)` are special cases:
+
+```python
+from zero_sum_sequences import (
+    davenport_constant,
+    erdos_ginzburg_ziv_constant,
+    eta_constant,
+    exponent,
+    zero_sum_constant,
+)
+
+C3xC3 = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(3, 3))
+exponent(C3xC3)                      # 3
+davenport_constant(C3xC3)            # 5
+eta_constant(C3xC3)                  # 7
+erdos_ginzburg_ziv_constant(C3xC3)   # 9
+
+result = zero_sum_constant(C3xC3, {2, 3})
+result.value                         # 8
+str(result.extremal[0])              # '(0, 0) · (0, 1)^2 · (1, 0)^2 · (1, 1)^2', the only orbit
+zero_sum_constant(C3xC3, {1, 2}).value   # math.inf: no multiple of exp(G)
+```
+
+`extremal` holds the longest sequences without such a subsequence, one
+minimum per orbit of the chosen symmetry group. Because the property is
+inherited by subsequences, these are enumerated length by length, tracking
+subsequence-sum lengths as bitsets.
+
+Every constant function accepts the same `symmetry=` keyword:
+
+```python
+zero_sum_constant(C3xC3, {2, 3}, symmetry=True)   # default: discover automorphisms
+zero_sum_constant(C3xC3, {2, 3}, symmetry=False)  # no discovery or orbit reduction
+zero_sum_constant(C3xC3, {2, 3}, symmetry=C3xC3.automorphism_group())
+```
+
+`True` falls back to no reduction if automorphisms are unavailable; genuine
+discovery errors propagate. An explicit `AutomorphismGroup` uses exactly
+that group, possibly a proper subgroup. With `False`, `extremal` contains
+every extremal sequence. Symmetry affects running time and representatives,
+never the value. Other values, including `None`, are rejected.
+
+`lengths` must be a finite nonempty iterable of positive integers. An
+infinite `L` is passed as an initial segment: a result that does not exceed
+`max(L)` is valid for every set agreeing with `L` up to `max(L)`. Arithmetic
+tables are reused between queries, and bitsets grow with the search rather
+than with an arbitrarily large length in `L`. The configured Davenport
+bound is not used to determine these constants. The package needs no
+computer algebra system; for example `s(C_2^3 ⊕ C_4) = 13` takes about a minute.
 
 ## Benchmarks
 

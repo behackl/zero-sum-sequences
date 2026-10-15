@@ -8,7 +8,49 @@ pytest.importorskip("sage.all")
 
 from sage.all import AdditiveAbelianGroup, GF, Integer, QQ, Zmod
 
-from zero_sum_sequences import AdditiveSequenceSpace
+from zero_sum_sequences import (
+    AdditiveSequenceSpace,
+    FiniteAdditiveGroup,
+    davenport_constant,
+    exponent,
+    zero_sum_constant,
+)
+
+
+@pytest.mark.parametrize(
+    "parent, bound, e",
+    [
+        (lambda: Zmod(3), 3, 3),
+        (lambda: AdditiveAbelianGroup([2, 4]), 5, 4),
+        (lambda: GF(2) ** 2, 4, 2),
+    ],
+)
+def test_sage_default_spaces_use_lazy_native_or_certified_bounds(parent, bound, e):
+    space = AdditiveSequenceSpace(parent())
+    assert space._arithmetic_context is None
+    assert space.davenport_bound == bound
+    assert exponent(space) == e
+    assert "addition_table" not in space._group_arithmetic().__dict__
+
+
+def test_sage_mutable_vectors_work_with_cached_invariant_tables():
+    space = AdditiveSequenceSpace(GF(2) ** 2)
+    result = zero_sum_constant(space, {1, 2}, symmetry=False)
+    assert result.value == 4
+    assert all(not term.is_mutable() for s in result.extremal for term in s)
+    assert davenport_constant(space, symmetry=False) == 3
+    assert space.davenport_bound == 3
+
+
+def test_sage_integer_labels_do_not_override_a_custom_group_operation():
+    group = FiniteAdditiveGroup(
+        map(Integer, range(4)),
+        zero=Integer(0),
+        add=lambda g, h: Integer(int(g) ^ int(h)),
+        coerce=lambda value: Integer(value) % 4,
+    )
+    assert group.element_order(Integer(1)) == 2
+    assert group.negate(Integer(1)) == Integer(1)
 
 
 def test_sage_exact_integer_protocols_are_supported():
