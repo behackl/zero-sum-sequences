@@ -129,6 +129,56 @@ def test_solver_requires_a_catalogue_from_the_same_space():
         )
 
 
+@pytest.mark.parametrize(
+    ("terms", "expected"),
+    [([], 0), ([1], None), ([1, 2], 1), ([1, 1, 1], 1), ([1, 1, 1, 2, 2, 2], 3)],
+)
+def test_maximum_only_avoids_length_sets_and_caches_its_answer(terms, expected, monkeypatch):
+    space = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=3)
+    solver = FactorizationSolver(space(terms))
+
+    def forbidden():
+        raise AssertionError("maximum-only queries must not compute length sets")
+
+    monkeypatch.setattr(solver, "_solve_lengths", forbidden)
+    assert solver.maximum_factorization_length() == expected
+    monkeypatch.setattr(solver, "_build_state_graph", forbidden)
+    assert solver.maximum_factorization_length() == expected
+
+
+@pytest.mark.parametrize("terms", [[], [1], [1, 2], [1, 1, 1], [1, 1, 1, 2, 2, 2]])
+def test_maximum_reuses_existing_length_sets(terms, monkeypatch):
+    space = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=3)
+    solver = FactorizationSolver(space(terms))
+    lengths = solver.length_set()
+
+    def forbidden():
+        raise AssertionError("cached length data must not trigger a graph pass")
+
+    monkeypatch.setattr(solver, "_build_state_graph", forbidden)
+    assert solver.maximum_factorization_length() == max(lengths, default=None)
+
+
+def test_maximum_then_length_set_returns_complete_lengths():
+    space = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=3)
+    solver = FactorizationSolver(space([1, 1, 1, 2, 2, 2]))
+    assert solver.maximum_factorization_length() == 3
+    assert solver.length_set() == {2, 3}
+    assert solver.maximum_factorization_length() == 3
+    assert solver.minimum_factorization_length() == 2
+
+
+def test_maximum_of_a_long_atom_power_avoids_length_sets(monkeypatch):
+    space = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=3)
+    solver = FactorizationSolver(space.from_multiplicities({1: 60_000}))
+
+    def forbidden():
+        raise AssertionError("long maximum-only queries must not compute length sets")
+
+    monkeypatch.setattr(solver, "_solve_lengths", forbidden)
+    assert solver.maximum_factorization_length() == 20_000
+
+
 def test_reduced_factorization_rejects_sequences_with_zero_terms():
     space = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=3)
 

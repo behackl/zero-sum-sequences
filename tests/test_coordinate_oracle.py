@@ -88,10 +88,10 @@ def test_predicates_and_factorizations(moduli):
         lengths = {len(f) for f in expected}
         local = sequence.factorization_solver()
         indexed = sequence.factorization_solver(atom_catalogue=catalogue)
-        assert local.length_set() == indexed.length_set() == lengths
-        assert cache_.length_set(sequence) == lengths
         assert local.minimum_factorization_length() == min(lengths, default=None)
         assert local.maximum_factorization_length() == max(lengths, default=None)
+        assert local.length_set() == indexed.length_set() == lengths
+        assert cache_.length_set(sequence) == lengths
         for k in range(len(terms) // 2 + 2):
             assert local.has_factorization_of_length(k) == (k in lengths)
             witness = local.factorization_witness(k)

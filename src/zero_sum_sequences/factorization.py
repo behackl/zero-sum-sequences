@@ -121,6 +121,8 @@ class FactorizationSolver(Generic[Element]):
         self._maximum_factor_length = max(factor_lengths, default=0)
         self._minimum_length: int | None = None
         self._minimum_length_is_solved = False
+        self._maximum_length: int | None = None
+        self._maximum_length_is_solved = False
 
     @property
     def davenport_bound(self) -> int:
@@ -387,12 +389,33 @@ class FactorizationSolver(Generic[Element]):
         return None
 
     def maximum_factorization_length(self) -> int | None:
-        """Return the maximum factorization length, or ``None`` if absent."""
+        """Return the maximum factorization length, or ``None`` if absent.
 
-        _, maximum = self._extreme_lengths_from_bits(
-            self._solve_lengths()[self.initial_state]
-        )
-        return maximum
+        Without cached length sets, compute only scalar maxima over the
+        remainder graph and retain the final answer.
+        """
+
+        if self._length_bits is not None:
+            _, maximum = self._extreme_lengths_from_bits(
+                self._length_bits[self.initial_state]
+            )
+            return maximum
+        if not self._maximum_length_is_solved:
+            transitions = self._build_state_graph()
+            maxima: dict[MultiplicityState, int | None] = {}
+            for state in sorted(transitions, key=sum):
+                if state == self.zero_state:
+                    maxima[state] = 0
+                    continue
+                best = None
+                for _, remainder in transitions[state]:
+                    child = maxima[remainder]
+                    if child is not None and (best is None or child > best):
+                        best = child
+                maxima[state] = None if best is None else best + 1
+            self._maximum_length = maxima[self.initial_state]
+            self._maximum_length_is_solved = True
+        return self._maximum_length
 
     def has_factorization_of_length(self, factor_count: int) -> bool:
         """Return whether a factorization has exactly ``factor_count`` factors."""
