@@ -33,16 +33,15 @@ class AtomOrbit(Generic[Element]):
 
 
 class AtomCatalogue(Generic[Element]):
-    """A collection of nonzero atoms with a stable order and fast divisor queries.
+    """Atoms supported on nonzero elements, with stable indices and divisor queries.
 
     Atoms are stored in the total order of sequences (length first, then the
     sorted term list); ``index(atom)`` and ``catalogue[i]`` refer to this
     order, which is therefore a stable identifier namespace for any
     serialized data that refers to atoms.
 
-    Factorizations in this package are taken in the reduced block monoid:
-    the identity element may be a length-one atom mathematically, but it is
-    deliberately not a factorization atom.
+    The singleton zero is an atom in the full block monoid, but is excluded
+    from these catalogues and from the package's factorization queries.
     """
 
     def __init__(
@@ -287,13 +286,18 @@ class AtomCatalogue(Generic[Element]):
         *,
         annotate: Callable[[AdditiveSequence[Element]], dict] | None = None,
     ) -> int:
-        """Write the catalogue as JSON lines (metadata line, then one line per atom)."""
+        """Write a metadata line and one JSON record per atom; return the count.
+
+        Metadata includes the space's Davenport bound if available, or JSON
+        ``null`` otherwise. It is not a completeness certificate. Export may
+        derive a bound, but does not search for an exact Davenport constant.
+        """
 
         path = Path(path)
         metadata = {
             "schema": CATALOGUE_SCHEMA,
             "count": len(self.atoms),
-            "davenport_bound": self.space.davenport_bound,
+            "davenport_bound": self.space._optional_davenport_bound(),
             "digest": self.digest(),
         }
         with path.open("w", encoding="utf-8", newline="\n") as stream:
@@ -316,7 +320,8 @@ class AtomCatalogue(Generic[Element]):
         ``verify=True`` every record is additionally checked to be an atom
         of ``space`` (which is what makes the file trustworthy, at the cost
         of one atom test per record).  Extra record keys are kept as
-        annotations.
+        annotations. Davenport-bound metadata is optional and informational;
+        reading does not resolve a bound or use it to infer completeness.
         """
 
         path = Path(path)

@@ -19,12 +19,14 @@ MultiplicityState: TypeAlias = tuple[int, ...]
 def _atom_divisors(
     sequence: AdditiveSequence[Element],
 ) -> Iterator[AdditiveSequence[Element]]:
-    """Yield every distinct atom divisor within the configured bound."""
+    """Yield atom divisors, using an ambient bound when one is available."""
 
-    maximum_length = min(
-        len(sequence),
-        sequence.parent().davenport_bound,
-    )
+    if not sequence:
+        return
+    bound = sequence.parent()._optional_davenport_bound()
+    # With no bound, the finite input itself limits discovery; None selects
+    # the Cartesian-product fast path in subsequences(), without recursion.
+    maximum_length = None if bound is None else min(len(sequence), bound)
     zero = sequence.parent().base_parent.zero()
     for candidate in sequence.subsequences(
         nonempty=True,
@@ -50,12 +52,21 @@ class _IndexedAtom(Generic[Element]):
 
 
 class FactorizationSolver(Generic[Element]):
-    """Solve one reduced factorization problem on immutable multiplicity states.
+    """Find atom factorizations of a sequence without identity terms.
 
-    Relevant nonzero atoms are discovered once, or filtered from a complete
-    :class:`AtomCatalogue`, and encoded as sparse count vectors. The input
-    must contain no identity terms; equal remainder sequences become one state
-    in an acyclic graph.
+    A supplied :class:`AtomCatalogue` is used without resolving a Davenport
+    bound. It must contain every atom divisor of the input for complete
+    results; completeness is not checked.
+
+    Otherwise, discover atom divisors up to the smaller of the input length
+    and the space's Davenport bound. If no bound can be derived, search all
+    distinct subsequences of the input. A sufficient bound makes discovery
+    complete; a smaller explicit bound can omit factorizations. Exhaustive
+    discovery can be expensive, especially without a bound.
+
+    Queries reuse solutions for equal remainder sequences. Complete length
+    sets and graph queries build the remainder graph; targeted existence and
+    witness queries can avoid building it in full.
     """
 
     def __init__(
@@ -77,7 +88,6 @@ class FactorizationSolver(Generic[Element]):
             )
 
         self.sequence = sequence
-        self.davenport_bound = sequence.parent().davenport_bound
         self.support = sequence.support
         self._support_index = {
             term: index for index, term in enumerate(self.support)
@@ -114,6 +124,17 @@ class FactorizationSolver(Generic[Element]):
         self._maximum_length: int | None = None
         self._minimum_length_is_solved = False
         self._maximum_length_is_solved = False
+
+    @property
+    def davenport_bound(self) -> int:
+        """Return the space's ambient Davenport bound, resolved on access.
+
+        This can be larger than the exact constant. It raises
+        :class:`ValueError` if unavailable; the solver can still answer local
+        or catalogue-backed queries without an ambient bound.
+        """
+
+        return self.sequence.parent().davenport_bound
 
     def _index_atoms(
         self, atoms: Iterable[AdditiveSequence[Element]]

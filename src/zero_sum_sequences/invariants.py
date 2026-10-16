@@ -1,22 +1,12 @@
-"""Zero-sum constants of finite abelian groups.
+"""Exact zero-sum constants and extremal sequences for finite abelian groups.
 
-For a set ``L`` of positive integers, ``s_L(G)`` is the smallest ``l`` such
-that every sequence of length ``l`` over ``G`` has a nonempty zero-sum
-subsequence whose length lies in ``L``, or infinity if there is no such
-``l``. Classical invariants are special cases: the Davenport constant
-``D(G) = s_N(G)``, the Erdős–Ginzburg–Ziv constant ``s(G) = s_{exp(G)}(G)``,
-and ``eta(G) = s_[1, exp(G)](G)``.
+The classical constants and notation follow :cite:p:`gao-geroldinger-2006`,
+Definition 2.1. :func:`zero_sum_constant` allows any finite set of positive
+subsequence lengths. Its search includes the identity element, unlike the
+package's factorization queries.
 
-Call a sequence *L-free* if it has no nonempty zero-sum subsequence with
-length in ``L``. Subsequences of L-free sequences are L-free, so the
-computation enumerates L-free sequences length by length, keeping one
-representative per orbit of the chosen automorphism group.
-
-For each sequence, a table records for every group element ``g`` the set of
-lengths of subsequences with sum ``g``, as an integer bitset. Appending a
-term ``h`` shifts the entry of ``g - h`` into that of ``g``; the lengths of
-the new zero-sum subsequences are the shifted entry of ``-h``. Shared group
-arithmetic is retained separately from the search.
+For related computational approaches, see :cite:p:`zerdoum-2021`, Chapters
+IV–V, and :cite:p:`geroldinger-liebmann-philipp-2012`, Section 4.
 """
 
 from __future__ import annotations
@@ -38,12 +28,20 @@ from .automorphisms import AutomorphismGroup, AutomorphismGroupUnavailable
 
 @dataclass(frozen=True)
 class ZeroSumConstant(Generic[Element]):
-    """A zero-sum constant together with its extremal representatives.
+    """An exact zero-sum constant and the longest sequences avoiding it.
 
-    ``value`` is ``s_L(G)``, or ``math.inf``. ``extremal`` holds the L-free
-    sequences of maximal length ``value - 1``, one per orbit of the chosen
-    symmetry group, each the minimum of its orbit. With no reduction it
-    contains every extremal sequence; it is empty when ``value`` is infinite.
+    Attributes
+    ----------
+    lengths : frozenset[int]
+        The allowed lengths of a nonempty zero-sum subsequence.
+    value : int or float
+        The least length forcing such a subsequence, or ``math.inf`` if no
+        finite length suffices. This is the exact constant, not an upper bound.
+    extremal : tuple[AdditiveSequence, ...]
+        Sequences of length ``value - 1`` with no such subsequence, sorted in
+        sequence order. With symmetry reduction, this contains the minimum
+        of each orbit under the chosen group; otherwise it contains every
+        extremal sequence. It is empty when ``value`` is infinite.
     """
 
     lengths: frozenset[int]
@@ -52,7 +50,12 @@ class ZeroSumConstant(Generic[Element]):
 
 
 def exponent(space: AdditiveSequenceSpace) -> int:
-    """The exponent of the finite base parent, without building lookup tables."""
+    """Return the exact exponent of the finite abelian base group.
+
+    This is the least common multiple of its element orders. Available group
+    metadata is used first; otherwise the elements and their orders are
+    enumerated. The result is cached. No Davenport bound is used.
+    """
 
     return space._group_arithmetic().exponent()
 
@@ -65,6 +68,8 @@ class _Symmetry:
     """
 
     def __init__(self, table, group) -> None:
+        """Index the given group action, using the trivial action for None."""
+
         count = len(table.elements)
         if group is None:
             self.forward = self.inverse = (tuple(range(count)),)
@@ -90,7 +95,7 @@ class _Symmetry:
         self.inverse = tuple(inverse)
 
     def canonical(self, multiplicities: tuple[int, ...]):
-        """The orbit minimum and the automorphisms mapping onto it."""
+        """Return a canonical vector and the indices of automorphisms realizing it."""
 
         candidates = range(len(self.inverse))
         key = []
@@ -107,11 +112,7 @@ class _Symmetry:
         return tuple(key), candidates
 
     def extension_terms(self, realising: list[int]) -> list[int]:
-        """The least term of every orbit of a sequence's stabilizer.
-
-        ``realising`` lists automorphisms ``a`` mapping the sequence onto
-        its orbit minimum; the stabilizer consists of the ``a^-1 a0``.
-        """
+        """Choose one term per orbit of the stabilizer determined by ``realising``."""
 
         first = self.forward[realising[0]]
         stabilizer = [
@@ -126,6 +127,8 @@ class _Symmetry:
 
 
 def _normalize_lengths(lengths: Iterable[int]) -> frozenset[int]:
+    """Deduplicate allowed lengths, rejecting empty or nonpositive inputs."""
+
     try:
         normalized = frozenset(
             _positive_integer(length, name="lengths") for length in lengths
@@ -138,6 +141,8 @@ def _normalize_lengths(lengths: Iterable[int]) -> frozenset[int]:
 
 
 def _validate_symmetry(symmetry) -> None:
+    """Reject options other than booleans and explicit automorphism groups."""
+
     if (
         symmetry is not True
         and symmetry is not False
@@ -147,6 +152,8 @@ def _validate_symmetry(symmetry) -> None:
 
 
 def _resolve_symmetry(space: AdditiveSequenceSpace, symmetry):
+    """Return the requested group, or None when reduction is disabled or unavailable."""
+
     if symmetry is False:
         return None
     if symmetry is not True:
@@ -163,21 +170,44 @@ def zero_sum_constant(
     *,
     symmetry: bool | AutomorphismGroup = True,
 ) -> ZeroSumConstant[Element]:
-    """Compute ``s_L(G)`` for the finite base parent ``G`` of ``space``.
+    """Return the exact constant ``s_L(G)`` and its extremal sequences.
 
-    ``lengths`` is a finite nonempty set ``L`` of positive integers. An
-    infinite set is represented by an initial segment: if the result is at
-    most ``max(L)``, it is ``s_L'(G)`` for every ``L'`` agreeing with ``L`` on
-    ``[1, max(L)]``. The value is infinite exactly when ``L`` contains no
-    multiple of the exponent of ``G``.
+    This is the least length forcing a nonempty zero-sum subsequence whose
+    length belongs to ``L``, or ``math.inf`` if no finite length suffices.
+    ``lengths`` must be a finite, nonempty iterable of positive integers;
+    duplicates are ignored. Sequences may use every element of the finite
+    abelian base group, including zero.
 
-    ``symmetry=True`` discovers the space's automorphism group, falling
-    back to no reduction when unavailable. ``False`` disables discovery
-    and reduction. An explicit :class:`AutomorphismGroup` uses exactly
-    that group. Symmetry affects the running time and representatives,
-    never the value; discovery errors other than unavailability propagate.
+    No Davenport bound is used or derived. The search extends avoiding
+    sequences one term at a time, tracking their possible subsequence sums
+    and lengths. Since every subsequence of an avoiding sequence also avoids
+    the target, the first empty search level gives the exact constant.
+    Finite searches require an iterable parent and can be expensive.
 
-    The configured Davenport bound of ``space`` is not used.
+    ``symmetry=True`` discovers an automorphism group, using no reduction
+    when one is unavailable. ``False`` disables discovery and reduction.
+    An explicit :class:`AutomorphismGroup` uses precisely that group of
+    automorphisms of the base group. Symmetry changes the representatives
+    and search cost, not the value. Discovery errors other than
+    :class:`AutomorphismGroupUnavailable` propagate.
+
+    Notes
+    -----
+    The value is infinite exactly when ``L`` contains no multiple of the
+    group exponent. To study an infinite allowed set, pass a finite
+    truncation: a result at most ``max(L)`` also applies to every allowed
+    set agreeing with ``L`` up to that cutoff.
+
+    Examples
+    --------
+    >>> from zero_sum_sequences import AdditiveSequenceSpace, FiniteAdditiveGroup
+    >>> from zero_sum_sequences import zero_sum_constant
+    >>> space = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(3))
+    >>> result = zero_sum_constant(space, {3}, symmetry=False)
+    >>> result.value, len(result.extremal)
+    (5, 3)
+    >>> zero_sum_constant(space, {1, 2}).value
+    inf
     """
 
     lengths = _normalize_lengths(lengths)
@@ -245,10 +275,43 @@ def zero_sum_constant(
 def davenport_constant(
     space: AdditiveSequenceSpace, *, symmetry: bool | AutomorphismGroup = True
 ) -> int:
-    """Return and cache the exact Davenport constant of the base parent.
+    """Return the exact Davenport constant ``D(G)`` of the finite abelian base group.
 
-    Use a cached value or a supported exact formula when possible; otherwise
-    search exhaustively. The caller's configured bound is not used.
+    This is the least length forcing a nonempty zero-sum subsequence, with
+    no restriction on its length. A cached value or a supported exact formula
+    is used when available; otherwise :func:`zero_sum_constant` performs an
+    exhaustive search. The result is cached; spaces over the same
+    :class:`FiniteAdditiveGroup` share the cached value.
+
+    The search derives its own certified upper bound to cover all relevant
+    subsequence lengths. The space's configured Davenport bound is ignored,
+    even if supplied explicitly. The returned value is always exact, not
+    that upper bound. An exhaustive computation can be expensive;
+    ``symmetry`` has the meaning described in :func:`zero_sum_constant`.
+
+    Notes
+    -----
+    For known invariant factors ``1 < n_1 | ... | n_r``, the formula
+    ``D(G) = 1 + sum(n_i - 1)`` is used for p-groups and groups of rank at
+    most two. This is the result of Kruyswijk and Olson recorded in
+    :cite:p:`gao-geroldinger-2006`, Theorem 3.1; see also
+    :cite:p:`olson-1969-i,olson-1969-ii`. A group known to be cyclic has
+    ``D(G) = |G|``, and the trivial group has ``D(G) = 1``.
+
+    An exact result can tighten an automatically derived
+    :attr:`AdditiveSequenceSpace.davenport_bound`, but does not replace an
+    explicit bound.
+
+    Examples
+    --------
+    >>> from zero_sum_sequences import AdditiveSequenceSpace, FiniteAdditiveGroup
+    >>> from zero_sum_sequences import davenport_constant
+    >>> space = AdditiveSequenceSpace(
+    ...     FiniteAdditiveGroup.cyclic_product(2, 4), davenport_bound=8)
+    >>> davenport_constant(space)
+    5
+    >>> space.davenport_bound
+    8
     """
 
     _validate_symmetry(symmetry)
@@ -265,7 +328,14 @@ def davenport_constant(
 def erdos_ginzburg_ziv_constant(
     space: AdditiveSequenceSpace, *, symmetry: bool | AutomorphismGroup = True
 ) -> int:
-    """The Erdős–Ginzburg–Ziv constant ``s(G) = s_{exp(G)}(G)``."""
+    """Return the exact Erdős–Ginzburg–Ziv constant ``s(G)``.
+
+    This is the least length forcing a zero-sum subsequence of length
+    ``exp(G)``; see :cite:p:`gao-geroldinger-2006`, Definition 2.1.
+    The group exponent is computed, then :func:`zero_sum_constant` searches
+    with that single allowed length. No Davenport bound is used or derived.
+    The search can be expensive; ``symmetry`` is passed through unchanged.
+    """
 
     return zero_sum_constant(space, {exponent(space)}, symmetry=symmetry).value
 
@@ -273,6 +343,14 @@ def erdos_ginzburg_ziv_constant(
 def eta_constant(
     space: AdditiveSequenceSpace, *, symmetry: bool | AutomorphismGroup = True
 ) -> int:
-    """The constant ``eta(G) = s_[1, exp(G)](G)``."""
+    """Return the exact short zero-sum constant ``eta(G)``.
+
+    This is the least length forcing a nonempty zero-sum subsequence of
+    length at most ``exp(G)``; see :cite:p:`gao-geroldinger-2006`, Definition
+    2.1. The group exponent is computed, then :func:`zero_sum_constant`
+    searches with allowed lengths ``1, ..., exp(G)``. No Davenport bound is
+    used or derived. The search can be expensive; ``symmetry`` is passed
+    through unchanged.
+    """
 
     return zero_sum_constant(space, range(1, exponent(space) + 1), symmetry=symmetry).value

@@ -111,10 +111,15 @@ queries cache their answer and can tighten an automatic bound later; they
 never replace an explicit bound. In general, `1 + sum(n_i - 1)` is a lower
 bound, not a valid upper bound.
 
-Explicit bounds must cover the actual Davenport constant for complete atom
-or factorization results. If a bound cannot be derived for a parent,
-construction and basic sequence operations still work; an operation needing
-one asks the caller to supply `davenport_bound` explicitly.
+Explicit bounds must cover the relevant atom lengths for complete atom or
+factorization results; a bound for the ambient Davenport constant suffices.
+For a fixed finite sequence, factorization uses the available bound to prune
+atom discovery, or falls back to searching all its distinct subsequences if
+no ambient bound can be derived. This fallback can be expensive; supply a
+bound or a complete catalogue when possible. Catalogue-backed solving does
+not resolve a bound, and catalogue export records an unavailable bound as
+JSON `null`. Directly requesting `Sequences.davenport_bound` still asks for
+an explicit bound if automatic resolution is impossible.
 
 ### Group arithmetic
 
@@ -253,8 +258,9 @@ complete for sequences containing other terms.
 The caller is responsible for catalogue completeness. A catalogue used for a
 complete result must contain every atom divisor relevant to the input.
 
-Factorizations are computed in the reduced block monoid: identity terms are
-not accepted by the solver and are not stored in an `AtomCatalogue`.
+Factorizations use only nonzero group elements: identity terms are not
+accepted by the solver or stored in an `AtomCatalogue`. The singleton zero
+is still an atom in the full block monoid.
 
 ## Factorization relations
 
@@ -492,6 +498,13 @@ tables are reused between queries, and bitsets grow with the search rather
 than with an arbitrarily large length in `L`. The configured Davenport
 bound is not used to determine these constants. The package needs no
 computer algebra system; for example `s(C_2^3 ⊕ C_4) = 13` takes about a minute.
+
+## References
+
+Mathematical citations in the API docstrings use the shared
+[`docs/references.bib`](docs/references.bib). The
+[references page](docs/references.md) distinguishes theorems used by the
+package from related computational work.
 
 ## Benchmarks
 

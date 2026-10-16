@@ -61,6 +61,10 @@ def _immutable_term(term: Element) -> Element:
     return term
 
 
+class _DavenportBoundUnavailable(ValueError):
+    """No automatic Davenport bound is available."""
+
+
 class AdditiveSequenceSpace(Generic[Element]):
     """Configured constructor for sequences over one additive parent.
 
@@ -72,9 +76,10 @@ class AdditiveSequenceSpace(Generic[Element]):
         may implement addition themselves, or the parent may provide
         ``add(left, right)``.
     davenport_bound:
-        An optional positive upper bound for the parent's Davenport constant.
-        If omitted, derive a certified bound lazily when an operation needs
-        it. Automatic resolution never starts an exhaustive invariant search.
+        Optional positive upper bound for the parent's Davenport constant.
+        An explicit value is used as supplied; its sufficiency is not checked.
+        If omitted, :attr:`davenport_bound` derives a bound when needed,
+        without starting an exhaustive constant search.
     """
 
     __slots__ = (
@@ -154,7 +159,7 @@ class AdditiveSequenceSpace(Generic[Element]):
         return self._parent
 
     def _group_arithmetic(self):
-        """Use the group's shared context, or retain an adapter for a foreign parent."""
+        """Return cached arithmetic, shared with package groups and local otherwise."""
 
         if self._arithmetic_context is None:
             from .parents import FiniteAdditiveGroup
@@ -168,11 +173,27 @@ class AdditiveSequenceSpace(Generic[Element]):
 
     @property
     def davenport_bound(self) -> int:
-        """A certified bound, supplied explicitly or derived and cached lazily.
+        """Return an upper bound for ``D(G)``, not necessarily its exact value.
 
-        A cached exact Davenport constant supersedes an automatic bound, but
-        never overrides an explicit one. Derivation does not materialize an
-        addition table or start an exhaustive search.
+        An explicit bound is returned as supplied, without checking that it
+        suffices. Otherwise use a cached exact constant or a supported exact
+        formula from :func:`davenport_constant`. If neither is available,
+        use the group order ``n`` and a known exponent ``e`` to return
+        ``min(n, e * (1 + ceil(log2(n / e))))``. With no known exponent,
+        return ``n``.
+
+        The logarithmic estimate ``D(G) <= e * (1 + ln(n / e))`` is due to
+        van Emde Boas and Kruyswijk (:cite:p:`van-emde-boas-kruyswijk-1969`,
+        Theorem 7.1, p. 21; see also :cite:p:`gao-geroldinger-2006`, Theorem
+        3.6(1)). The base-two ceiling is a conservative relaxation chosen
+        here, not the original estimate.
+
+        Automatic bounds are cached. An exact :func:`davenport_constant`
+        query can tighten an automatic bound, but never replaces an explicit
+        one. Resolution does not enumerate element orders or launch an
+        exhaustive constant search; finding the group order may require
+        enumerating its elements. If no bound can be derived, raise
+        :class:`ValueError` and request an explicit bound.
         """
 
         if self._davenport_bound is not None:
@@ -184,11 +205,19 @@ class AdditiveSequenceSpace(Generic[Element]):
             try:
                 self._derived_davenport_bound = arithmetic.davenport_bound()
             except (TypeError, ValueError) as error:
-                raise ValueError(
+                raise _DavenportBoundUnavailable(
                     "cannot derive a Davenport bound for this parent; "
                     "supply davenport_bound explicitly"
                 ) from error
         return self._derived_davenport_bound
+
+    def _optional_davenport_bound(self) -> int | None:
+        """Return an available bound for pruning or metadata, or None."""
+
+        try:
+            return self.davenport_bound
+        except _DavenportBoundUnavailable:
+            return None
 
     def __call__(self, terms: Iterable[Element] = ()) -> AdditiveSequence[Element]:
         """Construct a sequence, coercing every term through the parent."""
@@ -216,21 +245,22 @@ class AdditiveSequenceSpace(Generic[Element]):
     def enumerate_atom_catalogue(
         self, *, support: Iterable[Element] | None = None
     ) -> AtomCatalogue[Element]:
-        """Enumerate reduced atoms on a support through the configured bound.
+        """Enumerate atoms on a nonzero support up to :attr:`davenport_bound`.
 
-        The base parent must be a finite iterable additive group. With
-        ``support=None``, use all its nonzero elements. Otherwise coerce the
-        supplied terms through the parent, discard duplicates and zero, and
-        enumerate only atoms supported on that subset. The subset need not
-        be a subgroup: all sums and inverses use the ambient group.
+        The base parent must be a finite iterable abelian group. By default,
+        use every nonzero element. A supplied ``support`` is coerced through
+        the parent, with duplicates and zero removed. It need not be a
+        subgroup: sums and inverses are taken in the ambient group.
 
-        Sorted prefixes on the chosen support are completed by their uniquely
-        determined final term, which must also lie in the support. The
-        identity singleton is omitted, matching :class:`AtomCatalogue`.
-        Completeness on the chosen support requires ``davenport_bound`` to
-        bound the lengths of all atoms on that support; a valid bound for
-        the ambient group suffices. A restricted catalogue is not generally
-        complete for sequences with terms outside the chosen support.
+        The bound is resolved when enumeration starts. A derived bound gives
+        a complete catalogue on the chosen support; an explicit bound must
+        cover all atom lengths there. Such a catalogue need not be complete
+        for sequences using terms outside the support. The singleton zero
+        is excluded, as in :class:`AtomCatalogue`.
+
+        The search completes each sorted prefix with its uniquely determined
+        final term, then checks minimality. It can be expensive even when the
+        bound is small.
         """
 
         from .atom_catalogue import AtomCatalogue
@@ -526,11 +556,13 @@ class AdditiveSequence(Generic[Element]):
         )
 
     def factorization_solver(self, *, atom_catalogue=None):
-        """Return a solver for reduced factorizations into nonzero atoms.
+        """Return a factorization solver for a sequence without identity terms.
 
-        The sequence must not contain the identity term.  The identity remains
-        a length-one atom in the full block monoid, but is excluded from the
-        reduced factorization convention used by this package.
+        A supplied catalogue must contain every atom divisor for complete
+        results; no Davenport bound is needed in that case. Otherwise an
+        available bound caps atom discovery, with exhaustive discovery on
+        this finite sequence as the fallback. See :class:`FactorizationSolver`
+        for the search assumptions and cost.
         """
 
         from .factorization import FactorizationSolver

@@ -64,11 +64,20 @@ def _shear_coordinate(
 
 
 class FiniteAdditiveGroup(Generic[Element]):
-    """A finite additive parent defined by elements and an operation.
+    """A finite abelian group defined by its elements and addition.
 
-    The supplied data is treated as a group presentation; associativity,
-    inverses, and closure are not checked exhaustively.  Results produced by
-    ``add`` are coerced and checked for membership when the operation is used.
+    Elements must be hashable and mutually orderable. The supplied operation
+    is assumed to define an abelian group; the group axioms are not checked
+    exhaustively. Addition results are coerced and checked for membership.
+
+    Examples
+    --------
+    >>> from zero_sum_sequences import FiniteAdditiveGroup
+    >>> group = FiniteAdditiveGroup.cyclic_product(2, 4)
+    >>> group.order(), group.exponent(), group.element_order((1, 1))
+    (8, 4, 4)
+    >>> group.negate((1, 1))
+    (1, 3)
     """
 
     __slots__ = (
@@ -271,7 +280,7 @@ class FiniteAdditiveGroup(Generic[Element]):
         return self(self._operation(left, right))
 
     def _group_arithmetic(self):
-        """Shared, lazy arithmetic data; lookup tables remain private."""
+        """Return this group's cached arithmetic context."""
 
         if self._arithmetic_context is None:
             from .group_arithmetic import _GroupArithmetic
@@ -282,22 +291,35 @@ class FiniteAdditiveGroup(Generic[Element]):
         return self._arithmetic_context
 
     def order(self) -> int:
-        """Return the cardinality of the group."""
+        """Return the number of elements in the group."""
 
         return len(self._elements)
 
     def element_order(self, term: Element) -> int:
-        """Return the additive order of a term, cached after its first query."""
+        """Return the least positive n for which n copies of ``term`` sum to zero.
+
+        The term is coerced through this parent and the result is cached.
+        Known cyclic coordinates give the order directly; otherwise it is
+        found by repeated addition. The identity has order one.
+        """
 
         return self._group_arithmetic().element_order(term)
 
     def exponent(self) -> int:
-        """Return the exponent, without constructing an addition table."""
+        """Return the group exponent: the least common multiple of element orders.
+
+        Known cyclic factors give the exponent directly. For other groups,
+        the first call computes the element orders as needed. The result is
+        cached.
+        """
 
         return self._group_arithmetic().exponent()
 
     def negate(self, term: Element) -> Element:
-        """Return the additive inverse of a term."""
+        """Return the additive inverse of ``term`` in this parent.
+
+        The result is cached and sums to zero with the original term.
+        """
 
         return self._group_arithmetic().negate(term)
 
