@@ -131,6 +131,48 @@ def test_enumeration_rejects_an_infinite_parent():
         space.enumerate_atom_catalogue()
 
 
+def test_enumeration_does_not_require_an_iterator_length_hint():
+    class Iterator:
+        def __init__(self):
+            self.terms = iter(range(3))
+
+        def __iter__(self):
+            return self
+
+        def __next__(self):
+            return next(self.terms)
+
+        def __len__(self):
+            raise NotImplementedError("iterator length unavailable")
+
+    class Parent:
+        def __call__(self, term):
+            return int(term) % 3
+
+        def zero(self):
+            return 0
+
+        def add(self, left, right):
+            return (left + right) % 3
+
+        def is_finite(self):
+            return True
+
+        def cardinality(self):
+            return 3
+
+        def exponent(self):
+            return 3
+
+        def __iter__(self):
+            return Iterator()
+
+    space = AdditiveSequenceSpace(Parent())
+    assert tuple(space.enumerate_atom_catalogue()) == (
+        space([1, 2]), space([1, 1, 1]), space([2, 2, 2]),
+    )
+
+
 def test_enumeration_rejects_a_noniterable_parent():
     class FiniteNonIterableParent:
         def __call__(self, value):

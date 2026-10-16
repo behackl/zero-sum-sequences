@@ -244,7 +244,8 @@ class AdditiveSequenceSpace(Generic[Element]):
             )
 
         try:
-            parent_terms = tuple(_iter_parent(self._parent))
+            # Consume without probing the iterator's optional length hint.
+            parent_terms = tuple(term for term in _iter_parent(self._parent))
         except _ParentIterationUnavailable:
             raise TypeError(
                 "atom catalogue enumeration requires an iterable parent"
