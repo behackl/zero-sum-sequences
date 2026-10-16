@@ -251,9 +251,10 @@ class _GroupArithmetic:
         """Return the exact exponent, computing element orders if necessary."""
 
         self._require_finite()
-        if self._known_exponent() is None:
-            self._exponent = lcm(*(self.element_order(g) for g in self.elements))
-            self._bound = None  # The exponent can tighten a derived bound.
+        if self._exponent is None:
+            if self._known_exponent() is None:
+                self._exponent = lcm(*(self.element_order(g) for g in self.elements))
+            self._bound = None  # Newly known metadata can also tighten a bound.
         return self._exponent
 
     def _record_exact_davenport(self, value: int) -> None:

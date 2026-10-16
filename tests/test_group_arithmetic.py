@@ -169,6 +169,34 @@ def test_foreign_native_metadata_is_used_without_enumeration_or_tables():
     assert "addition_table" not in arithmetic.__dict__
 
 
+def test_new_exponent_metadata_refreshes_a_cached_bound_without_enumeration():
+    class DelayedExponent(ForeignParent):
+        exponent_available = False
+
+        def exponent(self):
+            self.exponent_queries += 1
+            if not self.exponent_available:
+                raise NotImplementedError
+            return 2
+
+    group = FiniteAdditiveGroup(range(8), zero=0, add=lambda a, b: a ^ b)
+    parent = DelayedExponent(group)
+    automatic = AdditiveSequenceSpace(parent)
+    explicit = AdditiveSequenceSpace(parent, davenport_bound=1)
+    assert automatic.davenport_bound == 8
+
+    parent.exponent_available = True
+    assert exponent(automatic) == 2
+    assert automatic.davenport_bound == 6
+    assert explicit.davenport_bound == 1
+    assert parent.iterations == parent.additions == parent.order_queries == 0
+
+    queries = parent.exponent_queries
+    assert exponent(automatic) == 2
+    assert automatic.davenport_bound == 6
+    assert parent.exponent_queries == queries
+
+
 def test_foreign_decomposition_uses_a_valid_exact_formula():
     parent = ForeignParent(FiniteAdditiveGroup.cyclic_product(4, 6), invariants=(4, 6))
     space = AdditiveSequenceSpace(parent)
