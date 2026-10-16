@@ -6,9 +6,8 @@ is ordinary Python with NetworkX; SageMath is supported as an optional source
 of additive parents, but is not required.
 
 Callers configure the ambient additive parent. A certified Davenport upper
-bound is derived lazily when needed, or can be supplied explicitly. Group
-arithmetic and exact computed Davenport constants are cached; deriving a
-bound never launches an exhaustive invariant search.
+bound is derived when needed, or can be supplied explicitly; deriving it
+never launches an exhaustive search.
 
 ## Installation
 
@@ -93,33 +92,25 @@ empty sequence retains the base parent and its zero element.
 result as a canonical multiset; pass `target_space=` when the image belongs to
 a different sequence space.
 
-An optional explicit bound remains authoritative:
+An explicit Davenport bound is used as supplied, without being checked:
 
 ```python
 Sequences = AdditiveSequenceSpace(group, davenport_bound=3)
 ```
 
-Without one, `Sequences.davenport_bound` resolves and caches a certified
-upper bound only when requested by an operation. It uses a cached exact
-constant or a supported exact structural formula (cyclic groups, rank-two
-groups and abelian p-groups with known invariant factors). Otherwise, when
-order `n` and exponent `e` are available cheaply, it uses
-`min(n, e * (1 + ceil(log2(n / e))))`, computed with integer arithmetic;
-with only the order available it uses `n`. It does not compute all element
-orders merely to derive a bound. Exact `davenport_constant(Sequences)`
-queries cache their answer and can tighten an automatic bound later; they
-never replace an explicit bound. In general, `1 + sum(n_i - 1)` is a lower
-bound, not a valid upper bound.
+Without one, `Sequences.davenport_bound` derives and caches a certified upper
+bound on first use: the exact value when known (computed earlier, or the
+formula for cyclic groups, groups of rank at most two and p-groups with
+known invariant factors), else `min(n, e * (1 + ceil(log2(n / e))))` from
+the order `n` and a cheaply known exponent `e`, else `n`. (For other groups
+`1 + sum(n_i - 1)` is only a lower bound.) Exact results tighten a derived
+bound but never replace an explicit one. If no bound can be derived,
+`davenport_bound` raises `ValueError`.
 
-Explicit bounds must cover the relevant atom lengths for complete atom or
-factorization results; a bound for the ambient Davenport constant suffices.
-For a fixed finite sequence, factorization uses the available bound to prune
-atom discovery, or falls back to searching all its distinct subsequences if
-no ambient bound can be derived. This fallback can be expensive; supply a
-bound or a complete catalogue when possible. Catalogue-backed solving does
-not resolve a bound, and catalogue export records an unavailable bound as
-JSON `null`. Directly requesting `Sequences.davenport_bound` still asks for
-an explicit bound if automatic resolution is impossible.
+Complete atom and factorization results need a bound covering the relevant
+atom lengths; a valid bound for `D(G)` suffices. Without any bound,
+factorizing a sequence searches all its distinct subsequences, which can be
+expensive. A complete atom catalogue removes the need for a bound.
 
 ### Group arithmetic
 
@@ -134,12 +125,10 @@ G.exponent()                   # 4
 G.negate((1, 1))               # (1, 3)
 ```
 
-Arithmetic metadata is lazy and cached. Coordinate groups retain their
-moduli; external parents are adapted using native methods when available.
-Indexed addition and subtraction tables stay private and are built only
-when an exhaustive search needs them. Sequence spaces over the same
-`FiniteAdditiveGroup` share its arithmetic context; foreign-parent contexts
-are retained per space. `exponent(Sequences)` remains available for any
+This data is computed lazily and cached, and spaces over the same
+`FiniteAdditiveGroup` share it. Other parents are queried through their
+native methods (`cardinality()`, `exponent()`, `invariants()`,
+`additive_order()`, ...) when available; `exponent(Sequences)` works for any
 supported finite parent.
 
 ## Factorizations
@@ -229,9 +218,8 @@ catalogue = Sequences.enumerate_atom_catalogue()
 ```
 
 The parent must be a finite iterable additive group. Enumeration completes
-each sorted prefix with its uniquely determined final term, rather than
-testing multisets whose sum is nonzero. Completeness depends on the configured
-Davenport bound being valid.
+each sorted prefix with its uniquely determined final term; completeness
+depends on the Davenport bound being valid.
 
 To enumerate only atoms supported on a subset of the ambient group, pass
 `support=`:
@@ -243,21 +231,13 @@ list(restricted)  # Only the atom 1^3; 2 need not belong to the support.
 Sequences([1] * 6).length_set(atom_catalogue=restricted)  # {2}
 ```
 
-The support can be any iterable of terms, not necessarily a subgroup or a
-set closed under negation. Terms are coerced through the ambient parent;
-duplicates and zero are ignored. An empty or zero-only support gives an empty
-reduced catalogue. Omitting `support` (or passing `None`) enumerates over the
-whole ambient group as before.
+The support can be any iterable of terms, not necessarily a subgroup or
+closed under negation; duplicates and zero are ignored. Sums and inverses
+are computed in the ambient group. The result is complete for sequences
+supported there, not for sequences using other terms.
 
-Only prefixes on the chosen support are generated; the final completing term
-must also belong to it. Sums and inverses are still computed in the ambient
-group, which must remain finite and iterable. The bound must cover all atom
-lengths on the chosen support; a valid ambient Davenport bound suffices. Such
-a catalogue is complete for sequences supported there, but is not generally
-complete for sequences containing other terms.
-
-The caller is responsible for catalogue completeness. A catalogue used for a
-complete result must contain every atom divisor relevant to the input.
+In general the caller is responsible for catalogue completeness: a complete
+result needs every atom divisor of the input in the catalogue.
 
 Factorizations use only nonzero group elements: identity terms are not
 accepted by the solver or stored in an `AtomCatalogue`. The singleton zero
@@ -295,11 +275,9 @@ reduced.is_reduced           # True
 reduced.product == A + B     # True
 ```
 
-Relations are immutable and preserve the orientation of their source and
-target. Construction assumes that supplied factors are atoms rather than
-rerunning potentially expensive atomicity tests. Solver-produced
-factorizations and catalogue entries already satisfy that contract. For a
-relation with two empty sides, pass its sequence space explicitly as
+Relations are immutable and keep the orientation of source and target.
+Factors are assumed to be atoms (as solver results and catalogue entries
+are) and are not re-tested. For a relation with two empty sides, pass
 `space=Sequences`.
 
 ## Automorphism orbits
@@ -436,8 +414,9 @@ FactorizationCache.from_jsonl("lengths.jsonl", catalogue)
 
 Length sets are kept without bound; solvers are kept in a bounded LRU
 (`maxsize=`) so that follow-up questions about a recent sequence reuse its
-remainder graph. With `group=` every query is keyed by a canonical form.
-The default is the full canonical form, whose orbit traversal is worthwhile
+remainder graph. With `group=` every query is keyed by a canonical form;
+the catalogue must then be closed under the group, which is checked on
+construction. The default is the full canonical form, whose orbit traversal is worthwhile
 when solving is the expensive part; for large groups pass
 `canonicalize=AnchoredCanonicalizer(catalogue, group)`, which only
 transports the largest atom dividing the sequence to its orbit
@@ -486,18 +465,15 @@ zero_sum_constant(C3xC3, {2, 3}, symmetry=False)  # no discovery or orbit reduct
 zero_sum_constant(C3xC3, {2, 3}, symmetry=C3xC3.automorphism_group())
 ```
 
-`True` falls back to no reduction if automorphisms are unavailable; genuine
-discovery errors propagate. An explicit `AutomorphismGroup` uses exactly
-that group, possibly a proper subgroup. With `False`, `extremal` contains
-every extremal sequence. Symmetry affects running time and representatives,
-never the value. Other values, including `None`, are rejected.
+`True` falls back to no reduction if automorphisms are unavailable. An
+explicit `AutomorphismGroup` uses exactly that group, possibly a proper
+subgroup. With `False`, `extremal` contains every extremal sequence.
+Symmetry affects running time and representatives, never the value.
 
 `lengths` must be a finite nonempty iterable of positive integers. An
 infinite `L` is passed as an initial segment: a result that does not exceed
-`max(L)` is valid for every set agreeing with `L` up to `max(L)`. Arithmetic
-tables are reused between queries, and bitsets grow with the search rather
-than with an arbitrarily large length in `L`. The configured Davenport
-bound is not used to determine these constants. The package needs no
+`max(L)` is valid for every set agreeing with `L` up to `max(L)`. The
+configured Davenport bound is not used for these constants. The package needs no
 computer algebra system; for example `s(C_2^3 ⊕ C_4) = 13` takes about a minute.
 
 ## References

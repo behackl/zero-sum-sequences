@@ -98,8 +98,8 @@ class FactorizationCache(Generic[Element]):
         expensive part); :class:`AnchoredCanonicalizer` is the cheap
         alternative for large groups.
     maxsize:
-        Exact positive number of solver objects kept alive (least recently
-        used eviction), or ``None`` for no limit. Length sets are always kept.
+        Number of solver objects kept alive (least recently used eviction),
+        or ``None`` for no limit. Length sets are always kept.
     """
 
     def __init__(
@@ -290,10 +290,9 @@ class FactorizationCache(Generic[Element]):
     # persistence
 
     def preload(self, records: Iterable[tuple[AdditiveSequence[Element], Iterable[int]]]) -> int:
-        """Insert known length sets of exact nonnegative integer factor counts.
+        """Insert known length sets; keys are canonicalized like queries.
 
-        Keys are canonicalized like queries. Each record is validated before
-        insertion; mathematical correctness of the supplied sets is trusted.
+        Lengths must be nonnegative integers. The sets themselves are trusted.
         """
 
         count = 0

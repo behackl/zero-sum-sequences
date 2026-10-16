@@ -30,8 +30,9 @@ class AdditiveSequenceSpace(Generic[Element]):
         A callable parent containing every sequence term and providing
         ``zero()``.  Elements must be hashable and mutually orderable.  They
         may implement addition themselves, or the parent may provide
-        ``add(left, right)``. Addition returns canonical parent elements;
-        ``zero()`` defines the identity regardless of the labels used.
+        ``add(left, right)``. Sums and ``zero()`` are canonicalized through
+        the parent, so ``parent(parent.zero())`` is the identity whatever
+        labels the parent uses.
     davenport_bound:
         Optional positive upper bound for the parent's Davenport constant.
         An explicit value is used as supplied; its sufficiency is not checked.
@@ -149,13 +150,9 @@ class AdditiveSequenceSpace(Generic[Element]):
         """Return an upper bound for ``D(G)``, not necessarily its exact value.
 
         An explicit bound is returned as supplied, without checking that it
-        suffices. Otherwise use a cached exact constant or a supported exact
-        formula from :func:`davenport_constant`. If neither is available,
-        use the group order ``n`` and a known exponent ``e`` to return
-        ``min(n, e * (1 + ceil(log2(n / e))))``. With no known exponent,
-        return ``n``. Formula recognition has bounded cost; inconclusive
-        cases use the conservative estimate. Explicit exact queries can
-        spend more time recognizing a formula.
+        suffices. Otherwise use a known exact value (cached, or a formula from
+        :func:`davenport_constant`); else, for order ``n`` and known exponent
+        ``e``, return ``min(n, e * (1 + ceil(log2(n / e))))``; else ``n``.
 
         The logarithmic estimate ``D(G) <= e * (1 + ln(n / e))`` is due to
         van Emde Boas and Kruyswijk (:cite:p:`van-emde-boas-kruyswijk-1969`,
@@ -163,13 +160,10 @@ class AdditiveSequenceSpace(Generic[Element]):
         3.6(1)). The base-two ceiling is a conservative relaxation chosen
         here, not the original estimate.
 
-        Automatic bounds are cached and can tighten when completed searches
-        certify ``D(G)`` or new exponent information becomes available. An
-        explicit bound is never replaced. Resolution does not enumerate
-        element orders or launch an exhaustive constant search; finding the group order may require
-        enumerating its elements. Missing capabilities raise :class:`ValueError`
-        requesting an explicit bound. Invalid metadata and provider errors
-        propagate rather than triggering boundless discovery.
+        Deriving a bound never starts an exhaustive search, although finding
+        ``n`` may enumerate the group. Derived bounds are cached and tighten
+        when ``D(G)`` or the exponent becomes known. Raise :class:`ValueError`
+        if no bound can be derived.
         """
 
         if self._davenport_bound is not None:
@@ -202,10 +196,10 @@ class AdditiveSequenceSpace(Generic[Element]):
     def from_multiplicities(
         self, multiplicities: Mapping[Element, int]
     ) -> AdditiveSequence[Element]:
-        """Construct directly from nonnegative counts, merging coerced aliases.
+        """Construct a sequence from term multiplicities.
 
-        Zero-count keys are ignored without coercion. Positive-count keys
-        are coerced once each; repeated terms are not expanded.
+        Keys are coerced through the parent, merging keys with equal images;
+        zero counts are ignored.
         """
 
         counts: dict[Element, int] = {}
@@ -232,12 +226,10 @@ class AdditiveSequenceSpace(Generic[Element]):
         the parent, with duplicates and zero removed. It need not be a
         subgroup: sums and inverses are taken in the ambient group.
 
-        The bound is resolved when enumeration starts. A derived bound gives
-        a complete catalogue on the chosen support; an explicit bound must
-        cover all atom lengths there. Such a catalogue need not be complete
-        for sequences using terms outside the support. The singleton zero
-        is excluded, as in :class:`AtomCatalogue`. Full ambient enumeration
-        with an automatic bound also records the exact Davenport constant.
+        A derived bound gives a complete catalogue on the chosen support; an
+        explicit bound must cover all atom lengths there. The singleton zero
+        is excluded, as in :class:`AtomCatalogue`. Full enumeration with a
+        derived bound also records the exact Davenport constant.
 
         The search completes each sorted prefix with its uniquely determined
         final term, then checks minimality. It can be expensive even when the

@@ -284,11 +284,9 @@ def davenport_constant(
     exhaustive search. The result is cached; spaces over the same
     :class:`FiniteAdditiveGroup` share the cached value.
 
-    The search derives its own certified upper bound to cover all relevant
-    subsequence lengths. The space's configured Davenport bound is ignored,
-    even if supplied explicitly. The returned value is always exact, not
-    that upper bound. An exhaustive computation can be expensive;
-    ``symmetry`` has the meaning described in :func:`zero_sum_constant`.
+    The search uses its own certified bound; a configured explicit bound is
+    ignored. An exhaustive computation can be expensive; ``symmetry`` has
+    the meaning described in :func:`zero_sum_constant`.
 
     Notes
     -----
