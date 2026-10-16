@@ -53,7 +53,6 @@ def test_witness_queries_use_targeted_search_or_existing_cache(monkeypatch, warm
 
     if warmup in {"none", "existence"}:
         assert solver._transitions is None
-    if warmup != "length_set":
         assert solver._length_bits is None
 
 

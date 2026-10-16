@@ -38,8 +38,7 @@ def test_exact_prime_power_recognition(n, expected):
     assert arithmetic._is_prime_power(n) is expected
 
 
-@pytest.mark.parametrize("value", [1_000_000_007, 2**100])
-def test_trial_budget_limits_divisibility_tests(value):
+def test_trial_budget_limits_the_divisor_search():
     class Counted(int):
         divisions = 0
 
@@ -47,11 +46,11 @@ def test_trial_budget_limits_divisibility_tests(value):
             Counted.divisions += 1
             return int(self) % divisor
 
-        def __floordiv__(self, divisor):
-            return Counted(int(self) // divisor)
-
-    assert arithmetic._is_prime_power(Counted(value), max_steps=5) is None
+    assert arithmetic._is_prime_power(Counted(1_000_000_007), max_steps=5) is None
     assert Counted.divisions <= 5
+    # A small prime factor is found within budget; dividing it out is cheap.
+    assert arithmetic._is_prime_power(2**100, max_steps=1) is True
+    assert arithmetic._is_prime_power(3 * 2**100, max_steps=1) is False
 
 
 def test_automatic_unknown_is_not_a_false_formula_or_an_exact_search(monkeypatch):

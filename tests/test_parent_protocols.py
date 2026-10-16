@@ -63,6 +63,30 @@ def test_parent_arithmetic_agrees_across_predicates_catalogues_and_constants(par
     assert zero_sum_constant(space, {1, 2, 3}, symmetry=False).value == 3
 
 
+def test_identity_is_the_coerced_zero_label():
+    class ShiftedZero(ForeignC3):
+        def zero(self):
+            return 3  # A non-canonical label of the identity 0.
+
+    space = AdditiveSequenceSpace(ShiftedZero())
+    assert space().total() == 0
+    assert space([1, 2]).is_zero_sum() and space([1, 2]).is_atom()
+    assert len(space.enumerate_atom_catalogue()) == 3
+    assert davenport_constant(space, symmetry=False) == 3
+
+
+def test_unknown_finiteness_is_handled_alike_everywhere():
+    class UnknownFiniteness(ForeignC3):
+        def is_finite(self):
+            raise NotImplementedError
+
+    space = AdditiveSequenceSpace(UnknownFiniteness())
+    assert space._optional_davenport_bound() is None
+    with pytest.raises(ValueError, match="requires a finite parent"):
+        space.enumerate_atom_catalogue()
+    assert space([1, 2]).length_set() == {1}
+
+
 def test_native_group_totals_do_not_coerce_an_already_canonical_result():
     coercions = []
 
@@ -73,6 +97,7 @@ def test_native_group_totals_do_not_coerce_an_already_canonical_result():
     parent = FiniteAdditiveGroup(range(3), zero=0, add=lambda a, b: (a + b) % 3, coerce=coerce)
     space = AdditiveSequenceSpace(parent, davenport_bound=3)
     sequence = space([1, 2])
+    space().total()  # Resolves the canonical identity once.
     coercions.clear()
     assert sequence.total() == 0
     assert len(coercions) == 3 * len(sequence)  # FiniteAdditiveGroup.add's own checks only.

@@ -165,8 +165,9 @@ emits each unordered factorization once. Pass `factor_count=` to enumerate
 only factorizations of one length; `has_factorization_of_length()` tests that
 length with a targeted search unless complete length data is already cached.
 `minimum_factorization_length()` uses a shortest-path search, while
-`maximum_factorization_length()` uses integer dynamic programming on the
-remainder DAG. Both return `None` when no factorization exists.
+`maximum_factorization_length()` solves the length bitsets on the remainder
+DAG (so a later `length_set()` is free). Both return `None` when no
+factorization exists.
 `factorization_digraph()` returns a NetworkX `DiGraph` whose vertices are
 remainder sequences and whose edges store the removed atom in their `"atom"`
 attribute.

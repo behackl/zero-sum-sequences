@@ -10,12 +10,8 @@ from functools import reduce
 from operator import index
 from typing import TYPE_CHECKING, Generic, Self, TypeVar
 
-from ._exceptions import (
-    _ArithmeticUnavailable,
-    _DavenportBoundUnavailable,
-    _ParentIterationUnavailable,
-)
-from ._parent_ops import _addition, _immutable_term, _iter_parent
+from ._exceptions import _ArithmeticUnavailable, _ParentIterationUnavailable
+from ._parent_ops import _addition, _immutable_term, _is_finite, _iter_parent
 from ._validation import _non_negative_integer, _positive_integer
 
 if TYPE_CHECKING:
@@ -46,9 +42,8 @@ class AdditiveSequenceSpace(Generic[Element]):
     __slots__ = (
         "_parent",
         "_addition_op",
+        "_zero",
         "_davenport_bound",
-        "_derived_davenport_bound",
-        "_derived_bound_exponent",
         "_arithmetic_context",
         "_automorphism_action",
         "_automorphism_group",
@@ -62,12 +57,11 @@ class AdditiveSequenceSpace(Generic[Element]):
             raise TypeError("the additive parent must provide zero()")
         self._parent = parent
         self._addition_op = None
+        self._zero = None
         self._davenport_bound = (
             _positive_integer(davenport_bound, name="Davenport bound")
             if davenport_bound is not None else None
         )
-        self._derived_davenport_bound = None
-        self._derived_bound_exponent = None
         self._arithmetic_context = None
         self._automorphism_action = None
         self._automorphism_group = None
@@ -130,6 +124,13 @@ class AdditiveSequenceSpace(Generic[Element]):
             self._addition_op = _addition(self._parent)
         return self._addition_op
 
+    def _canonical_zero(self):
+        """The identity as a canonical, immutable parent element."""
+
+        if self._zero is None:
+            self._zero = _immutable_term(self._parent(self._parent.zero()))
+        return self._zero
+
     def _group_arithmetic(self):
         """Return cached arithmetic, shared with package groups and local otherwise."""
 
@@ -173,33 +174,22 @@ class AdditiveSequenceSpace(Generic[Element]):
 
         if self._davenport_bound is not None:
             return self._davenport_bound
-        arithmetic = self._group_arithmetic()
-        if arithmetic.exact_davenport_constant is not None:
-            return arithmetic.exact_davenport_constant
-        if (
-            self._derived_davenport_bound is None
-            or self._derived_bound_exponent != arithmetic._exponent
-        ):
-            try:
-                bound = arithmetic.davenport_bound()
-            except _ArithmeticUnavailable as error:
-                raise _DavenportBoundUnavailable(
-                    "cannot derive a Davenport bound for this parent; "
-                    "supply davenport_bound explicitly"
-                ) from error
-            self._derived_davenport_bound = (
-                bound if self._derived_davenport_bound is None
-                else min(bound, self._derived_davenport_bound)
-            )
-            self._derived_bound_exponent = arithmetic._exponent
-        return self._derived_davenport_bound
+        try:
+            return self._group_arithmetic().davenport_bound()
+        except _ArithmeticUnavailable as error:
+            raise ValueError(
+                "cannot derive a Davenport bound for this parent; "
+                "supply davenport_bound explicitly"
+            ) from error
 
     def _optional_davenport_bound(self) -> int | None:
         """Return an available bound for pruning or metadata, or None."""
 
+        if self._davenport_bound is not None:
+            return self._davenport_bound
         try:
-            return self.davenport_bound
-        except _DavenportBoundUnavailable:
+            return self._group_arithmetic().davenport_bound()
+        except _ArithmeticUnavailable:
             return None
 
     def __call__(self, terms: Iterable[Element] = ()) -> AdditiveSequence[Element]:
@@ -220,12 +210,7 @@ class AdditiveSequenceSpace(Generic[Element]):
 
         counts: dict[Element, int] = {}
         for term, count in multiplicities.items():
-            try:
-                count = _non_negative_integer(count, name="multiplicities")
-            except ValueError:
-                raise ValueError(
-                    "multiplicities must be non-negative integers"
-                ) from None
+            count = _non_negative_integer(count, name="multiplicity")
             if count:
                 term = _immutable_term(self._parent(term))
                 counts[term] = counts.get(term, 0) + count
@@ -261,14 +246,13 @@ class AdditiveSequenceSpace(Generic[Element]):
 
         from .atom_catalogue import AtomCatalogue
 
-        is_finite = getattr(self._parent, "is_finite", None)
-        if not callable(is_finite) or not is_finite():
+        if not _is_finite(self._parent):
             raise ValueError(
                 "atom catalogue enumeration requires a finite parent"
             )
 
         try:
-            parent_terms = tuple(term for term in _iter_parent(self._parent))
+            parent_terms = tuple(_iter_parent(self._parent))
         except _ParentIterationUnavailable:
             raise TypeError(
                 "atom catalogue enumeration requires an iterable parent"
@@ -280,7 +264,7 @@ class AdditiveSequenceSpace(Generic[Element]):
                 for term in parent_terms
             )
         )
-        zero = _immutable_term(self._parent(self._parent.zero()))
+        zero = self._canonical_zero()
         operation = self._add_operation()
 
         if support is None:
@@ -319,8 +303,7 @@ class AdditiveSequenceSpace(Generic[Element]):
                     atoms.append(candidate)
         catalogue = AtomCatalogue(self, atoms, verify=False)
         if support is None and self._davenport_bound is None:
-            if not catalogue and arithmetic.order() != 1:
-                raise ValueError("a nontrivial finite group must have nonzero atoms")
+            # A complete ambient catalogue determines D(G); D = 1 when trivial.
             arithmetic._record_exact_davenport(max(map(len, catalogue), default=1))
         return catalogue
 
@@ -415,13 +398,13 @@ class AdditiveSequence(Generic[Element]):
     def total(self):
         """Return the additive sum of the terms in the base parent."""
 
-        parent = self._space.base_parent
-        return reduce(self._space._add_operation(), self, parent.zero())
+        space = self._space
+        return reduce(space._add_operation(), self, space._canonical_zero())
 
     def is_zero_sum(self) -> bool:
         """Return whether the sum of the sequence is zero."""
 
-        return bool(self.total() == self._space.base_parent.zero())
+        return bool(self.total() == self._space._canonical_zero())
 
     def map_terms(
         self,

@@ -267,7 +267,7 @@ def zero_sum_constant(
         )
         for key in sorted(level, reverse=True)
     )
-    if len(lengths) >= length and all(k in lengths for k in range(1, length + 1)):
+    if all(k in lengths for k in range(1, length + 1)):
         # Every extremal is zero-sum-free, while the next level forces a zero sum.
         table._record_exact_davenport(length + 1)
     return ZeroSumConstant(lengths, length + 1, extremal)
@@ -320,10 +320,9 @@ def davenport_constant(
     known = arithmetic.known_davenport_constant(allow_expensive=True)
     if known is not None:
         return known
+    # Lengths 1..bound include every length below D, so the search records D.
     bound = arithmetic.davenport_bound()
-    value = zero_sum_constant(space, range(1, bound + 1), symmetry=symmetry).value
-    arithmetic._record_exact_davenport(value)
-    return value
+    return zero_sum_constant(space, range(1, bound + 1), symmetry=symmetry).value
 
 
 def erdos_ginzburg_ziv_constant(

@@ -28,13 +28,6 @@ def default_encode_term(term: object) -> object:
         ) from None
 
 
-def _positive_modulus(value: object) -> int:
-    try:
-        return _positive_integer(value, name="cyclic modulus")
-    except ValueError:
-        raise ValueError("cyclic moduli must be positive integers") from None
-
-
 def _scale_coordinate(coordinate: int, unit: int, modulus: int):
     def scaling(element):
         image = list(element)
@@ -105,7 +98,9 @@ class FiniteAdditiveGroup(Generic[Element]):
 
         if not moduli:
             raise ValueError("at least one cyclic modulus is required")
-        normalized_moduli = tuple(_positive_modulus(value) for value in moduli)
+        normalized_moduli = tuple(
+            _positive_integer(value, name="cyclic modulus") for value in moduli
+        )
 
         def coerce(value):
             try:

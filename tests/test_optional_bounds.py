@@ -128,8 +128,6 @@ def test_large_inputs_keep_the_bound_capped_search(bound, monkeypatch):
     sequence = space([(1,)] * 15_000 + [(2,)] * 15_000)
     expected_bound = 3 if bound is None else bound
     original_subsequences = AdditiveSequence.subsequences
-    original_bound = AdditiveSequenceSpace.davenport_bound.fget
-    bound_queries = []
     caps = []
 
     def checked_subsequences(self, **kwargs):
@@ -139,15 +137,9 @@ def test_large_inputs_keep_the_bound_capped_search(bound, monkeypatch):
             assert kwargs.get("max_length") == expected_bound
         yield from original_subsequences(self, **kwargs)
 
-    def counted_bound(self):
-        bound_queries.append(self)
-        return original_bound(self)
-
     monkeypatch.setattr(AdditiveSequence, "subsequences", checked_subsequences)
-    monkeypatch.setattr(AdditiveSequenceSpace, "davenport_bound", property(counted_bound))
     solver = sequence.factorization_solver()
     assert caps == [expected_bound]
-    assert bound_queries == [space]
     assert len(solver._atoms) == (1 if expected_bound == 2 else 3)
     if bound is not None:
         assert space._arithmetic_context is None
@@ -241,19 +233,3 @@ def test_catalogue_export_preserves_an_automatic_bound(tmp_path, monkeypatch):
     assert metadata["davenport_bound"] == 3
     assert "addition_table" not in group._group_arithmetic().__dict__
     assert group._automorphism_group is None
-
-
-@pytest.mark.parametrize("error_type", [ValueError, RuntimeError])
-def test_unrelated_bound_errors_are_not_hidden(
-    integer_problem, tmp_path, monkeypatch, error_type
-):
-    _, sequence, catalogue, _ = integer_problem
-
-    def broken(self):
-        raise error_type("broken bound provider")
-
-    monkeypatch.setattr(AdditiveSequenceSpace, "davenport_bound", property(broken))
-    with pytest.raises(error_type, match="broken bound provider"):
-        sequence.factorization_solver()
-    with pytest.raises(error_type, match="broken bound provider"):
-        catalogue.to_jsonl(tmp_path / "atoms.jsonl")

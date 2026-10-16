@@ -51,7 +51,7 @@ def test_aliases_are_merged_and_zero_count_keys_are_not_coerced():
 @pytest.mark.parametrize("bad", [True, -1, 1.5])
 def test_compressed_construction_rejects_invalid_counts(bad):
     space = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(3))
-    with pytest.raises(ValueError, match="multiplicities"):
+    with pytest.raises(ValueError, match="multiplicity"):
         space.from_multiplicities({(1,): bad})
 
 

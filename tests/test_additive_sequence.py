@@ -148,7 +148,7 @@ def test_display_does_not_double_parenthesize_repeated_terms():
 
 @pytest.mark.parametrize("bad_count", [-1, 1.5, True])
 def test_multiplicity_validation(c3_sequences, bad_count):
-    with pytest.raises(ValueError, match="non-negative integers"):
+    with pytest.raises(ValueError, match="multiplicity must be a non-negative integer"):
         c3_sequences.from_multiplicities({c3_sequences.base_parent(1): bad_count})
 
 
@@ -158,7 +158,7 @@ def test_multiplicities_accept_indexable_integers(c3_sequences):
     assert c3_sequences.from_multiplicities(
         {one: IndexableInteger(2)}
     ) == c3_sequences([1, 1])
-    with pytest.raises(ValueError, match="non-negative integers"):
+    with pytest.raises(ValueError, match="multiplicity must be a non-negative integer"):
         c3_sequences.from_multiplicities({one: Fraction(3, 2)})
 
 

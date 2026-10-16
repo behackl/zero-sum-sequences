@@ -39,18 +39,45 @@ def _iter_parent(parent):
     return iter(parent)
 
 
+def _is_finite(parent) -> bool:
+    """Return whether the parent declares itself finite.
+
+    A missing ``is_finite`` or one raising ``NotImplementedError`` means
+    unknown, treated as not finite. Other provider errors propagate.
+    """
+
+    finite = getattr(parent, "is_finite", None)
+    if not callable(finite):
+        return False
+    try:
+        return bool(finite())
+    except NotImplementedError:
+        return False
+
+
+def _native_term_arithmetic(parent) -> bool:
+    """Whether the terms' own ``+``, ``-`` and orders are the group operation.
+
+    A parent-supplied ``add(left, right)`` overrides the terms' arithmetic,
+    e.g. integer labels combined by XOR.
+    """
+
+    return not callable(getattr(parent, "add", None))
+
+
 def _addition(parent):
     """Return addition with canonical outputs, without finite-group queries."""
 
     if isinstance(parent, FiniteAdditiveGroup):
         # The package adapter already coerces inputs and results.
         return parent.add
-    operation = getattr(parent, "add", None)
-    if not callable(operation):
+    if not _native_term_arithmetic(parent):
+        operation = parent.add
+    elif type(parent).__module__.startswith("sage."):
         # Native Sage addition is closed in its parent. Trust it without
         # importing Sage or querying group metadata.
-        if type(parent).__module__.startswith("sage."):
-            return default_add
+        return default_add
+    else:
         operation = default_add
 
     def add(left, right):

@@ -30,7 +30,7 @@ from functools import partial
 from typing import Generic, TypeVar
 
 from ._exceptions import _ParentIterationUnavailable
-from ._parent_ops import _immutable_term, _iter_parent
+from ._parent_ops import _immutable_term, _is_finite, _iter_parent
 from .additive_sequence import AdditiveSequence, AdditiveSequenceSpace
 
 Element = TypeVar("Element")
@@ -523,8 +523,7 @@ def automorphism_group(space: AdditiveSequenceSpace[Element]) -> AutomorphismGro
             action = automorphism_action(space)
         except AutomorphismActionUnavailable:
             action = None
-        is_finite = getattr(parent, "is_finite", None)
-        if action is not None and callable(is_finite) and is_finite():
+        if action is not None and _is_finite(parent):
             group = AutomorphismGroup.closure(
                 parent, [partial(action.apply_term, i) for i in range(len(action))]
             )

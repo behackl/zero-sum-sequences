@@ -10,7 +10,13 @@ from functools import cached_property
 from math import gcd, lcm
 
 from ._exceptions import _ArithmeticUnavailable, _ParentIterationUnavailable
-from ._parent_ops import _addition, _immutable_term, _iter_parent
+from ._parent_ops import (
+    _addition,
+    _immutable_term,
+    _is_finite,
+    _iter_parent,
+    _native_term_arithmetic,
+)
 from ._validation import _positive_integer
 
 _AUTOMATIC_TRIAL_LIMIT = 1024
@@ -29,27 +35,24 @@ def _invariant_factors(moduli):
 
 
 def _is_prime_power(n: int, *, max_steps: int | None = None) -> bool | None:
-    """Certify prime-power status, or return None when the trial budget expires."""
+    """Return whether n is a prime power, or None if trial division gives up.
+
+    ``max_steps`` bounds the number of trial divisors; once the smallest
+    prime factor is found, the remaining divisions are at most ``log2(n)``.
+    """
 
     if n < 2:
         return False
-    p = 2
-    steps = 0
+    p, steps = 2, 0
     while p * p <= n:
+        if n % p == 0:
+            while n % p == 0:
+                n //= p
+            return n == 1
+        steps += 1
         if max_steps is not None and steps >= max_steps:
             return None
-        steps += 1
-        if n % p == 0:
-            n //= p
-            while n > 1:
-                if max_steps is not None and steps >= max_steps:
-                    return None
-                steps += 1
-                if n % p:
-                    return False
-                n //= p
-            return True
-        p += 1
+        p += 1 if p == 2 else 2
     return True  # n is prime
 
 
@@ -68,25 +71,21 @@ class _GroupArithmetic:
         self.parent = parent
         self._add = _addition(parent)
         self._native = native
+        self._native_terms = native and _native_term_arithmetic(parent)
         self._moduli = moduli
         self.zero = _immutable_term(parent(parent.zero()))
         self._orders = {self.zero: 1}
         self._negatives = {self.zero: self.zero}
         self._order = None
         self._exponent = None
+        self._bound = None
         self.exact_davenport_constant = None
 
     def _require_finite(self) -> None:
         """Require the parent to declare itself finite."""
 
-        finite = getattr(self.parent, "is_finite", None)
-        if callable(finite):
-            try:
-                if finite():
-                    return
-            except NotImplementedError:
-                pass
-        raise _ArithmeticUnavailable("group arithmetic requires a finite parent")
+        if not _is_finite(self.parent):
+            raise _ArithmeticUnavailable("group arithmetic requires a finite parent")
 
     def coerce(self, term):
         """Return an immutable, canonical parent element."""
@@ -171,12 +170,8 @@ class _GroupArithmetic:
                     getattr(self.parent, "element_order", None) if self._native else None
                 )
                 if not callable(provider):
-                    # Native term arithmetic is only authoritative when the
-                    # parent has not supplied a different addition operation.
                     provider = (
-                        getattr(term, "additive_order", None)
-                        if self._native and not callable(getattr(self.parent, "add", None))
-                        else None
+                        getattr(term, "additive_order", None) if self._native_terms else None
                     )
                     arguments = ()
                 else:
@@ -219,7 +214,7 @@ class _GroupArithmetic:
             else:
                 self._negatives[term] = negative
                 return negative
-        if self._native and not callable(getattr(self.parent, "add", None)):
+        if self._native_terms:
             try:
                 negative = self.coerce(-term)
             except (TypeError, ValueError):
@@ -227,8 +222,6 @@ class _GroupArithmetic:
             else:
                 self._negatives[term] = negative
                 return negative
-        # A custom parent addition may differ from the terms' native
-        # arithmetic (e.g. integer labels with XOR as the group operation).
         order = self.element_order(term)
         if term not in self._negatives:
             negative = self.zero
@@ -260,6 +253,7 @@ class _GroupArithmetic:
         self._require_finite()
         if self._known_exponent() is None:
             self._exponent = lcm(*(self.element_order(g) for g in self.elements))
+            self._bound = None  # The exponent can tighten a derived bound.
         return self._exponent
 
     def _record_exact_davenport(self, value: int) -> None:
@@ -314,26 +308,29 @@ class _GroupArithmetic:
         return value
 
     def davenport_bound(self) -> int:
-        """Return a certified upper bound without an exhaustive constant search.
+        """Return a cached certified upper bound, without an exhaustive search.
 
-        Use an exact value when known; otherwise use the order/exponent
-        estimate in :attr:`AdditiveSequenceSpace.davenport_bound`, falling
-        back to the group order when no exponent is available.
+        See :attr:`AdditiveSequenceSpace.davenport_bound` for the estimate.
         """
 
-        exact = self.known_davenport_constant()
-        if exact is not None:
-            return exact
-        n = self.order()
-        e = self._known_exponent()
-        if e is None:
-            return n
-        if n % e:
-            raise ValueError("the group exponent must divide its order")
-        # van Emde Boas–Kruyswijk (1969), Theorem 7.1, p. 21:
-        # D(G) <= e * (1 + ln(n/e)). Their mu(G) is our D(G).
-        # ceil(log2(n/e)) >= ln(n/e) gives a conservative integer bound.
-        return min(n, e * (1 + (n // e - 1).bit_length()))
+        if self.exact_davenport_constant is not None:
+            return self.exact_davenport_constant
+        if self._bound is None:
+            exact = self.known_davenport_constant()
+            if exact is not None:
+                return exact
+            n = self.order()
+            e = self._known_exponent()
+            if e is None:
+                self._bound = n
+            elif n % e:
+                raise ValueError("the group exponent must divide its order")
+            else:
+                # van Emde Boas–Kruyswijk (1969), Theorem 7.1, p. 21:
+                # D(G) <= e * (1 + ln(n/e)). Their mu(G) is our D(G).
+                # ceil(log2(n/e)) >= ln(n/e) gives a conservative integer bound.
+                self._bound = min(n, e * (1 + (n // e - 1).bit_length()))
+        return self._bound
 
     @cached_property
     def addition_table(self):

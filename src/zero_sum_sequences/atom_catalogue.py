@@ -55,7 +55,7 @@ class AtomCatalogue(Generic[Element]):
         if not isinstance(space, AdditiveSequenceSpace):
             raise TypeError("expected an AdditiveSequenceSpace")
         self.space = space
-        zero = space.base_parent.zero()
+        zero = space._canonical_zero()
         unique_atoms = set()
         for atom in atoms:
             if not isinstance(atom, AdditiveSequence):

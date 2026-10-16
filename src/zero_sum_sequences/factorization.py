@@ -7,8 +7,6 @@ from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
 from typing import Generic, TypeAlias
 
-import networkx as nx
-
 from ._validation import _non_negative_integer
 from .additive_sequence import AdditiveSequence, Element
 from .atom_catalogue import AtomCatalogue
@@ -28,7 +26,7 @@ def _atom_divisors(
     # With no bound, the finite input itself limits discovery; None selects
     # the Cartesian-product fast path in subsequences(), without recursion.
     maximum_length = None if bound is None else min(len(sequence), bound)
-    zero = sequence.parent().base_parent.zero()
+    zero = sequence.parent()._canonical_zero()
     for candidate in sequence.subsequences(
         nonempty=True,
         max_length=maximum_length,
@@ -83,7 +81,7 @@ class FactorizationSolver(Generic[Element]):
                 raise TypeError("atom_catalogue must be an AtomCatalogue")
             if atom_catalogue.space is not sequence.parent():
                 raise TypeError("atom catalogue and sequence use different spaces")
-        if sequence.parent().base_parent.zero() in sequence:
+        if sequence.parent()._canonical_zero() in sequence:
             raise ValueError(
                 "reduced factorizations require a sequence without zero terms"
             )
@@ -122,9 +120,7 @@ class FactorizationSolver(Generic[Element]):
         self._minimum_factor_length = min(factor_lengths, default=0)
         self._maximum_factor_length = max(factor_lengths, default=0)
         self._minimum_length: int | None = None
-        self._maximum_length: int | None = None
         self._minimum_length_is_solved = False
-        self._maximum_length_is_solved = False
 
     @property
     def davenport_bound(self) -> int:
@@ -327,51 +323,6 @@ class FactorizationSolver(Generic[Element]):
             self._length_bits = length_bits
         return self._length_bits
 
-    def _solve_extreme_lengths(self) -> tuple[int | None, int | None]:
-        if self._minimum_length_is_solved and self._maximum_length_is_solved:
-            return self._minimum_length, self._maximum_length
-
-        if self._length_bits is not None:
-            minimum, maximum = self._extreme_lengths_from_bits(
-                self._length_bits[self.initial_state]
-            )
-        else:
-            transitions = self._build_state_graph()
-            minimum_by_state: dict[MultiplicityState, int | None] = {}
-            maximum_by_state: dict[MultiplicityState, int | None] = {}
-            for state in sorted(transitions, key=sum):
-                if state == self.zero_state:
-                    minimum_by_state[state] = 0
-                    maximum_by_state[state] = 0
-                    continue
-                child_bounds = [
-                    (minimum_by_state[remainder], maximum_by_state[remainder])
-                    for _, remainder in transitions[state]
-                    if minimum_by_state[remainder] is not None
-                ]
-                if child_bounds:
-                    minimum_by_state[state] = 1 + min(
-                        minimum
-                        for minimum, _ in child_bounds
-                        if minimum is not None
-                    )
-                    maximum_by_state[state] = 1 + max(
-                        maximum
-                        for _, maximum in child_bounds
-                        if maximum is not None
-                    )
-                else:
-                    minimum_by_state[state] = None
-                    maximum_by_state[state] = None
-            minimum = minimum_by_state[self.initial_state]
-            maximum = maximum_by_state[self.initial_state]
-
-        self._minimum_length = minimum
-        self._maximum_length = maximum
-        self._minimum_length_is_solved = True
-        self._maximum_length_is_solved = True
-        return minimum, maximum
-
     def _sequence_from_state(
         self, state: MultiplicityState
     ) -> AdditiveSequence[Element]:
@@ -406,41 +357,41 @@ class FactorizationSolver(Generic[Element]):
         }
 
     def minimum_factorization_length(self) -> int | None:
-        """Return the minimum factorization length, or ``None`` if absent."""
+        """Return the minimum factorization length, or ``None`` if absent.
 
-        if self._minimum_length_is_solved:
-            return self._minimum_length
+        Without complete length data, a breadth-first search stops at the
+        first empty remainder instead of building the whole remainder graph.
+        """
+
         if self._length_bits is not None:
             minimum, _ = self._extreme_lengths_from_bits(
                 self._length_bits[self.initial_state]
             )
-            self._minimum_length = minimum
-            self._minimum_length_is_solved = True
             return minimum
+        if not self._minimum_length_is_solved:
+            self._minimum_length = self._shortest_factorization_length()
+            self._minimum_length_is_solved = True
+        return self._minimum_length
 
+    def _shortest_factorization_length(self) -> int | None:
         pending = deque(((self.initial_state, 0),))
         discovered = {self.initial_state}
         while pending:
             state, length = pending.popleft()
             if state == self.zero_state:
-                self._minimum_length = length
-                self._minimum_length_is_solved = True
                 return length
             for _, remainder in self._query_transitions(state):
                 if remainder not in discovered:
                     discovered.add(remainder)
                     pending.append((remainder, length + 1))
-
-        self._minimum_length = None
-        self._minimum_length_is_solved = True
         return None
 
     def maximum_factorization_length(self) -> int | None:
         """Return the maximum factorization length, or ``None`` if absent."""
 
-        if self._maximum_length_is_solved:
-            return self._maximum_length
-        _, maximum = self._solve_extreme_lengths()
+        _, maximum = self._extreme_lengths_from_bits(
+            self._solve_lengths()[self.initial_state]
+        )
         return maximum
 
     def has_factorization_of_length(self, factor_count: int) -> bool:
@@ -637,6 +588,8 @@ class FactorizationSolver(Generic[Element]):
 
         Each edge stores the removed atom in its ``"atom"`` attribute.
         """
+
+        import networkx as nx
 
         transitions_by_state = self._build_state_graph()
         sequences = {

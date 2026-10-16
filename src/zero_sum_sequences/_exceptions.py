@@ -7,7 +7,3 @@ class _ArithmeticUnavailable(ValueError):
 
 class _ParentIterationUnavailable(TypeError):
     """The parent explicitly lacks Python iteration protocols."""
-
-
-class _DavenportBoundUnavailable(ValueError):
-    """No automatic Davenport bound is available."""

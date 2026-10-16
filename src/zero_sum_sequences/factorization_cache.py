@@ -118,10 +118,7 @@ class FactorizationCache(Generic[Element]):
             raise TypeError("canonicalize must be callable")
         self._canonicalize = canonicalize
         if maxsize is not None:
-            try:
-                maxsize = _positive_integer(maxsize, name="maxsize")
-            except ValueError:
-                raise ValueError("maxsize must be a positive integer or None") from None
+            maxsize = _positive_integer(maxsize, name="maxsize")
         if group is not None:
             catalogue._require_group_closure(group)
         self.catalogue = catalogue
@@ -365,9 +362,9 @@ class FactorizationCache(Generic[Element]):
             raise ValueError("the cache was computed with a different automorphism group")
         cache = cls(catalogue, group=group, maxsize=maxsize)
         space = catalogue.space
+        records = (json.loads(line) for line in lines[1:])
         count = cache.preload(
-            (space.decode(json.loads(line)["sequence"]), json.loads(line)["length_set"])
-            for line in lines[1:]
+            (space.decode(record["sequence"]), record["length_set"]) for record in records
         )
         if count != metadata.get("count"):
             raise ValueError("cache count does not match its metadata")

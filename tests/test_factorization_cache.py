@@ -9,7 +9,6 @@ import pytest
 
 from zero_sum_sequences import (
     AdditiveSequenceSpace,
-    AtomCatalogue,
     FactorizationCache,
     FactorizationSolver,
     FiniteAdditiveGroup,

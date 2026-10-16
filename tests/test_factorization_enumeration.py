@@ -187,14 +187,13 @@ def test_targeted_queries_do_not_solve_the_complete_length_set():
     assert solver._length_bits is None
 
 
-def test_maximum_length_uses_integer_dag_dynamic_programming():
+def test_minimum_length_search_stops_before_the_full_graph():
     sequence = c3(1, 1, 1, 2, 2, 2)
     solver = FactorizationSolver(sequence)
 
-    assert solver.maximum_factorization_length() == 3
     assert solver.minimum_factorization_length() == 2
-    assert solver._transitions is not None
-    assert solver._length_bits is None
+    assert solver._transitions is None
+    assert solver.maximum_factorization_length() == 3
 
 
 def test_extremal_and_exact_queries_reuse_complete_length_bits():
