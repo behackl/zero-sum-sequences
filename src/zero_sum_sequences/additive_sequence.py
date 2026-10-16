@@ -6,63 +6,23 @@ import functools
 import itertools
 from collections import Counter
 from collections.abc import Callable, Iterable, Iterator, Mapping
-from copy import copy
 from functools import reduce
-from operator import add as default_add
 from operator import index
 from typing import TYPE_CHECKING, Generic, Self, TypeVar
+
+from ._exceptions import (
+    _ArithmeticUnavailable,
+    _DavenportBoundUnavailable,
+    _ParentIterationUnavailable,
+)
+from ._parent_ops import _addition, _immutable_term, _iter_parent
+from ._validation import _non_negative_integer, _positive_integer
 
 if TYPE_CHECKING:
     from .atom_catalogue import AtomCatalogue
 
 Element = TypeVar("Element")
 TargetElement = TypeVar("TargetElement")
-
-
-def _non_negative_integer(value: object, *, name: str) -> int:
-    """Return an exact indexable integer, rejecting booleans."""
-
-    if isinstance(value, bool):
-        raise ValueError(f"{name} must be a non-negative integer")
-    try:
-        integer = index(value)
-    except TypeError:
-        raise ValueError(f"{name} must be a non-negative integer") from None
-    if integer < 0:
-        raise ValueError(f"{name} must be a non-negative integer")
-    return integer
-
-
-def _positive_integer(value: object, *, name: str) -> int:
-    if isinstance(value, bool):
-        raise ValueError(f"{name} must be a positive integer")
-    try:
-        integer = index(value)
-    except TypeError:
-        raise ValueError(f"{name} must be a positive integer") from None
-    if integer < 1:
-        raise ValueError(f"{name} must be a positive integer")
-    return integer
-
-
-def _immutable_term(term: Element) -> Element:
-    """Return a hashable term, copying supported mutable elements if necessary."""
-
-    try:
-        hash(term)
-    except TypeError:
-        immutable_copy = copy(term)
-        set_immutable = getattr(immutable_copy, "set_immutable", None)
-        if not callable(set_immutable):
-            raise TypeError("additive-sequence terms must be hashable") from None
-        set_immutable()
-        hash(immutable_copy)
-        return immutable_copy
-    return term
-
-
-class _DavenportBoundUnavailable(ValueError):
-    """No automatic Davenport bound is available."""
 
 
 class AdditiveSequenceSpace(Generic[Element]):
@@ -74,7 +34,8 @@ class AdditiveSequenceSpace(Generic[Element]):
         A callable parent containing every sequence term and providing
         ``zero()``.  Elements must be hashable and mutually orderable.  They
         may implement addition themselves, or the parent may provide
-        ``add(left, right)``.
+        ``add(left, right)``. Addition returns canonical parent elements;
+        ``zero()`` defines the identity regardless of the labels used.
     davenport_bound:
         Optional positive upper bound for the parent's Davenport constant.
         An explicit value is used as supplied; its sufficiency is not checked.
@@ -84,8 +45,10 @@ class AdditiveSequenceSpace(Generic[Element]):
 
     __slots__ = (
         "_parent",
+        "_addition_op",
         "_davenport_bound",
         "_derived_davenport_bound",
+        "_derived_bound_exponent",
         "_arithmetic_context",
         "_automorphism_action",
         "_automorphism_group",
@@ -98,11 +61,13 @@ class AdditiveSequenceSpace(Generic[Element]):
         if not callable(zero):
             raise TypeError("the additive parent must provide zero()")
         self._parent = parent
+        self._addition_op = None
         self._davenport_bound = (
             _positive_integer(davenport_bound, name="Davenport bound")
             if davenport_bound is not None else None
         )
         self._derived_davenport_bound = None
+        self._derived_bound_exponent = None
         self._arithmetic_context = None
         self._automorphism_action = None
         self._automorphism_group = None
@@ -158,6 +123,13 @@ class AdditiveSequenceSpace(Generic[Element]):
 
         return self._parent
 
+    def _add_operation(self):
+        """Resolve canonical addition once, without finite-group metadata."""
+
+        if self._addition_op is None:
+            self._addition_op = _addition(self._parent)
+        return self._addition_op
+
     def _group_arithmetic(self):
         """Return cached arithmetic, shared with package groups and local otherwise."""
 
@@ -180,7 +152,9 @@ class AdditiveSequenceSpace(Generic[Element]):
         formula from :func:`davenport_constant`. If neither is available,
         use the group order ``n`` and a known exponent ``e`` to return
         ``min(n, e * (1 + ceil(log2(n / e))))``. With no known exponent,
-        return ``n``.
+        return ``n``. Formula recognition has bounded cost; inconclusive
+        cases use the conservative estimate. Explicit exact queries can
+        spend more time recognizing a formula.
 
         The logarithmic estimate ``D(G) <= e * (1 + ln(n / e))`` is due to
         van Emde Boas and Kruyswijk (:cite:p:`van-emde-boas-kruyswijk-1969`,
@@ -188,12 +162,13 @@ class AdditiveSequenceSpace(Generic[Element]):
         3.6(1)). The base-two ceiling is a conservative relaxation chosen
         here, not the original estimate.
 
-        Automatic bounds are cached. An exact :func:`davenport_constant`
-        query can tighten an automatic bound, but never replaces an explicit
-        one. Resolution does not enumerate element orders or launch an
-        exhaustive constant search; finding the group order may require
-        enumerating its elements. If no bound can be derived, raise
-        :class:`ValueError` and request an explicit bound.
+        Automatic bounds are cached and can tighten when completed searches
+        certify ``D(G)`` or new exponent information becomes available. An
+        explicit bound is never replaced. Resolution does not enumerate
+        element orders or launch an exhaustive constant search; finding the group order may require
+        enumerating its elements. Missing capabilities raise :class:`ValueError`
+        requesting an explicit bound. Invalid metadata and provider errors
+        propagate rather than triggering boundless discovery.
         """
 
         if self._davenport_bound is not None:
@@ -201,14 +176,22 @@ class AdditiveSequenceSpace(Generic[Element]):
         arithmetic = self._group_arithmetic()
         if arithmetic.exact_davenport_constant is not None:
             return arithmetic.exact_davenport_constant
-        if self._derived_davenport_bound is None:
+        if (
+            self._derived_davenport_bound is None
+            or self._derived_bound_exponent != arithmetic._exponent
+        ):
             try:
-                self._derived_davenport_bound = arithmetic.davenport_bound()
-            except (TypeError, ValueError) as error:
+                bound = arithmetic.davenport_bound()
+            except _ArithmeticUnavailable as error:
                 raise _DavenportBoundUnavailable(
                     "cannot derive a Davenport bound for this parent; "
                     "supply davenport_bound explicitly"
                 ) from error
+            self._derived_davenport_bound = (
+                bound if self._derived_davenport_bound is None
+                else min(bound, self._derived_davenport_bound)
+            )
+            self._derived_bound_exponent = arithmetic._exponent
         return self._derived_davenport_bound
 
     def _optional_davenport_bound(self) -> int | None:
@@ -229,9 +212,13 @@ class AdditiveSequenceSpace(Generic[Element]):
     def from_multiplicities(
         self, multiplicities: Mapping[Element, int]
     ) -> AdditiveSequence[Element]:
-        """Construct a sequence from non-negative term multiplicities."""
+        """Construct directly from nonnegative counts, merging coerced aliases.
 
-        terms: list[Element] = []
+        Zero-count keys are ignored without coercion. Positive-count keys
+        are coerced once each; repeated terms are not expanded.
+        """
+
+        counts: dict[Element, int] = {}
         for term, count in multiplicities.items():
             try:
                 count = _non_negative_integer(count, name="multiplicities")
@@ -239,8 +226,16 @@ class AdditiveSequenceSpace(Generic[Element]):
                 raise ValueError(
                     "multiplicities must be non-negative integers"
                 ) from None
-            terms.extend(itertools.repeat(term, count))
-        return self(terms)
+            if count:
+                term = _immutable_term(self._parent(term))
+                counts[term] = counts.get(term, 0) + count
+        try:
+            items = tuple(sorted(counts.items()))
+        except TypeError as error:
+            raise TypeError(
+                "additive-sequence terms must be mutually orderable"
+            ) from error
+        return AdditiveSequence._from_items(self, items)
 
     def enumerate_atom_catalogue(
         self, *, support: Iterable[Element] | None = None
@@ -256,7 +251,8 @@ class AdditiveSequenceSpace(Generic[Element]):
         a complete catalogue on the chosen support; an explicit bound must
         cover all atom lengths there. Such a catalogue need not be complete
         for sequences using terms outside the support. The singleton zero
-        is excluded, as in :class:`AtomCatalogue`.
+        is excluded, as in :class:`AtomCatalogue`. Full ambient enumeration
+        with an automatic bound also records the exact Davenport constant.
 
         The search completes each sorted prefix with its uniquely determined
         final term, then checks minimality. It can be expensive even when the
@@ -272,8 +268,8 @@ class AdditiveSequenceSpace(Generic[Element]):
             )
 
         try:
-            parent_terms = tuple(self._parent)
-        except TypeError:
+            parent_terms = tuple(term for term in _iter_parent(self._parent))
+        except _ParentIterationUnavailable:
             raise TypeError(
                 "atom catalogue enumeration requires an iterable parent"
             ) from None
@@ -285,9 +281,7 @@ class AdditiveSequenceSpace(Generic[Element]):
             )
         )
         zero = _immutable_term(self._parent(self._parent.zero()))
-        operation = getattr(self._parent, "add", default_add)
-        if not callable(operation):
-            operation = default_add
+        operation = self._add_operation()
 
         if support is None:
             allowed_terms = terms
@@ -323,7 +317,12 @@ class AdditiveSequenceSpace(Generic[Element]):
                 candidate = self((*prefix, final))
                 if candidate.is_atom():
                     atoms.append(candidate)
-        return AtomCatalogue(self, atoms)
+        catalogue = AtomCatalogue(self, atoms, verify=False)
+        if support is None and self._davenport_bound is None:
+            if not catalogue and arithmetic.order() != 1:
+                raise ValueError("a nontrivial finite group must have nonzero atoms")
+            arithmetic._record_exact_davenport(max(map(len, catalogue), default=1))
+        return catalogue
 
     def __repr__(self) -> str:
         return (
@@ -417,19 +416,12 @@ class AdditiveSequence(Generic[Element]):
         """Return the additive sum of the terms in the base parent."""
 
         parent = self._space.base_parent
-        operation = getattr(parent, "add", default_add)
-        if not callable(operation):
-            operation = default_add
-        return reduce(operation, self, parent.zero())
+        return reduce(self._space._add_operation(), self, parent.zero())
 
     def is_zero_sum(self) -> bool:
         """Return whether the sum of the sequence is zero."""
 
-        total = self.total()
-        is_zero = getattr(total, "is_zero", None)
-        if callable(is_zero):
-            return bool(is_zero())
-        return total == self._space.base_parent.zero()
+        return bool(self.total() == self._space.base_parent.zero())
 
     def map_terms(
         self,

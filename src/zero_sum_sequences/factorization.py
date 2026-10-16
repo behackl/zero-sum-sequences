@@ -9,7 +9,8 @@ from typing import Generic, TypeAlias
 
 import networkx as nx
 
-from .additive_sequence import AdditiveSequence, Element, _non_negative_integer
+from ._validation import _non_negative_integer
+from .additive_sequence import AdditiveSequence, Element
 from .atom_catalogue import AtomCatalogue
 
 Factorization: TypeAlias = tuple[AdditiveSequence[Element], ...]

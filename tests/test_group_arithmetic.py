@@ -302,8 +302,7 @@ def test_native_not_implemented_falls_back_to_additive_arithmetic():
 
 def test_metadata_queries_do_not_require_an_iterable_parent():
     class NonIterableParent(ForeignParent):
-        def __iter__(self):
-            raise TypeError("enumeration is unavailable")
+        __iter__ = None
 
     space = AdditiveSequenceSpace(NonIterableParent(cyclic_group(5)))
     assert space.davenport_bound == davenport_constant(space) == exponent(space) == 5

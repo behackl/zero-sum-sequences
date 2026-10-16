@@ -12,9 +12,9 @@ from __future__ import annotations
 from collections import deque
 from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass, field
-from operator import index
 from typing import Generic, TypeVar
 
+from ._validation import _non_negative_integer as _non_negative_index
 from .additive_sequence import AdditiveSequence
 
 Element = TypeVar("Element")
@@ -23,20 +23,6 @@ Generator = TypeVar("Generator")
 
 class AutomorphismActionUnavailable(RuntimeError):
     """Raised when an additive parent cannot supply an automorphism action."""
-
-
-def _non_negative_index(value: object, *, name: str) -> int:
-    """Return a non-negative indexable integer, rejecting booleans."""
-
-    if isinstance(value, bool):
-        raise ValueError(f"{name} must be a non-negative integer")
-    try:
-        integer = index(value)
-    except TypeError:
-        raise ValueError(f"{name} must be a non-negative integer") from None
-    if integer < 0:
-        raise ValueError(f"{name} must be a non-negative integer")
-    return integer
 
 
 class AutomorphismAction(Generic[Element, Generator]):
@@ -271,7 +257,7 @@ def _action_from_parent_provider(parent) -> AutomorphismAction | None:
     if callable(provider):
         try:
             action = provider()
-        except (AttributeError, NotImplementedError):
+        except NotImplementedError:
             action = None
         if action is not None:
             if not isinstance(action, AutomorphismAction):
@@ -284,7 +270,7 @@ def _action_from_parent_provider(parent) -> AutomorphismAction | None:
     if provider is not None:
         try:
             generators = provider() if callable(provider) else provider
-        except (AttributeError, NotImplementedError):
+        except NotImplementedError:
             generators = None
         if generators is not None:
             return AutomorphismAction(generators)

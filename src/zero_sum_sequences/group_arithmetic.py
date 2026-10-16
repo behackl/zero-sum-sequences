@@ -8,9 +8,12 @@ from __future__ import annotations
 
 from functools import cached_property
 from math import gcd, lcm
-from operator import add as default_add
 
-from .additive_sequence import _immutable_term, _positive_integer
+from ._exceptions import _ArithmeticUnavailable, _ParentIterationUnavailable
+from ._parent_ops import _addition, _immutable_term, _iter_parent
+from ._validation import _positive_integer
+
+_AUTOMATIC_TRIAL_LIMIT = 1024
 
 
 def _invariant_factors(moduli):
@@ -25,19 +28,29 @@ def _invariant_factors(moduli):
     return tuple(n for n in factors if n > 1)
 
 
-def _is_prime_power(n: int) -> bool:
-    """Return whether n is a positive power of a prime."""
+def _is_prime_power(n: int, *, max_steps: int | None = None) -> bool | None:
+    """Certify prime-power status, or return None when the trial budget expires."""
 
     if n < 2:
         return False
     p = 2
-    while p * p <= n and n % p:
+    steps = 0
+    while p * p <= n:
+        if max_steps is not None and steps >= max_steps:
+            return None
+        steps += 1
+        if n % p == 0:
+            n //= p
+            while n > 1:
+                if max_steps is not None and steps >= max_steps:
+                    return None
+                steps += 1
+                if n % p:
+                    return False
+                n //= p
+            return True
         p += 1
-    if n % p:
-        return True  # n is prime
-    while n % p == 0:
-        n //= p
-    return n == 1
+    return True  # n is prime
 
 
 class _GroupArithmetic:
@@ -53,6 +66,7 @@ class _GroupArithmetic:
         """Attach a parent and its optional cyclic decomposition."""
 
         self.parent = parent
+        self._add = _addition(parent)
         self._native = native
         self._moduli = moduli
         self.zero = _immutable_term(parent(parent.zero()))
@@ -66,8 +80,13 @@ class _GroupArithmetic:
         """Require the parent to declare itself finite."""
 
         finite = getattr(self.parent, "is_finite", None)
-        if not callable(finite) or not finite():
-            raise ValueError("group arithmetic requires a finite parent")
+        if callable(finite):
+            try:
+                if finite():
+                    return
+            except NotImplementedError:
+                pass
+        raise _ArithmeticUnavailable("group arithmetic requires a finite parent")
 
     def coerce(self, term):
         """Return an immutable, canonical parent element."""
@@ -77,10 +96,7 @@ class _GroupArithmetic:
     def add(self, left, right):
         """Add two terms using the parent operation when supplied."""
 
-        operation = getattr(self.parent, "add", default_add)
-        if not callable(operation):
-            operation = default_add
-        return self.coerce(operation(left, right))
+        return _immutable_term(self._add(left, right))
 
     @cached_property
     def elements(self):
@@ -88,9 +104,11 @@ class _GroupArithmetic:
 
         self._require_finite()
         try:
-            terms = tuple(self.parent)
-        except TypeError:
-            raise TypeError("indexed group arithmetic requires an iterable parent") from None
+            terms = _iter_parent(self.parent)
+        except _ParentIterationUnavailable as error:
+            raise _ParentIterationUnavailable(
+                "indexed group arithmetic requires an iterable parent"
+            ) from error
         elements = tuple(sorted(self.coerce(term) for term in terms))
         if len(set(elements)) != len(elements):
             raise ValueError("the parent contains repeated elements after coercion")
@@ -124,12 +142,20 @@ class _GroupArithmetic:
                         continue
                     self._order = _positive_integer(value, name="group order")
                     break
-            if self._order is None:
+            if self._order is None and getattr(type(self.parent), "__len__", None) is not None:
                 try:
                     value = len(self.parent)
-                except TypeError:
-                    value = len(self.elements)
-                self._order = _positive_integer(value, name="group order")
+                except NotImplementedError:
+                    pass
+                else:
+                    self._order = _positive_integer(value, name="group order")
+            if self._order is None:
+                try:
+                    self._order = _positive_integer(len(self.elements), name="group order")
+                except (_ParentIterationUnavailable, NotImplementedError) as error:
+                    raise _ArithmeticUnavailable(
+                        "group order requires metadata or an iterable parent"
+                    ) from error
         return self._order
 
     def element_order(self, term) -> int:
@@ -236,12 +262,20 @@ class _GroupArithmetic:
             self._exponent = lcm(*(self.element_order(g) for g in self.elements))
         return self._exponent
 
-    def known_davenport_constant(self):
-        """Return an exact cached or formula value, or None without searching.
+    def _record_exact_davenport(self, value: int) -> None:
+        """Retain a certified exact value, rejecting contradictory results."""
 
-        Supported formulas are those described in :func:`davenport_constant`:
-        cyclic groups, rank at most two, and p-groups with known invariant
-        factors. The trivial group has value one.
+        value = _positive_integer(value, name="Davenport constant")
+        if self.exact_davenport_constant not in (None, value):
+            raise ValueError("inconsistent exact Davenport constants")
+        self.exact_davenport_constant = value
+
+    def known_davenport_constant(self, *, allow_expensive: bool = False):
+        """Return a certified cached or formula value, or None without searching.
+
+        Supported formulas are those described in :func:`davenport_constant`.
+        Prime-power recognition has a fixed trial budget unless an explicit
+        exact query requests full recognition with ``allow_expensive=True``.
         """
 
         self._require_finite()
@@ -267,14 +301,16 @@ class _GroupArithmetic:
         if n == 1:
             value = 1
         elif factors is not None and (
-            len(factors) <= 2 or _is_prime_power(factors[-1])
+            len(factors) <= 2 or _is_prime_power(
+                factors[-1], max_steps=None if allow_expensive else _AUTOMATIC_TRIAL_LIMIT
+            ) is True
         ):
             value = 1 + sum(factor - 1 for factor in factors)
         elif self._known_exponent() == n:
             value = n  # a finite abelian group of exponent n and order n is cyclic
         else:
             return None
-        self.exact_davenport_constant = value
+        self._record_exact_davenport(value)
         return value
 
     def davenport_bound(self) -> int:

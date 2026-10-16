@@ -16,13 +16,9 @@ from dataclasses import dataclass
 from math import inf
 from typing import Generic
 
-from .additive_sequence import (
-    AdditiveSequence,
-    AdditiveSequenceSpace,
-    Element,
-    _immutable_term,
-    _positive_integer,
-)
+from ._parent_ops import _immutable_term
+from ._validation import _positive_integer
+from .additive_sequence import AdditiveSequence, AdditiveSequenceSpace, Element
 from .automorphisms import AutomorphismGroup, AutomorphismGroupUnavailable
 
 
@@ -196,7 +192,9 @@ def zero_sum_constant(
     The value is infinite exactly when ``L`` contains no multiple of the
     group exponent. To study an infinite allowed set, pass a finite
     truncation: a result at most ``max(L)`` also applies to every allowed
-    set agreeing with ``L`` up to that cutoff.
+    set agreeing with ``L`` up to that cutoff. If ``L`` contains every
+    positive length below the finite returned value, the result also
+    certifies ``D(G)`` and updates its exact cache.
 
     Examples
     --------
@@ -269,6 +267,9 @@ def zero_sum_constant(
         )
         for key in sorted(level, reverse=True)
     )
+    if len(lengths) >= length and all(k in lengths for k in range(1, length + 1)):
+        # Every extremal is zero-sum-free, while the next level forces a zero sum.
+        table._record_exact_davenport(length + 1)
     return ZeroSumConstant(lengths, length + 1, extremal)
 
 
@@ -316,12 +317,12 @@ def davenport_constant(
 
     _validate_symmetry(symmetry)
     arithmetic = space._group_arithmetic()
-    known = arithmetic.known_davenport_constant()
+    known = arithmetic.known_davenport_constant(allow_expensive=True)
     if known is not None:
         return known
     bound = arithmetic.davenport_bound()
     value = zero_sum_constant(space, range(1, bound + 1), symmetry=symmetry).value
-    arithmetic.exact_davenport_constant = value
+    arithmetic._record_exact_davenport(value)
     return value
 
 

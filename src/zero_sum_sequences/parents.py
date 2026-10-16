@@ -8,6 +8,8 @@ from math import gcd
 from operator import index
 from typing import Generic, TypeVar
 
+from ._validation import _positive_integer
+
 Element = TypeVar("Element")
 
 
@@ -27,15 +29,10 @@ def default_encode_term(term: object) -> object:
 
 
 def _positive_modulus(value: object) -> int:
-    if isinstance(value, bool):
-        raise ValueError("cyclic moduli must be positive integers")
     try:
-        modulus = index(value)
-    except TypeError:
+        return _positive_integer(value, name="cyclic modulus")
+    except ValueError:
         raise ValueError("cyclic moduli must be positive integers") from None
-    if modulus < 1:
-        raise ValueError("cyclic moduli must be positive integers")
-    return modulus
 
 
 def _scale_coordinate(coordinate: int, unit: int, modulus: int):

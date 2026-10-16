@@ -73,6 +73,54 @@ def test_mutable_sage_terms_are_copied_before_becoming_immutable():
     assert sequence.multiplicity(term) == 1
 
 
+def test_sage_shifted_identity_labels_are_not_native_integer_zero():
+    parent = FiniteAdditiveGroup(
+        map(Integer, [1, 2, 3]), zero=Integer(1),
+        coerce=lambda x: Integer((int(x) - 1) % 3 + 1),
+        add=lambda a, b: Integer((int(a) + int(b) - 2) % 3 + 1),
+    )
+    space = AdditiveSequenceSpace(parent)
+    assert space([2, 3]).is_atom()
+    assert len(space.enumerate_atom_catalogue()) == 3
+    assert davenport_constant(space) == 3
+
+
+def test_sage_compressed_construction_copies_mutable_terms():
+    space = AdditiveSequenceSpace(GF(3) ** 2)
+    term = space.base_parent([1, 0])
+
+    class Counts:
+        def items(self):
+            return [(term, Integer(2))]
+
+    sequence = space.from_multiplicities(Counts())
+    assert sequence == space([term, term])
+    assert term.is_mutable()
+    assert all(not t.is_mutable() for t in sequence)
+
+
+def test_sage_cache_counts_use_exact_integer_protocols():
+    space = AdditiveSequenceSpace(Zmod(3))
+    catalogue = space.enumerate_atom_catalogue()
+    atom = space([1, 1, 1])
+    cache = space.factorization_cache(catalogue, maxsize=Integer(1))
+    cache.preload([(atom, [Integer(1)])])
+    assert cache.has_length(atom, Integer(1))
+    with pytest.raises(ValueError, match="factor count"):
+        cache.has_length(atom, QQ(3) / 2)
+
+
+@pytest.mark.parametrize("parent", [lambda: Zmod(3), lambda: GF(3) ** 2])
+def test_native_sage_addition_retains_its_canonical_fast_path(parent):
+    from operator import add
+    from zero_sum_sequences._parent_ops import _addition
+
+    space = AdditiveSequenceSpace(parent())
+    assert _addition(space.base_parent) is add
+    assert space().total() == space.base_parent.zero()
+    assert space._arithmetic_context is None
+
+
 def assert_factorization_profiles(sequence, expected_profiles):
     """Check complete factorizations by their multisets of atom lengths."""
 

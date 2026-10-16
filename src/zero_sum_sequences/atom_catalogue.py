@@ -92,6 +92,7 @@ class AtomCatalogue(Generic[Element]):
                 raise ValueError("annotation for a sequence outside the catalogue")
             self.annotations[atom] = dict(annotation)
         self._orbit_cache: tuple | None = None  # (group, atom -> (representative, word))
+        self._closed_group = None
 
     # indexing
 
@@ -130,6 +131,7 @@ class AtomCatalogue(Generic[Element]):
             self.space,
             kept,
             annotations=((atom, self.annotations[atom]) for atom in kept if atom in self.annotations),
+            verify=False,
         )
 
     def restrict(
@@ -165,10 +167,16 @@ class AtomCatalogue(Generic[Element]):
                 target_mask |= 1 << index
 
         candidates = []
-        submask = target_mask
-        while submask:
-            candidates.extend(self._by_support_mask.get(submask, ()))
-            submask = (submask - 1) & target_mask
+        # Enumerate the smaller of the target's submasks and occupied masks.
+        if (1 << target_mask.bit_count()) - 1 <= len(self._by_support_mask):
+            submask = target_mask
+            while submask:
+                candidates.extend(self._by_support_mask.get(submask, ()))
+                submask = (submask - 1) & target_mask
+        else:
+            for mask, atoms in self._by_support_mask.items():
+                if mask & target_mask == mask:
+                    candidates.extend(atoms)
         for atom in sorted(candidates):
             if all(
                 target_counts.get(term, 0) >= count
@@ -196,6 +204,14 @@ class AtomCatalogue(Generic[Element]):
                 raise ValueError("the catalogue is not closed under the automorphism")
             images.append(self._index[image])
         return tuple(images)
+
+    def _require_group_closure(self, group) -> None:
+        """Check closure under generators, retaining one successful group check."""
+
+        if self._closed_group is not group:
+            for generator in group.generators:
+                self.permutation(generator, group=group)
+            self._closed_group = group
 
     def _orbit_data(self, group) -> dict:
         """``atom -> (representative, word from the representative)``, cached."""

@@ -29,7 +29,9 @@ from dataclasses import dataclass
 from functools import partial
 from typing import Generic, TypeVar
 
-from .additive_sequence import AdditiveSequence, AdditiveSequenceSpace, _immutable_term
+from ._exceptions import _ParentIterationUnavailable
+from ._parent_ops import _immutable_term, _iter_parent
+from .additive_sequence import AdditiveSequence, AdditiveSequenceSpace
 
 Element = TypeVar("Element")
 Auto = TypeVar("Auto")
@@ -49,8 +51,8 @@ class _ParentTable(Generic[Element]):
 
     def __init__(self, parent) -> None:
         try:
-            elements = tuple(_immutable_term(term) for term in parent)
-        except TypeError:
+            elements = tuple(_immutable_term(term) for term in _iter_parent(parent))
+        except _ParentIterationUnavailable:
             raise TypeError(
                 "image-table automorphisms require a finite iterable parent"
             ) from None
@@ -510,7 +512,7 @@ def automorphism_group(space: AdditiveSequenceSpace[Element]) -> AutomorphismGro
     if callable(provider):
         try:
             group = provider()
-        except (AttributeError, NotImplementedError):
+        except NotImplementedError:
             group = None
         if group is not None and not isinstance(group, AutomorphismGroup):
             raise TypeError("automorphism_group() must return an AutomorphismGroup")

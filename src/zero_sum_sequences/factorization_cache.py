@@ -22,6 +22,7 @@ from collections.abc import Iterable, Iterator
 from pathlib import Path
 from typing import Generic
 
+from ._validation import _non_negative_integer, _positive_integer
 from .additive_sequence import AdditiveSequence, Element
 from .atom_catalogue import AtomCatalogue
 from .factorization import Factorization, FactorizationSolver
@@ -42,9 +43,14 @@ class AnchoredCanonicalizer(Generic[Element]):
     input, hence a valid cache key for automorphism-invariant questions.  It
     is not an orbit invariant: sequences of one orbit may anchor differently
     and then receive different keys, which only costs cache efficiency.
+    The catalogue must be closed under the configured group; this is checked
+    at construction.
     """
 
     def __init__(self, catalogue: AtomCatalogue[Element], group, *, reduce: bool = True) -> None:
+        if not isinstance(catalogue, AtomCatalogue):
+            raise TypeError("expected an AtomCatalogue")
+        catalogue._require_group_closure(group)
         self.catalogue = catalogue
         self.group = group
         self.reduce = reduce
@@ -82,6 +88,8 @@ class FactorizationCache(Generic[Element]):
     group:
         Optional :class:`AutomorphismGroup` of the space.  When given, every
         query is canonicalized first and witnesses are transported back.
+        The catalogue must be closed under this group; construction checks
+        closure under its generators and rejects incompatible catalogues.
     canonicalize:
         How to canonicalize when a group is given: a callable returning
         either an automorphic image of the sequence or ``(image,
@@ -90,8 +98,8 @@ class FactorizationCache(Generic[Element]):
         expensive part); :class:`AnchoredCanonicalizer` is the cheap
         alternative for large groups.
     maxsize:
-        Number of solver objects kept alive (least recently used eviction).
-        Length sets are always kept.
+        Exact positive number of solver objects kept alive (least recently
+        used eviction), or ``None`` for no limit. Length sets are always kept.
     """
 
     def __init__(
@@ -109,8 +117,13 @@ class FactorizationCache(Generic[Element]):
         if canonicalize is not None and not callable(canonicalize):
             raise TypeError("canonicalize must be callable")
         self._canonicalize = canonicalize
-        if maxsize is not None and (isinstance(maxsize, bool) or maxsize < 1):
-            raise ValueError("maxsize must be a positive integer or None")
+        if maxsize is not None:
+            try:
+                maxsize = _positive_integer(maxsize, name="maxsize")
+            except ValueError:
+                raise ValueError("maxsize must be a positive integer or None") from None
+        if group is not None:
+            catalogue._require_group_closure(group)
         self.catalogue = catalogue
         self.space = catalogue.space
         self.group = group
@@ -226,6 +239,9 @@ class FactorizationCache(Generic[Element]):
         return self._solver_for_key(key).maximum_factorization_length()
 
     def has_length(self, sequence: AdditiveSequence[Element], length: int) -> bool:
+        """Return whether the sequence has the given nonnegative factor count."""
+
+        length = _non_negative_integer(length, name="factor count")
         key, cached = self._cached(sequence)
         if cached is not None:
             return length in cached
@@ -236,6 +252,7 @@ class FactorizationCache(Generic[Element]):
     ) -> Factorization[Element] | None:
         """A factorization of ``sequence`` of the given length, or ``None``."""
 
+        length = _non_negative_integer(length, name="factor count")
         self._check(sequence)
         key, automorphism = self._form(sequence)
         return self._transport(
@@ -276,12 +293,19 @@ class FactorizationCache(Generic[Element]):
     # persistence
 
     def preload(self, records: Iterable[tuple[AdditiveSequence[Element], Iterable[int]]]) -> int:
-        """Insert known length sets; keys are canonicalized like queries."""
+        """Insert known length sets of exact nonnegative integer factor counts.
+
+        Keys are canonicalized like queries. Each record is validated before
+        insertion; mathematical correctness of the supplied sets is trusted.
+        """
 
         count = 0
         for sequence, lengths in records:
             self._check(sequence)
-            self._length_sets[self._key(sequence)] = frozenset(int(x) for x in lengths)
+            normalized = frozenset(
+                _non_negative_integer(length, name="factor count") for length in lengths
+            )
+            self._length_sets[self._key(sequence)] = normalized
             count += 1
         return count
 
