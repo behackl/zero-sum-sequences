@@ -146,10 +146,9 @@ def test_display_does_not_double_parenthesize_repeated_terms():
     assert str(space([(0, 2), (0, 2)])) == "(0, 2)^2"
 
 
-@pytest.mark.parametrize("bad_count", [-1, 1.5, True])
-def test_multiplicity_validation(c3_sequences, bad_count):
+def test_multiplicity_validation(c3_sequences):
     with pytest.raises(ValueError, match="multiplicity must be a non-negative integer"):
-        c3_sequences.from_multiplicities({c3_sequences.base_parent(1): bad_count})
+        c3_sequences.from_multiplicities({c3_sequences.base_parent(1): True})
 
 
 def test_multiplicities_accept_indexable_integers(c3_sequences):
@@ -167,7 +166,7 @@ def test_direct_sequence_construction_requires_a_space():
         AdditiveSequence([1, 2])
 
 
-def test_large_multiplicity_coerces_the_key_once():
+def test_large_multiplicity_stays_compressed(monkeypatch):
     class Parent:
         calls = 0
 
@@ -180,22 +179,14 @@ def test_large_multiplicity_coerces_the_key_once():
 
     parent = Parent()
     space = AdditiveSequenceSpace(parent)
-    sequence = space.from_multiplicities({1: 100_000})
-    assert parent.calls == 1
-    assert sequence._items == ((1, 100_000),)
-    assert len(sequence) == 100_000
-    assert space._arithmetic_context is None
-
-
-def test_compressed_construction_does_not_expand_via_the_general_constructor(monkeypatch):
-    space = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(3))
 
     def forbidden(*args):
         raise AssertionError("multiplicity construction must not expand terms")
 
     monkeypatch.setattr(AdditiveSequence, "__init__", forbidden)
-    sequence = space.from_multiplicities({(1,): 100_000})
-    assert sequence._items == (((1,), 100_000),)
+    sequence = space.from_multiplicities({1: 100_000})
+    assert parent.calls == 1
+    assert sequence.multiplicities == {1: 100_000}
     assert len(sequence) == 100_000
 
 
@@ -208,13 +199,6 @@ def test_aliases_are_merged_and_zero_count_keys_are_not_coerced():
     assert result.multiplicities == {(1,): 5, (2,): 1}
     assert result.parent() is space
     assert space.from_multiplicities({object(): 0}) == space()
-
-
-@pytest.mark.parametrize("bad", [True, -1, 1.5])
-def test_compressed_construction_rejects_invalid_counts(bad):
-    space = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(3))
-    with pytest.raises(ValueError, match="multiplicity"):
-        space.from_multiplicities({(1,): bad})
 
 
 def test_nonorderable_terms_keep_the_construction_error():

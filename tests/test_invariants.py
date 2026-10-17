@@ -61,22 +61,28 @@ def trivial_group(space):
 # agreement with exhaustive search
 
 
-@pytest.mark.parametrize("moduli", [(4,), (5,), (6,), (2, 2), (2, 4), (3, 3)])
+# Smaller groups are covered by the independent coordinate oracle.
 @pytest.mark.parametrize(
-    "lengths",
+    "moduli, lengths",
     [
-        lambda e: {e},
-        lambda e: range(1, e + 1),
-        lambda e: {e - 1, e},
-        lambda e: {2, e},
-        lambda e: {e, 2 * e},
+        pytest.param((5,), {5}, id="C5-exponent"),
+        pytest.param((6,), range(1, 7), id="C6-at-most-exponent"),
+        pytest.param((6,), {2, 6}, id="C6-sparse"),
+        pytest.param((2, 4), {4}, id="C2xC4-exponent"),
+        pytest.param((2, 4), range(1, 5), id="C2xC4-at-most-exponent"),
+        pytest.param((2, 4), {3, 4}, id="C2xC4-near-exponent"),
+        pytest.param((2, 4), {2, 4}, id="C2xC4-sparse"),
+        pytest.param((2, 4), {4, 8}, id="C2xC4-longer-multiple"),
+        pytest.param((3, 3), {3}, id="C3xC3-exponent"),
+        pytest.param((3, 3), range(1, 4), id="C3xC3-at-most-exponent"),
+        pytest.param((3, 3), {2, 3}, id="C3xC3-near-exponent"),
+        pytest.param((3, 3), {3, 6}, id="C3xC3-longer-multiple"),
     ],
-    ids=["e", "at-most-e", "e-1,e", "2,e", "e,2e"],
 )
 def test_value_and_extremal_orbits_match_exhaustive_search(moduli, lengths):
     space = space_of(*moduli)
     group = space.automorphism_group()
-    lengths = set(lengths(exponent(space)))
+    lengths = set(lengths)
     maximal = maximal_L_free_sequences(space, lengths)
 
     result = zero_sum_constant(space, lengths)
@@ -227,13 +233,21 @@ def test_rejects_non_iterable_lengths():
 
 
 @pytest.mark.parametrize("bad", [None, "auto", 0, 1, [], object()])
-@pytest.mark.parametrize(
-    "query", [zero_sum_constant, davenport_constant, eta_constant, erdos_ginzburg_ziv_constant]
-)
-def test_rejects_invalid_symmetry_even_without_a_search(bad, query):
-    arguments = (space_of(3), {2}) if query is zero_sum_constant else (space_of(3),)
+def test_rejects_invalid_symmetry_even_for_an_infinite_result(bad):
     with pytest.raises(TypeError, match="symmetry"):
-        query(*arguments, symmetry=bad)
+        zero_sum_constant(space_of(3), {2}, symmetry=bad)
+
+
+@pytest.mark.parametrize(
+    "query", [davenport_constant, eta_constant, erdos_ginzburg_ziv_constant]
+)
+@pytest.mark.parametrize("warm", [False, True], ids=["cold", "cached"])
+def test_scalar_wrappers_validate_symmetry_before_fast_paths(query, warm):
+    space = space_of(3)
+    if warm:
+        query(space)
+    with pytest.raises(TypeError, match="symmetry"):
+        query(space, symmetry=None)
 
 
 def test_disabled_symmetry_does_not_discover_automorphisms(monkeypatch):

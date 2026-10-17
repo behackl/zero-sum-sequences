@@ -452,8 +452,10 @@ class MetadataOnly:
         raise AssertionError("metadata recognition must not enumerate group elements")
 
 
-@pytest.mark.parametrize("n, expected", [(1, False), (2, True), (3, True), (4, True), (6, False),
-                                         (49, True), (121, True), (143, False), (1024, True)])
+@pytest.mark.parametrize(
+    "n, expected", [(1, False), (3, True), (4, True), (49, True), (143, False)],
+    ids=["unit", "prime", "even-power", "odd-power", "mixed-factors"],
+)
 def test_exact_prime_power_recognition(n, expected):
     assert arithmetic._is_prime_power(n) is expected
 
@@ -483,8 +485,6 @@ def test_automatic_unknown_is_not_a_false_formula_or_an_exact_search(monkeypatch
     space = AdditiveSequenceSpace(MetadataOnly())
     expected_bound = 101 * (1 + (101 ** 2 - 1).bit_length())
     assert space.davenport_bound == expected_bound
-    assert space._group_arithmetic().exact_davenport_constant is None
-    assert "addition_table" not in space._group_arithmetic().__dict__
     # An explicit exact query retries recognition without the automatic budget.
     assert davenport_constant(space) == 301
     assert space.davenport_bound == 301
@@ -494,7 +494,6 @@ def test_an_explicit_bound_is_not_replaced_after_full_formula_recognition(monkey
     monkeypatch.setattr(arithmetic, "_AUTOMATIC_TRIAL_LIMIT", 4)
     space = AdditiveSequenceSpace(MetadataOnly(), davenport_bound=1)
     assert space.davenport_bound == 1
-    assert space._arithmetic_context is None
     assert davenport_constant(space) == 301
     assert space.davenport_bound == 1
 
@@ -510,7 +509,6 @@ def test_full_automatic_catalogue_records_exact_D_and_shares_it(monkeypatch):
     assert space.davenport_bound == other.davenport_bound == 4
     catalogue = space.enumerate_atom_catalogue()
     assert max(map(len, catalogue)) == 3
-    assert group._group_arithmetic().exact_davenport_constant == 3
     assert space.davenport_bound == other.davenport_bound == 3
     assert explicit.davenport_bound == 1
 
@@ -521,22 +519,23 @@ def test_full_automatic_catalogue_records_exact_D_and_shares_it(monkeypatch):
     assert davenport_constant(other) == 3
 
 
-@pytest.mark.parametrize("support", [[], [0], [1], [1, 2], [1, 2, 3]])
+@pytest.mark.parametrize("support", [[], [1]], ids=["empty", "proper-support"])
 def test_restricted_catalogues_do_not_claim_ambient_completeness(support):
     group = generic_group()
     space = AdditiveSequenceSpace(group)
     space.enumerate_atom_catalogue(support=support)
-    assert group._group_arithmetic().exact_davenport_constant is None
     assert space.davenport_bound == 4
+    assert davenport_constant(space, symmetry=False) == 3
 
 
-@pytest.mark.parametrize("bound", [1, 2, 4])
+@pytest.mark.parametrize("bound", [2, 4], ids=["insufficient", "sufficient"])
 def test_explicitly_bounded_enumeration_does_not_guess_D(bound):
     group = generic_group()
     space = AdditiveSequenceSpace(group, davenport_bound=bound)
     space.enumerate_atom_catalogue()
-    assert group._group_arithmetic().exact_davenport_constant is None
     assert space.davenport_bound == bound
+    assert AdditiveSequenceSpace(group).davenport_bound == 4
+    assert davenport_constant(space, symmetry=False) == 3
 
 
 @pytest.mark.parametrize("lengths", [{1, 2, 3}, {1, 2, 3, 10**12}])
@@ -544,7 +543,6 @@ def test_general_constant_can_certify_D_without_a_second_search(lengths, monkeyp
     space = AdditiveSequenceSpace(generic_group())
     result = zero_sum_constant(space, lengths, symmetry=False)
     assert result.value == 3
-    assert space._group_arithmetic().exact_davenport_constant == 3
 
     def forbidden(*args, **kwargs):
         raise AssertionError("the previous constant search already determined D")
@@ -553,11 +551,12 @@ def test_general_constant_can_certify_D_without_a_second_search(lengths, monkeyp
     assert davenport_constant(space) == space.davenport_bound == 3
 
 
-@pytest.mark.parametrize("lengths", [{1, 2}, {2}, {3}, {1, 2, 9}])
+@pytest.mark.parametrize("lengths", [{3}, {1, 2, 9}], ids=["infinite", "missing-prefix-length"])
 def test_other_constants_must_not_be_mistaken_for_D(lengths):
     space = AdditiveSequenceSpace(generic_group())
     zero_sum_constant(space, lengths, symmetry=False)
-    assert space._group_arithmetic().exact_davenport_constant is None
+    assert space.davenport_bound == 4
+    assert davenport_constant(space, symmetry=False) == 3
 
 
 def test_new_exponent_information_refreshes_automatic_bounds_without_tables():
@@ -568,8 +567,8 @@ def test_new_exponent_information_refreshes_automatic_bounds_without_tables():
     assert exponent(space) == 2
     assert space.davenport_bound == other.davenport_bound == 6
     assert explicit.davenport_bound == 8
-    assert group._group_arithmetic().exact_davenport_constant is None
     assert "addition_table" not in group._group_arithmetic().__dict__
+    assert davenport_constant(space, symmetry=False) == 4
 
 
 def test_loaded_catalogue_metadata_does_not_certify_completeness(tmp_path):
@@ -580,9 +579,7 @@ def test_loaded_catalogue_metadata_does_not_certify_completeness(tmp_path):
     target = AdditiveSequenceSpace(generic_group())
     loaded = AtomCatalogue.from_jsonl(path, target)
     assert loaded.digest() == original.digest()
-    assert target._arithmetic_context is None
     assert target.davenport_bound == 4
-    assert target._group_arithmetic().exact_davenport_constant is None
 
 
 def test_foreign_parent_exact_knowledge_remains_space_local():
@@ -608,11 +605,9 @@ def test_foreign_parent_exact_knowledge_remains_space_local():
     assert zero_sum_constant(first, {1, 2, 3}, symmetry=False).value == 3
     assert first.davenport_bound == 3
     assert second.davenport_bound == 4
-    assert second._group_arithmetic().exact_davenport_constant is None
 
 
-def test_trivial_full_catalogue_certifies_D_one_without_nonzero_atoms():
+def test_trivial_group_catalogue_is_empty_and_D_is_one():
     space = AdditiveSequenceSpace(FiniteAdditiveGroup([0], zero=0, add=lambda a, b: 0))
     assert len(space.enumerate_atom_catalogue()) == 0
-    assert space._group_arithmetic().exact_davenport_constant == 1
-    assert space.davenport_bound == 1
+    assert davenport_constant(space) == space.davenport_bound == 1

@@ -131,7 +131,8 @@ def test_solver_requires_a_catalogue_from_the_same_space():
 
 @pytest.mark.parametrize(
     ("terms", "expected"),
-    [([], 0), ([1], None), ([1, 2], 1), ([1, 1, 1], 1), ([1, 1, 1, 2, 2, 2], 3)],
+    [([], 0), ([1], None), ([1, 1, 1, 2, 2, 2], 3)],
+    ids=["empty", "unfactorable", "multiple-lengths"],
 )
 def test_maximum_only_avoids_length_sets_and_caches_its_answer(terms, expected, monkeypatch):
     space = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=3)
@@ -146,7 +147,10 @@ def test_maximum_only_avoids_length_sets_and_caches_its_answer(terms, expected, 
     assert solver.maximum_factorization_length() == expected
 
 
-@pytest.mark.parametrize("terms", [[], [1], [1, 2], [1, 1, 1], [1, 1, 1, 2, 2, 2]])
+@pytest.mark.parametrize(
+    "terms", [[], [1], [1, 1, 1, 2, 2, 2]],
+    ids=["empty", "unfactorable", "multiple-lengths"],
+)
 def test_maximum_reuses_existing_length_sets(terms, monkeypatch):
     space = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=3)
     solver = FactorizationSolver(space(terms))

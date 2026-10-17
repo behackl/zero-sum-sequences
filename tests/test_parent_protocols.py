@@ -1,4 +1,6 @@
-"""Cross-layer arithmetic contracts for ordinary and foreign parent labels."""
+"""Foreign-parent arithmetic and capability failure boundaries."""
+
+from functools import reduce
 
 import pytest
 
@@ -56,7 +58,6 @@ def test_parent_arithmetic_agrees_across_predicates_catalogues_and_constants(par
     assert not space([a]).is_zero_sum()
     assert not (pair + pair).is_atom()
     assert space().is_zero_sum()
-    assert space._arithmetic_context is None
     catalogue = space.enumerate_atom_catalogue()
     assert set(catalogue) == {pair, pure_a, pure_b}
     sequence = pure_a + pure_b
@@ -83,7 +84,8 @@ def test_unknown_finiteness_is_handled_alike_everywhere():
             raise NotImplementedError
 
     space = AdditiveSequenceSpace(UnknownFiniteness())
-    assert space._optional_davenport_bound() is None
+    with pytest.raises(ValueError, match="supply davenport_bound explicitly"):
+        _ = space.davenport_bound
     with pytest.raises(ValueError, match="requires a finite parent"):
         space.enumerate_atom_catalogue()
     assert space([1, 2]).length_set() == {1}
@@ -99,11 +101,13 @@ def test_native_group_totals_do_not_coerce_an_already_canonical_result():
     parent = FiniteAdditiveGroup(range(3), zero=0, add=lambda a, b: (a + b) % 3, coerce=coerce)
     space = AdditiveSequenceSpace(parent, davenport_bound=3)
     sequence = space([1, 2])
-    space().total()  # Resolves the canonical identity once.
+    zero = space().total()
     coercions.clear()
-    assert sequence.total() == 0
-    assert len(coercions) == 3 * len(sequence)  # FiniteAdditiveGroup.add's own checks only.
-    assert parent._arithmetic_context is space._arithmetic_context is None
+    expected = reduce(parent.add, sequence, zero)
+    native_coercions = len(coercions)
+    coercions.clear()
+    assert sequence.total() == expected
+    assert len(coercions) == native_coercions
 
 
 def test_totals_do_not_require_a_finite_parent():
@@ -116,10 +120,9 @@ def test_totals_do_not_require_a_finite_parent():
 
     space = AdditiveSequenceSpace(Integers())
     assert space([-2, 1, 1]).is_atom()
-    assert space._arithmetic_context is None
 
 
-class Parent:
+class MetadataC3:
     def __call__(self, term):
         return int(term) % 3
 
@@ -136,28 +139,49 @@ class Parent:
         return iter(range(3))
 
 
-@pytest.mark.parametrize("provider", ["cardinality", "order", "invariants", "exponent", "is_finite", "__len__", "__iter__"])
-@pytest.mark.parametrize("error_type", [TypeError, ValueError, AttributeError, RuntimeError])
-def test_bound_provider_errors_are_not_unavailability(provider, error_type, tmp_path):
-    error = error_type("broken metadata provider")
-
+def parent_with_failure(provider, error):
     def broken(*args):
         raise error
 
-    cls = type("BrokenParent", (Parent,), {provider: broken})
-    space = AdditiveSequenceSpace(cls())
+    return type("BrokenParent", (MetadataC3,), {provider: broken})()
+
+
+@pytest.mark.parametrize(
+    "provider, error_type",
+    [
+        ("cardinality", ValueError),
+        ("order", ValueError),
+        ("invariants", ValueError),
+        ("exponent", ValueError),
+        ("is_finite", ValueError),
+        ("__len__", TypeError),
+        ("__iter__", TypeError),
+        ("cardinality", AttributeError),
+        ("is_finite", RuntimeError),  # NotImplementedError is a RuntimeError subclass.
+    ],
+)
+def test_bound_provider_errors_are_not_unavailability(provider, error_type):
+    error = error_type("broken metadata provider")
+    space = AdditiveSequenceSpace(parent_with_failure(provider, error))
+    with pytest.raises(error_type) as raised:
+        _ = space.davenport_bound
+    assert raised.value is error
+
+
+@pytest.mark.parametrize("query", ["factorization", "enumeration", "export"])
+def test_bound_consumers_do_not_hide_broken_metadata(query, tmp_path):
+    error = ValueError("broken metadata provider")
+    space = AdditiveSequenceSpace(parent_with_failure("cardinality", error))
     sequence = space([1, 2])
     catalogue = AtomCatalogue(space, [sequence])
-    for query in (
-        lambda: space.davenport_bound,
-        space._optional_davenport_bound,
-        sequence.factorization_solver,
-        space.enumerate_atom_catalogue,
-        lambda: catalogue.to_jsonl(tmp_path / "catalogue.jsonl"),
-    ):
-        with pytest.raises(error_type) as raised:
-            query()
-        assert raised.value is error
+    queries = {
+        "factorization": sequence.factorization_solver,
+        "enumeration": space.enumerate_atom_catalogue,
+        "export": lambda: catalogue.to_jsonl(tmp_path / "catalogue.jsonl"),
+    }
+    with pytest.raises(ValueError) as raised:
+        queries[query]()
+    assert raised.value is error
 
 
 @pytest.mark.parametrize("metadata, message", [
@@ -166,7 +190,7 @@ def test_bound_provider_errors_are_not_unavailability(provider, error_type, tmp_
     ({"exponent": lambda self: 2}, "divide"),
 ])
 def test_invalid_metadata_is_not_silently_ignored(metadata, message):
-    space = AdditiveSequenceSpace(type("InvalidParent", (Parent,), metadata)())
+    space = AdditiveSequenceSpace(type("InvalidParent", (MetadataC3,), metadata)())
     with pytest.raises(ValueError, match=message):
         space([1, 2]).factorization_solver()
 
@@ -175,7 +199,7 @@ def test_unsupported_metadata_uses_remaining_capabilities():
     def unsupported(*args):
         raise NotImplementedError
 
-    cls = type("PartialParent", (Parent,), {
+    cls = type("PartialParent", (MetadataC3,), {
         "cardinality": unsupported, "order": unsupported,
         "__len__": unsupported, "invariants": unsupported, "exponent": unsupported,
     })
@@ -186,7 +210,7 @@ def test_unsupported_metadata_uses_remaining_capabilities():
 
 @pytest.mark.parametrize("iterator", [None, lambda self: (_ for _ in ()).throw(NotImplementedError())])
 def test_explicitly_unsupported_iteration_allows_local_fallback(iterator):
-    cls = type("NoIteration", (Parent,), {"__iter__": iterator})
+    cls = type("NoIteration", (MetadataC3,), {"__iter__": iterator})
     space = AdditiveSequenceSpace(cls())
     assert space._optional_davenport_bound() is None
     assert space([1, 2]).length_set() == {1}
@@ -194,17 +218,17 @@ def test_explicitly_unsupported_iteration_allows_local_fallback(iterator):
 
 @pytest.mark.parametrize("provider", ["__iter__", "__len__"])
 def test_invalid_iteration_provider_does_not_allow_local_fallback(provider):
-    space = AdditiveSequenceSpace(type("InvalidIteration", (Parent,), {provider: 5})())
+    space = AdditiveSequenceSpace(type("InvalidIteration", (MetadataC3,), {provider: 5})())
     with pytest.raises(TypeError):
         space([1, 2]).factorization_solver()
 
 
 def test_sequence_indexing_protocol_still_supplies_iteration():
     class Indexing:
-        __call__ = Parent.__call__
-        zero = Parent.zero
-        add = Parent.add
-        is_finite = Parent.is_finite
+        __call__ = MetadataC3.__call__
+        zero = MetadataC3.zero
+        add = MetadataC3.add
+        is_finite = MetadataC3.is_finite
 
         def __getitem__(self, index):
             return range(3)[index]
@@ -235,30 +259,31 @@ def test_missing_metadata_still_allows_boundless_local_solving():
         _ = space.davenport_bound
 
 
-@pytest.mark.parametrize("provider", ["automorphism_group", "automorphism_action", "automorphism_generators"])
-@pytest.mark.parametrize("error_type", [AttributeError, TypeError, ValueError, RuntimeError])
+@pytest.mark.parametrize(
+    "provider, error_type",
+    [
+        ("automorphism_group", AttributeError),
+        ("automorphism_action", AttributeError),
+        ("automorphism_generators", AttributeError),
+        ("automorphism_group", TypeError),
+        ("automorphism_action", ValueError),
+        ("automorphism_generators", RuntimeError),
+    ],
+)
 def test_explicit_symmetry_provider_failures_propagate(provider, error_type):
     error = error_type("broken symmetry provider")
 
-    def broken(*args):
-        raise error
-
-    space = AdditiveSequenceSpace(type("BrokenSymmetry", (Parent,), {provider: broken})())
+    space = AdditiveSequenceSpace(parent_with_failure(provider, error))
     with pytest.raises(error_type) as raised:
         zero_sum_constant(space, {3})
     assert raised.value is error
     assert zero_sum_constant(space, {3}, symmetry=False).value == 5
 
 
-@pytest.mark.parametrize("error_type", [AttributeError, TypeError, ValueError, RuntimeError])
-def test_image_table_construction_preserves_iterator_provider_errors(error_type):
-    error = error_type("broken iterator")
-
-    def broken(self):
-        raise error
-
-    parent = type("BrokenIterator", (Parent,), {"__iter__": broken})()
-    with pytest.raises(error_type) as raised:
+def test_image_table_construction_preserves_iterator_provider_errors():
+    error = TypeError("broken iterator")
+    parent = parent_with_failure("__iter__", error)
+    with pytest.raises(TypeError) as raised:
         AutomorphismGroup.closure(parent, [lambda x: x])
     assert raised.value is error
 
@@ -277,7 +302,7 @@ def test_unsupported_symmetry_still_falls_back():
     def unsupported(*args):
         raise NotImplementedError
 
-    cls = type("UnsupportedSymmetry", (Parent,), {
+    cls = type("UnsupportedSymmetry", (MetadataC3,), {
         name: unsupported for name in (
             "automorphism_group", "automorphism_action", "automorphism_generators"
         )
