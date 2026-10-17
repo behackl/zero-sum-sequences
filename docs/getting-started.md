@@ -84,3 +84,32 @@ exhaustive exact search.
 For the precise bound policy, see
 {py:attr}`zero_sum_sequences.AdditiveSequenceSpace.davenport_bound`;
 for the invariant search, see {py:func}`zero_sum_sequences.zero_sum_constant`.
+
+## Optional Sage support
+
+Compatible Sage parents can be used directly. If you do not already have a
+Sage environment, the `sage` extra installs its runtime on supported platforms:
+
+```console
+python -m pip install --editable '.[sage]'
+```
+
+Sage is not needed for the ordinary-Python examples or the tutorial.
+
+## Development
+
+From a checkout, install the locked development environment and run the tests:
+
+```console
+uv sync --locked
+uv run --locked python -m pytest
+```
+
+The default `dev` group includes the test tools, tutorial dependencies, and
+JupyterLab. Add `--extra sage` to `uv sync` to include the Sage integration.
+Without uv, use `python -m pip install --editable . --group dev` (pip 25.1+).
+
+For performance measurements, run
+`uv run --locked python -m benchmarks.benchmark_factorization --enumerate`.
+The [benchmark guide](https://github.com/behackl/zero-sum-sequences/blob/main/benchmarks/README.md)
+describes the corpus and its mathematical expectations.
