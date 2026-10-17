@@ -2,21 +2,20 @@
 
 ## Installation
 
-The package requires Python 3.12 or newer:
-
-```console
-python -m pip install zero-sum-sequences
-```
-
-For the development version in this checkout:
+The package requires Python 3.12 or newer. These examples describe the
+development version, including invariant functions not yet part of the
+published 0.2.0 release. To run all of them, install from a checkout of
+`zero-sum-constants` or `docs/shibuya`:
 
 ```console
 python -m pip install --editable .
 ```
 
-The examples below describe the development version on the
-`zero-sum-constants` branch; its new invariant functions are not yet part of
-the published 0.2.0 release.
+The published version is available separately:
+
+```console
+python -m pip install zero-sum-sequences
+```
 
 ## A small sequence space
 
@@ -47,7 +46,7 @@ of lengths 2 and 3.
 
 The sequence has six terms; the numbers 2 and 3 count **atom factors**, not
 terms. See [Definitions](definitions.md) for this distinction and the
-reduced-atom convention.
+identity-term convention.
 
 ## A zero-sum constant
 
@@ -75,10 +74,12 @@ The space derives a certified Davenport upper bound lazily when needed:
 3
 ```
 
-An explicit `davenport_bound=...` is also accepted and remains authoritative.
-An insufficient supplied bound or incomplete supplied atom catalogue can
-make atom and factorization results incomplete. Automatic bound resolution
-does not launch an exhaustive exact search.
+An explicit `davenport_bound=...` remains authoritative for enumeration
+and local atom discovery. If too small, it can make catalogues and
+factorization results incomplete; an incomplete supplied catalogue has
+the same limitation. The atom predicate and exact zero-sum constants
+ignore enumeration bounds. Automatic bound resolution does not launch an
+exhaustive exact search.
 
 For the precise bound policy, see
 {py:attr}`zero_sum_sequences.AdditiveSequenceSpace.davenport_bound`;
