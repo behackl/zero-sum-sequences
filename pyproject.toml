@@ -47,10 +47,10 @@ dev = [
 packages = ["src/zero_sum_sequences"]
 
 [tool.hatch.build.targets.sdist]
+exclude = ["/docs/_build"]
 include = [
   "/benchmarks",
-  "/docs/references.bib",
-  "/docs/references.md",
+  "/docs",
   "/notebooks/tutorial.ipynb",
   "/src/zero_sum_sequences",
   "/tests",

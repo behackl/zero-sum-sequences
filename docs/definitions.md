@@ -25,9 +25,12 @@ A sequence is **zero-sum** if its sum is zero. An **atom** is a nonempty
 zero-sum sequence with no proper nonempty zero-sum subsequence. In
 particular, the empty sequence is not an atom.
 
-The singleton containing the group identity is an atom. A **reduced**
-sequence contains no identity terms; reduced atom catalogues omit that
-singleton. The factorization solver works with reduced inputs.
+The singleton containing the group identity is an atom. The package's
+atom catalogues omit that singleton, and its factorization solver accepts
+sequences without identity terms. Zero-sum constants include identity terms.
+
+In standard monoid terminology, the full monoid of zero-sum sequences is
+already **reduced**: its only unit is the empty sequence.
 
 Restricting the permitted terms to a subset $G_0\subseteq G$ does not
 change the ambient addition. The support need not be a subgroup.
@@ -42,11 +45,13 @@ $\mathsf L(S)$ contains the lengths of all such factorizations.
 For example, over $C_3$,
 
 $$
-1^3 2^3 = (1^3)(2^3) = (1\cdot 2)^3,
-\qquad \mathsf L(1^3 2^3)=\{2,3\}.
+\begin{gathered}
+1^3 2^3 = (1^3)(2^3) = (1\cdot 2)^3,\\
+\mathsf L(1^3 2^3)=\{2,3\}.
+\end{gathered}
 $$
 
-See {py:class}`zero_sum_sequences.FactorizationRelation` for cancellation
+See {py:class}`~zero_sum_sequences.FactorizationRelation` for cancellation
 and the factorization distance.
 
 ## Zero-sum constants
@@ -62,15 +67,17 @@ is infinite. An **$L$-free** sequence has no such subsequence.
 Common special cases are
 
 $$
-D(G)=s_{\mathbb N_{>0}}(G),\qquad
-s(G)=s_{\{\exp(G)\}}(G),\qquad
-\eta(G)=s_{\{1,\ldots,\exp(G)\}}(G).
+\begin{aligned}
+D(G)&=s_{\mathbb N_{>0}}(G),\\
+s(G)&=s_{\{\exp(G)\}}(G),\\
+\eta(G)&=s_{\{1,\ldots,\exp(G)\}}(G).
+\end{aligned}
 $$
 
 Here $D(G)$ is the **Davenport constant**, also the maximum length of an
 atom. The notation $s(G)$ is the Erdős–Ginzburg–Ziv constant. The general
 API accepts finite nonempty sets of positive allowed lengths; see
-{py:func}`zero_sum_sequences.zero_sum_constant`.
+{py:func}`~zero_sum_sequences.zero_sum_constant`.
 
 ## Symmetry
 
