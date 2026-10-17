@@ -10,22 +10,25 @@ Sage is optional.
 
 ## A first calculation
 
-Over $C_3$, the sequence $1^3 2^3$ has factorizations $(1^3)(2^3)$ and
-$(1\cdot2)^3$, with two and three atom factors respectively:
+Over $C_2\oplus C_4$, choose a five-term atom $A$ and form $B$ by negating
+each of its terms:
 
 ```{doctest}
 >>> from zero_sum_sequences import AdditiveSequenceSpace, FiniteAdditiveGroup
->>> G = FiniteAdditiveGroup.cyclic_product(3)
->>> S = AdditiveSequenceSpace(G, davenport_bound=3)
->>> sequence = S([(1,)] * 3 + [(2,)] * 3)
->>> sequence.is_zero_sum(), sequence.is_atom()
-(True, False)
->>> sorted(sequence.length_set())
-[2, 3]
+>>> G = FiniteAdditiveGroup.cyclic_product(2, 4)
+>>> S = AdditiveSequenceSpace(G, davenport_bound=5)
+>>> A = S([(0, 1)] * 3 + [(1, 0), (1, 1)])
+>>> B = S([(0, 3)] * 3 + [(1, 0), (1, 3)])
+>>> A.is_atom(), B.is_atom()
+(True, True)
+>>> sorted((A + B).length_set())
+[2, 4, 5]
 ```
 
-Sequences are immutable multisets: input order does not matter, and their
-term count is distinct from the number of factors in a factorization.
+The library writes multiset multiplication as `A + B`. This sequence has
+ten terms, but its factorizations contain two, four, or five atom factors.
+There is no factorization into three atoms: a set of lengths need not be
+an interval.
 The [getting-started guide](getting-started.md) explains the construction
 and installation options.
 

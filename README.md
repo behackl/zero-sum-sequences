@@ -14,19 +14,19 @@ python -m pip install zero-sum-sequences
 
 ## A small example
 
-Over the cyclic group `C₃`, the six-term sequence `1³ 2³` has
-factorizations into either two or three atoms:
+Over `C₂ × C₄`, take a five-term atom and its termwise negative.
+Their product has factorization lengths `2`, `4`, and `5`—but not `3`:
 
 ```python
 from zero_sum_sequences import AdditiveSequenceSpace, FiniteAdditiveGroup
 
-G = FiniteAdditiveGroup.cyclic_product(3)
-S = AdditiveSequenceSpace(G, davenport_bound=3)
-sequence = S([(1,)] * 3 + [(2,)] * 3)
+G = FiniteAdditiveGroup.cyclic_product(2, 4)
+S = AdditiveSequenceSpace(G, davenport_bound=5)
+A = S([(0, 1)] * 3 + [(1, 0), (1, 1)])
+B = S([(0, 3)] * 3 + [(1, 0), (1, 3)])
 
-sequence.is_zero_sum()          # True
-sequence.is_atom()              # False
-sorted(sequence.length_set())   # [2, 3]
+A.is_atom(), B.is_atom()        # (True, True)
+sorted((A + B).length_set())    # [2, 4, 5]
 ```
 
 **[Documentation sources][docs]** — installation options, tutorial, definitions,
