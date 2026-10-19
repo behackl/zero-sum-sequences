@@ -17,9 +17,11 @@ the digest of the catalogue they were computed against.
 from __future__ import annotations
 
 import json
+import warnings
 from collections import OrderedDict
 from collections.abc import Iterable, Iterator
 from pathlib import Path
+from dataclasses import dataclass
 from typing import Generic
 
 from ._validation import _non_negative_integer, _positive_integer
@@ -28,6 +30,36 @@ from .atom_catalogue import AtomCatalogue
 from .factorization import Factorization, FactorizationSolver
 
 CACHE_SCHEMA = "length-set-cache-v1"
+
+
+@dataclass(frozen=True, slots=True)
+class FactorizationCacheStatistics:
+    """Cache sizes and query counters of a :class:`FactorizationCache`."""
+
+    cached_length_sets: int
+    cached_solvers: int
+    hits: int
+    misses: int
+    solver_builds: int
+
+    def __call__(self) -> FactorizationCacheStatistics:
+        # Transitional: ``statistics`` was a method returning a dict.
+        warnings.warn(
+            "FactorizationCache.statistics is now a property",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self
+
+    def __getitem__(self, name: str) -> int:
+        warnings.warn(
+            "use attribute access on FactorizationCacheStatistics",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        if name not in self.__dataclass_fields__:
+            raise KeyError(name)
+        return getattr(self, name)
 
 
 class AnchoredCanonicalizer(Generic[Element]):
@@ -274,18 +306,24 @@ class FactorizationCache(Generic[Element]):
 
     # bookkeeping
 
-    def statistics(self) -> dict[str, int]:
-        return {
-            "cached_length_sets": len(self._length_sets),
-            "cached_solvers": len(self._solvers),
-            "hits": self._hits,
-            "misses": self._misses,
-            "solver_builds": self._solver_builds,
-        }
+    @property
+    def statistics(self) -> FactorizationCacheStatistics:
+        """Return cache sizes and query counters since construction or :meth:`clear`."""
+
+        return FactorizationCacheStatistics(
+            cached_length_sets=len(self._length_sets),
+            cached_solvers=len(self._solvers),
+            hits=self._hits,
+            misses=self._misses,
+            solver_builds=self._solver_builds,
+        )
 
     def clear(self) -> None:
+        """Discard cached length sets and solvers, and reset the counters."""
+
         self._length_sets.clear()
         self._solvers.clear()
+        self._hits = self._misses = self._solver_builds = 0
 
     # persistence
 

@@ -14,6 +14,7 @@ from zero_sum_sequences import (
     AnchoredCanonicalizer,
     AtomCatalogue,
     FactorizationCache,
+    FactorizationCacheStatistics,
     FactorizationSolver,
     FiniteAdditiveGroup,
 )
@@ -76,17 +77,19 @@ def test_caching_and_statistics():
     a, b, c = catalogue[-1], catalogue[-2], catalogue[-3]
     x, y, z = a + b, a + c, b + c
     assert cache.length_set(x) == cache.length_set(x)
-    stats = cache.statistics()
-    assert stats["hits"] == 1 and stats["misses"] == 1 and stats["solver_builds"] == 1
+    stats = cache.statistics
+    assert stats.hits == 1 and stats.misses == 1 and stats.solver_builds == 1
     cache.length_set(y)
     cache.length_set(z)
-    stats = cache.statistics()
-    assert stats["cached_length_sets"] == 3 and stats["cached_solvers"] == 2  # LRU bound
+    stats = cache.statistics
+    assert stats.cached_length_sets == 3 and stats.cached_solvers == 2  # LRU bound
     # a length set is answered from the cache even after its solver was evicted
     assert cache.minimum(x) == min(cache.length_set(x))
-    assert cache.statistics()["solver_builds"] == 3
+    assert cache.statistics.solver_builds == 3
+    with pytest.warns(DeprecationWarning):
+        assert cache.statistics()["hits"] == cache.statistics.hits
     cache.clear()
-    assert cache.statistics()["cached_length_sets"] == 0
+    assert cache.statistics == FactorizationCacheStatistics(0, 0, 0, 0, 0)
     with pytest.raises(ValueError):
         space.factorization_cache(catalogue, maxsize=0)
     with pytest.raises(TypeError):
@@ -105,7 +108,7 @@ def test_group_aware_cache_answers_orbits_from_one_solve(setup):
         sequence = left + right
         lengths = plain.length_set(sequence)
         assert aware.length_set(sequence) == lengths
-        builds = aware.statistics()["solver_builds"]
+        builds = aware.statistics.solver_builds
         for element in group.elements[:: max(1, len(group) // 6)]:
             image = group.apply(element, sequence)
             assert aware.length_set(image) == lengths
@@ -116,7 +119,7 @@ def test_group_aware_cache_answers_orbits_from_one_solve(setup):
                 assert product(space, witness) == image and len(witness) == length
                 assert all(atom in catalogue for atom in witness)
             assert all(product(space, f) == image for f in aware.factorizations(image))
-        assert aware.statistics()["solver_builds"] == builds  # the orbit was one solve
+        assert aware.statistics.solver_builds == builds  # the orbit was one solve
 
 
 def test_group_without_compose_answers_length_sets_only():
@@ -154,12 +157,12 @@ def test_persistence_round_trip(setup, tmp_path):
     expected = {sequence: cache.length_set(sequence) for sequence in queried}
     path = tmp_path / "lengths.jsonl"
     count = cache.to_jsonl(path)
-    assert count == cache.statistics()["cached_length_sets"]
+    assert count == cache.statistics.cached_length_sets
 
     loaded = FactorizationCache.from_jsonl(path, catalogue, group=group)
     for sequence, lengths in expected.items():
         assert loaded.length_set(sequence) == lengths
-    assert loaded.statistics()["misses"] == 0 and loaded.statistics()["solver_builds"] == 0
+    assert loaded.statistics.misses == 0 and loaded.statistics.solver_builds == 0
     records = list(loaded.records())
     assert records == list(cache.records())
     assert [r["sequence"] for r in records] == [
@@ -180,7 +183,7 @@ def test_preload_accepts_external_tables():
     truth = FactorizationSolver(sequence, atom_catalogue=catalogue).length_set()
     assert cache.preload([(sequence, sorted(truth))]) == 1
     assert cache.length_set(sequence) == frozenset(truth)
-    assert cache.statistics()["solver_builds"] == 0
+    assert cache.statistics.solver_builds == 0
     with pytest.raises(TypeError):
         cache.preload([("not a sequence", [1])])
 
@@ -199,7 +202,7 @@ def test_exhaustive_pair_table_is_consistent_with_orbit_classification():
     for a, b in itertools.combinations_with_replacement(catalogue.atoms, 2):
         assert aware.length_set(a + b) == plain.length_set(a + b)
     # products of pairs in one orbit are in one orbit, so at most one solve each
-    assert aware.statistics()["solver_builds"] <= len(pair_orbits)
+    assert aware.statistics.solver_builds <= len(pair_orbits)
 
 
 def test_anchored_canonicalizer_gives_automorphic_images(setup):
@@ -330,7 +333,7 @@ def test_preload_rejects_invalid_lengths_without_inserting_a_record(problem):
     cache = space.factorization_cache(catalogue)
     with pytest.raises(ValueError, match="factor count"):
         cache.preload([(atom, [1, 1.5])])
-    assert cache.statistics()["cached_length_sets"] == 0
+    assert cache.statistics.cached_length_sets == 0
 
 
 def test_indexable_counts_and_cache_size_are_supported(problem):

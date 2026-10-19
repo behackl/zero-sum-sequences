@@ -10,8 +10,12 @@ from .automorphisms import (
     AutomorphismGroupUnavailable,
     CanonicalForm,
 )
-from .factorization import Factorization, FactorizationSolver
-from .factorization_cache import AnchoredCanonicalizer, FactorizationCache
+from .factorization import Factorization, FactorizationSolver, FactorizationStatistics
+from .factorization_cache import (
+    AnchoredCanonicalizer,
+    FactorizationCache,
+    FactorizationCacheStatistics,
+)
 from .invariants import (
     ZeroSumConstant,
     davenport_constant,
@@ -37,7 +41,9 @@ __all__ = [
     "FactorizationRelation",
     "AnchoredCanonicalizer",
     "FactorizationCache",
+    "FactorizationCacheStatistics",
     "FactorizationSolver",
+    "FactorizationStatistics",
     "FiniteAdditiveGroup",
     "Automorphism",
     "AutomorphismAction",
