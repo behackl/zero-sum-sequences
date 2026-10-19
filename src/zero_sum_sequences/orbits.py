@@ -16,6 +16,7 @@ from typing import Generic, TypeVar
 
 from ._validation import _non_negative_integer as _non_negative_index
 from .additive_sequence import AdditiveSequence
+from .automorphisms import AutomorphismGroup
 
 Element = TypeVar("Element")
 Generator = TypeVar("Generator")
@@ -322,8 +323,24 @@ def _sage_vector_space_action(parent) -> AutomorphismAction | None:
     )
 
 
+def _action_from_group(group: AutomorphismGroup) -> AutomorphismAction:
+    """Act by the generators of a materialized group, keeping its word order."""
+
+    materialize = None
+    if group._compose is not None:
+
+        def materialize(word):
+            return group.materialize(word.generator_indices)
+
+    return AutomorphismAction(
+        group.generators,
+        apply_term=group.apply_term,
+        materialize_word=materialize,
+    )
+
+
 def _cas_automorphism_action(parent) -> AutomorphismAction | None:
-    """Try conservative automorphism-group conventions used by CAS parents."""
+    """Use a materialized group or CAS conventions exposed by the parent."""
 
     is_finite = getattr(parent, "is_finite", None)
     try:
@@ -338,6 +355,11 @@ def _cas_automorphism_action(parent) -> AutomorphismAction | None:
             continue
         try:
             group = method()
+        except (AttributeError, NotImplementedError, TypeError, ValueError):
+            continue
+        if isinstance(group, AutomorphismGroup):
+            return _action_from_group(group)
+        try:
             generators = tuple(group.gens())
         except (AttributeError, NotImplementedError, TypeError, ValueError):
             continue
@@ -363,9 +385,11 @@ def _cas_automorphism_action(parent) -> AutomorphismAction | None:
 def automorphism_action(sequence_space) -> AutomorphismAction:
     """Resolve and cache an automorphism action for a sequence space.
 
-    Resolution first honors an explicit provider on the additive parent, then
-    recognizes finite-dimensional Sage vector spaces over finite fields, and
-    finally tries conventional CAS automorphism-group methods.
+    Resolution first honors an explicit action or automorphism generators on
+    the additive parent, then recognizes finite-dimensional Sage vector spaces
+    over finite fields, and finally uses the generators of a group returned by
+    ``automorphism_group()`` or ``aut()``, either an :class:`AutomorphismGroup`
+    or a CAS group with callable generators.
     """
 
     cached = sequence_space._automorphism_action

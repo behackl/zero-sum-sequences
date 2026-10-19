@@ -23,6 +23,7 @@ from zero_sum_sequences import (
     AutomorphismGroupUnavailable,
     FiniteAdditiveGroup,
 )
+from zero_sum_sequences.orbits import automorphism_action
 
 
 def brute_force_automorphisms(group):
@@ -421,3 +422,18 @@ def test_identity_is_found_by_composition_or_must_be_supplied():
         [1, 4], apply_term=lambda unit, term: unit * term % 5, identity=1
     ).identity == 1
 
+
+def test_orbit_methods_use_a_parent_supplied_group():
+    reference = FiniteAdditiveGroup.cyclic_product(2, 4)
+    materialized = reference.automorphism_group()
+    parent = FiniteAdditiveGroup(
+        list(reference), zero=(0, 0), add=reference.add,
+        automorphism_group=lambda: materialized,
+    )
+    space = AdditiveSequenceSpace(parent)
+    source, target = space([(0, 1), (0, 3)]), space([(1, 1), (1, 3)])
+
+    assert sorted(source.orbit()) == [source, target]
+    witness = source.orbit_witness(target)
+    automorphism = automorphism_action(space).materialize_word(witness)
+    assert materialized.apply(automorphism, source) == target
