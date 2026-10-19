@@ -482,13 +482,21 @@ class AutomorphismGroup(Generic[Element, Auto]):
         elements = [Automorphism(table, data) for table in seen]
         return cls(
             elements,
-            apply_term=lambda auto, term: auto(term),
-            compose=lambda a, b: a.compose(b),
-            inverse=lambda a: a.inverse(),
+            apply_term=_apply_automorphism,
+            compose=Automorphism.compose,
+            inverse=Automorphism.inverse,
             identity=Automorphism(identity, data),
             generators=[Automorphism(t, data) for t in generator_tables if t != identity],
-            key=(lambda a: (a.generator_images(), a.table)) if data.generator_indices else None,
+            key=_generator_image_key if data.generator_indices else None,
         )
+
+
+def _apply_automorphism(automorphism, term):
+    return automorphism(term)
+
+
+def _generator_image_key(automorphism):
+    return automorphism.generator_images(), automorphism.table
 
 
 def _prepare(obj, ordered: bool):

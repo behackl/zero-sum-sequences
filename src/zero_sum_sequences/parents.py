@@ -28,6 +28,24 @@ def default_encode_term(term: object) -> object:
         ) from None
 
 
+def _identity_coerce(value):
+    return value
+
+
+def _restore_certified(group, certified) -> None:
+    """Reattach certified arithmetic facts carried through pickling."""
+
+    if certified is None:
+        return
+    davenport, exponent = certified
+    arithmetic = group._group_arithmetic()
+    if exponent is not None and arithmetic._exponent is None:
+        arithmetic._exponent = exponent
+        arithmetic._bound = None
+    if davenport is not None:
+        arithmetic._record_exact_davenport(davenport)
+
+
 def _scale_coordinate(coordinate: int, unit: int, modulus: int):
     def scaling(element):
         image = list(element)
@@ -120,6 +138,9 @@ class FiniteAdditiveGroup(Generic[Element]):
         "_decode_term",
         "_cyclic_moduli",
         "_arithmetic_context",
+        "_cyclic_recipe",
+        "_pickle_token",
+        "__weakref__",
     )
 
     @classmethod
@@ -211,6 +232,7 @@ class FiniteAdditiveGroup(Generic[Element]):
             automorphism_generators=generators,
         )
         group._cyclic_moduli = normalized_moduli
+        group._cyclic_recipe = moduli
         return group
 
     def __init__(
@@ -233,7 +255,7 @@ class FiniteAdditiveGroup(Generic[Element]):
         if coerce is not None and not callable(coerce):
             raise TypeError("coerce must be callable")
 
-        self._coerce = coerce if coerce is not None else lambda value: value
+        self._coerce = coerce if coerce is not None else _identity_coerce
         try:
             coerced_elements = tuple(self._coerce(element) for element in elements)
             element_set = frozenset(coerced_elements)
@@ -284,6 +306,40 @@ class FiniteAdditiveGroup(Generic[Element]):
         self._decode_term = decode_term
         self._cyclic_moduli = None
         self._arithmetic_context = None
+        self._cyclic_recipe = None
+        self._pickle_token = None
+
+    def __reduce__(self):
+        """Pickle the construction recipe and certified arithmetic facts.
+
+        Unpickling in a process that holds this group (or an earlier copy)
+        returns that object. Custom callables must themselves be picklable.
+        """
+
+        from ._pickling import _restore, _token
+
+        if self._cyclic_recipe is not None:
+            build, args, kwargs = type(self).cyclic_product, self._cyclic_recipe, {}
+        else:
+            build, args = type(self), (self._elements,)
+            kwargs = {
+                "zero": self._zero,
+                "add": self._operation,
+                "coerce": None if self._coerce is _identity_coerce else self._coerce,
+                "additive_generators": self._additive_generators,
+                "automorphism_generators": self._automorphism_generators,
+                "automorphism_group": self._automorphism_group_provider,
+                "encode_term": self._encode_term,
+                "decode_term": self._decode_term,
+            }
+        context = self._arithmetic_context
+        certified = (
+            None if context is None
+            else (context.exact_davenport_constant, context._exponent)
+        )
+        return _restore, (
+            _token(self), build, args, kwargs, _restore_certified, certified
+        )
 
     def __call__(self, value: object) -> Element:
         element = self._coerce(value)

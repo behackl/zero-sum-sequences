@@ -48,6 +48,8 @@ class AdditiveSequenceSpace(Generic[Element]):
         "_arithmetic_context",
         "_automorphism_action",
         "_automorphism_group",
+        "_pickle_token",
+        "__weakref__",
     )
 
     def __init__(self, parent, *, davenport_bound: int | None = None) -> None:
@@ -66,6 +68,24 @@ class AdditiveSequenceSpace(Generic[Element]):
         self._arithmetic_context = None
         self._automorphism_action = None
         self._automorphism_group = None
+        self._pickle_token = None
+
+    def __reduce__(self):
+        """Pickle the parent and explicit bound; caches are rebuilt lazily.
+
+        Unpickling in a process that holds this space (or an earlier copy)
+        returns that object, so sequences returned by worker processes
+        compare equal to the caller's sequences.
+        """
+
+        from ._pickling import _restore, _token
+
+        return _restore, (
+            _token(self),
+            type(self),
+            (self._parent,),
+            {"davenport_bound": self._davenport_bound},
+        )
 
     def factorization_cache(self, catalogue, *, group=None, canonicalize=None, maxsize: int | None = 1024):
         """A :class:`FactorizationCache` over ``catalogue`` for this space."""
@@ -352,6 +372,10 @@ class AdditiveSequence(Generic[Element]):
         sequence._length = sum(count for _, count in items)
         sequence._hash = hash((space, items))
         return sequence
+
+    def __reduce__(self):
+        # The hash depends on the space object, so it is recomputed on load.
+        return _restore_sequence, (self._space, self._items)
 
     def _map_canonical(self, mapping: Callable[[Element], Element]) -> AdditiveSequence[Element]:
         """Image under a term map whose values are canonical parent elements."""
@@ -701,3 +725,7 @@ class AdditiveSequence(Generic[Element]):
                 factor = f"{factor}^{count}"
             factors.append(factor)
         return " · ".join(factors)
+
+
+def _restore_sequence(space, items):
+    return AdditiveSequence._from_items(space, items)

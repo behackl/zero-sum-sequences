@@ -95,6 +95,10 @@ class AtomCatalogue(Generic[Element]):
         self._orbit_cache: tuple | None = None  # (group, atom -> (representative, word))
         self._closed_group = None
 
+    def __reduce__(self):
+        # Indices are rebuilt; orbit and closure caches are not carried.
+        return _restore_catalogue, (self.space, self.atoms, tuple(self.annotations.items()))
+
     # indexing
 
     def __iter__(self) -> Iterator[AdditiveSequence[Element]]:
@@ -375,3 +379,7 @@ class AtomCatalogue(Generic[Element]):
         if catalogue.digest() != metadata.get("digest"):
             raise ValueError("catalogue digest does not match its metadata")
         return catalogue
+
+
+def _restore_catalogue(space, atoms, annotations):
+    return AtomCatalogue(space, atoms, annotations=annotations, verify=False)
