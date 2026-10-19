@@ -84,6 +84,15 @@ def test_sequence_arithmetic_accepts_indexable_integer_repetitions(c3_sequences)
         IndexableInteger(-1) * right
     assert right.__mul__(Fraction(3, 2)) is NotImplemented
     assert right.__mul__(1.5) is NotImplemented
+    assert right.__mul__(True) is NotImplemented
+    with pytest.raises(TypeError):
+        True * right
+
+
+@pytest.mark.parametrize("max_length", [True, 1.5, -1])
+def test_subsequence_length_caps_are_exact_nonnegative_integers(c3_sequences, max_length):
+    with pytest.raises(ValueError, match="maximum length must be a non-negative integer"):
+        next(c3_sequences([1, 2]).subsequences(max_length=max_length))
 
 
 def test_arithmetic_rejects_different_sequence_spaces():

@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Generic
 
+from ._validation import _non_negative_integer
 from .additive_sequence import AdditiveSequence, AdditiveSequenceSpace, Element
 
 CATALOGUE_SCHEMA = "atom-catalogue-v1"
@@ -142,6 +143,8 @@ class AtomCatalogue(Generic[Element]):
     ) -> AtomCatalogue[Element]:
         """The atoms supported on ``support`` and of length at most ``max_length``."""
 
+        if max_length is not None:
+            max_length = _non_negative_integer(max_length, name="maximum length")
         allowed = None if support is None else set(self.space(support).support)
         return self.filter(
             lambda atom: (allowed is None or set(atom.support) <= allowed)

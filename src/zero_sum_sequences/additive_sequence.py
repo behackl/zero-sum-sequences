@@ -470,8 +470,8 @@ class AdditiveSequence(Generic[Element]):
     ) -> Iterator[Self]:
         """Yield each distinct subsequence once, in deterministic order."""
 
-        if max_length is not None and max_length < 0:
-            raise ValueError("maximum length must be non-negative")
+        if max_length is not None:
+            max_length = _non_negative_integer(max_length, name="maximum length")
 
         if max_length is None:
             count_vectors = itertools.product(
@@ -650,12 +650,13 @@ class AdditiveSequence(Generic[Element]):
         return self._space.from_multiplicities(counts)
 
     def __mul__(self, repetitions: object) -> Self:
+        if isinstance(repetitions, bool):
+            return NotImplemented
         try:
-            repetitions = index(repetitions)
+            index(repetitions)
         except TypeError:
             return NotImplemented
-        if repetitions < 0:
-            raise ValueError("sequence repetitions must be non-negative")
+        repetitions = _non_negative_integer(repetitions, name="sequence repetitions")
         return self._space.from_multiplicities(
             {term: count * repetitions for term, count in self._items}
         )

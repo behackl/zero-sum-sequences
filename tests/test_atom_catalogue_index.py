@@ -54,6 +54,8 @@ def test_filter_and_restrict(catalogue):
     assert list(catalogue.restrict(max_length=2).divisors(first)) == [
         atom for atom in catalogue.divisors(first) if len(atom) <= 2
     ]
+    with pytest.raises(ValueError, match="maximum length"):
+        catalogue.restrict(max_length=True)
 
 
 # automorphisms
