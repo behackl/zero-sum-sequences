@@ -172,16 +172,23 @@ class AutomorphismGroup(Generic[Element, Auto]):
     ----------
     elements:
         The group elements.  They must be hashable; they are stored sorted by
-        ``key`` (default: the elements' own order), identity first.
+        ``key``, identity first.
     apply_term:
         ``apply_term(auto, term)``: the action on one parent element.
-    compose, inverse, identity:
-        Group structure.  ``compose(a, b)`` is ``a ∘ b``.  Only needed for
-        :meth:`compose`/:meth:`inverse` and for word witnesses; orbits,
-        stabilizers and canonical forms use ``apply_term`` alone.
+    compose, inverse:
+        Group structure; ``compose(a, b)`` is ``a ∘ b``.  Needed for
+        :meth:`compose`, :meth:`inverse`, :meth:`materialize` and word
+        witnesses; orbits, stabilizers and canonical forms use
+        ``apply_term`` alone.
+    identity:
+        The identity element.  If omitted, it is recognized among
+        :class:`Automorphism` elements, or as the idempotent element when
+        ``compose`` is given; otherwise it must be supplied.
     generators:
         A generating subset used for orbit traversals, whose cost is then
         proportional to the orbit size.  Defaults to all elements.
+    key:
+        Optional sort key for the elements.  Defaults to their own order.
     """
 
     def __init__(
@@ -207,7 +214,16 @@ class AutomorphismGroup(Generic[Element, Auto]):
         self._compose = compose
         self._inverse = inverse
         if identity is None:
-            identity = next((e for e in ordered if _is_identity(e)), None)
+            if all(isinstance(e, Automorphism) for e in ordered):
+                identity = next((e for e in ordered if e.is_identity()), None)
+            elif compose is not None:
+                # In a group, the identity is the only idempotent.
+                identity = next((e for e in ordered if compose(e, e) == e), None)
+            else:
+                raise TypeError(
+                    "identity is required unless the elements are Automorphism "
+                    "instances or compose is given"
+                )
             if identity is None:
                 raise ValueError("the elements do not contain the identity")
         elif identity not in self._element_set:
@@ -473,10 +489,6 @@ class AutomorphismGroup(Generic[Element, Auto]):
             generators=[Automorphism(t, data) for t in generator_tables if t != identity],
             key=(lambda a: (a.generator_images(), a.table)) if data.generator_indices else None,
         )
-
-
-def _is_identity(element) -> bool:
-    return isinstance(element, Automorphism) and element.is_identity()
 
 
 def _prepare(obj, ordered: bool):

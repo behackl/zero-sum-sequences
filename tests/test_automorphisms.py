@@ -404,3 +404,20 @@ def test_catalogue_representatives_and_transporters(moduli, bound):
     }
     with pytest.raises(ValueError):
         catalogue.transporter(catalogue[0] + catalogue[1])
+
+
+def test_identity_is_found_by_composition_or_must_be_supplied():
+    # Multiplication by units on C_5, represented by the units themselves.
+    def compose(a, b):
+        return a * b % 5
+
+    group = AutomorphismGroup(
+        [3, 4, 2, 1], apply_term=lambda unit, term: unit * term % 5, compose=compose
+    )
+    assert group.identity == 1 and group.elements[0] == 1
+    with pytest.raises(TypeError, match="identity is required"):
+        AutomorphismGroup([1, 4], apply_term=lambda unit, term: unit * term % 5)
+    assert AutomorphismGroup(
+        [1, 4], apply_term=lambda unit, term: unit * term % 5, identity=1
+    ).identity == 1
+

@@ -59,6 +59,35 @@ class FiniteAdditiveGroup(Generic[Element]):
     Elements must be hashable and mutually orderable. The supplied operation
     is assumed to define an abelian group; the group axioms are not checked
     exhaustively. Addition results are coerced and checked for membership.
+    :meth:`cyclic_product` builds coordinate groups with all optional
+    structure configured.
+
+    Parameters
+    ----------
+    elements:
+        Every group element, each listed once after coercion.
+    zero:
+        The additive identity.
+    add:
+        ``add(left, right)``, the group operation on coerced elements.
+    coerce:
+        Optional map from user input to canonical elements, applied to
+        ``elements``, ``zero``, arguments and sums. Defaults to the identity.
+    additive_generators:
+        Optional distinct nonzero elements generating the group. They label
+        automorphisms in :meth:`Automorphism.generator_images` and
+        :meth:`OrbitWitness.show`.
+    automorphism_generators:
+        Optional callables, each an automorphism of the group on elements.
+        They enable orbit methods and :meth:`automorphism_group`.
+    automorphism_group:
+        Optional zero-argument callable returning the full
+        :class:`AutomorphismGroup`; it takes precedence over the closure of
+        ``automorphism_generators``.
+    encode_term, decode_term:
+        Optional JSON codec for catalogue and cache files, supplied together.
+        By default, integers encode as themselves and iterable terms as
+        lists of integers; decoding coerces through the group.
 
     Examples
     --------
@@ -68,6 +97,13 @@ class FiniteAdditiveGroup(Generic[Element]):
     (8, 4, 4)
     >>> group.negate((1, 1))
     (1, 3)
+
+    A Klein four-group on integer labels, added by bitwise XOR:
+
+    >>> from operator import xor
+    >>> klein = FiniteAdditiveGroup(range(4), zero=0, add=xor)
+    >>> klein.add(3, 1), klein.exponent()
+    (2, 2)
     """
 
     __slots__ = (

@@ -543,26 +543,26 @@ class AdditiveSequence(Generic[Element]):
         factor_count: int | None = None,
         atom_catalogue=None,
     ):
-        """Yield each unordered reduced factorization, optionally of one length."""
+        """Yield each unordered atom factorization, optionally of one length."""
 
         yield from self.factorization_solver(
             atom_catalogue=atom_catalogue
         ).factorizations(factor_count=factor_count)
 
     def length_set(self, *, atom_catalogue=None) -> set[int]:
-        """Return the complete set of attained reduced factorization lengths."""
+        """Return the complete set of factorization lengths."""
 
         return self.factorization_solver(atom_catalogue=atom_catalogue).length_set()
 
     def minimum_factorization_length(self, *, atom_catalogue=None) -> int | None:
-        """Return the minimum reduced factorization length, if one exists."""
+        """Return the minimum factorization length, or ``None`` if there is none."""
 
         return self.factorization_solver(
             atom_catalogue=atom_catalogue
         ).minimum_factorization_length()
 
     def maximum_factorization_length(self, *, atom_catalogue=None) -> int | None:
-        """Return the maximum reduced factorization length, if one exists."""
+        """Return the maximum factorization length, or ``None`` if there is none."""
 
         return self.factorization_solver(
             atom_catalogue=atom_catalogue
@@ -574,7 +574,7 @@ class AdditiveSequence(Generic[Element]):
         *,
         atom_catalogue=None,
     ) -> bool:
-        """Return whether a reduced factorization has the requested length."""
+        """Return whether a factorization has exactly ``factor_count`` factors."""
 
         return self.factorization_solver(
             atom_catalogue=atom_catalogue

@@ -83,7 +83,7 @@ class FactorizationSolver(Generic[Element]):
                 raise TypeError("atom catalogue and sequence use different spaces")
         if sequence.parent()._canonical_zero() in sequence:
             raise ValueError(
-                "reduced factorizations require a sequence without zero terms"
+                "factorization queries require a sequence without identity terms"
             )
 
         self.sequence = sequence
