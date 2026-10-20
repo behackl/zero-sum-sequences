@@ -38,7 +38,6 @@ def _():
 
     from zero_sum_sequences import (
         AdditiveSequenceSpace,
-        AtomCatalogue,
         AutomorphismAction,
         FactorizationRelation,
         FactorizationSolver,
@@ -51,7 +50,6 @@ def _():
 
     return (
         AdditiveSequenceSpace,
-        AtomCatalogue,
         AutomorphismAction,
         FactorizationRelation,
         FactorizationSolver,
@@ -473,7 +471,13 @@ def _(mo):
 
 
 @app.cell
-def _(C2xC4, FactorizationSolver, c2_c4_catalogue, format_factorization, group):
+def _(
+    C2xC4,
+    FactorizationSolver,
+    c2_c4_catalogue,
+    format_factorization,
+    group,
+):
     A = C2xC4([(0, 1)] * 3 + [(1, 0), (1, 1)])
     B = A.map_terms(group.negate)
     product = A + B
@@ -610,30 +614,11 @@ def _(mo):
       $\exp(G)$ (the Erdős–Ginzburg–Ziv constant).
 
     Known formulas are used where they apply; otherwise the functions search
-    exhaustively, reduced by automorphisms. Such searches grow quickly with
-    the group. For a rank-two group $C_m\oplus C_n$ with $m\mid n$, the known
-    values are $D=m+n-1$, $\eta=2m+n-2$, and $\mathsf s=2m+2n-3$.
-
-    Choose a group; the computations below update automatically.
+    exhaustively, reduced by automorphisms. To try another group, edit
+    `moduli` below. Keep the group small: exhaustive searches grow quickly
+    with its order.
     """)
     return
-
-
-@app.cell
-def _(mo):
-    group_choice = mo.ui.dropdown(
-        options={
-            "C₂ ⊕ C₄": (2, 4),
-            "C₃ ⊕ C₃": (3, 3),
-            "C₂ ⊕ C₆": (2, 6),
-            "C₄ ⊕ C₄": (4, 4),
-            "C₂ ⊕ C₂ ⊕ C₂": (2, 2, 2),
-        },
-        value="C₂ ⊕ C₄",
-        label="group",
-    )
-    group_choice
-    return (group_choice,)
 
 
 @app.cell
@@ -643,17 +628,13 @@ def _(
     davenport_constant,
     erdos_ginzburg_ziv_constant,
     eta_constant,
-    group_choice,
 ):
-    moduli = group_choice.value
+    moduli = (2, 4)
     chosen_space = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(*moduli))
 
     print("D(G):", davenport_constant(chosen_space))
     print("eta(G):", eta_constant(chosen_space))
     print("s(G):", erdos_ginzburg_ziv_constant(chosen_space))
-    if len(moduli) == 2:
-        m, n = moduli
-        print("rank-two formulas (D, eta, s):", (m + n - 1, 2 * m + n - 2, 2 * m + 2 * n - 3))
     return (chosen_space,)
 
 
