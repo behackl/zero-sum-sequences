@@ -29,9 +29,9 @@ A.is_atom(), B.is_atom()        # (True, True)
 sorted((A + B).length_set())    # [2, 4, 5]
 ```
 
-**[Documentation sources][docs]** — installation options, tutorial, definitions,
-and API reference.
+**[Documentation][docs]** — installation options, tutorial, definitions, and
+API reference.
 
 [MIT License](https://github.com/behackl/zero-sum-sequences/blob/main/LICENSE).
 
-[docs]: https://github.com/behackl/zero-sum-sequences/blob/docs/shibuya/docs/index.md
+[docs]: https://zero-sum-sequences.readthedocs.io/

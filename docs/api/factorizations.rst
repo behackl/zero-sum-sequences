@@ -12,10 +12,16 @@ Atoms and factorizations
 .. autoclass:: FactorizationSolver
    :members:
 
+.. autoclass:: FactorizationStatistics
+   :members:
+
 .. autoclass:: FactorizationRelation
    :members:
 
 .. autoclass:: FactorizationCache
+   :members:
+
+.. autoclass:: FactorizationCacheStatistics
    :members:
 
 .. autoclass:: AnchoredCanonicalizer

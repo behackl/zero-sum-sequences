@@ -1,7 +1,9 @@
 # Working on the documentation
 
 The site uses Sphinx and Shibuya, with a short notation guide and an API
-reference generated from the library's docstrings. The experimental Thebe
+reference generated from the library's docstrings. It is published at
+https://zero-sum-sequences.readthedocs.io/ from `main`, configured by
+`.readthedocs.yaml` (Read the Docs runs `uv sync --group docs`). The experimental Thebe
 and marimo sites are not part of this documentation source.
 
 ## Build locally
@@ -50,7 +52,6 @@ Do not add marimo/islands directives to library docstrings.
 - Convert the full tutorial to marimo, adapting stateful examples and plotting
   for its reactive model and Pyodide.
 - Add static, download, and browser-editing exports from that single source.
-- Add documentation CI and publication, and check the deployed site under its
-  target subdirectory and on small screens.
+- Add a documentation build and doctest job to CI.
 - Update the quickstart's development-version notice when the new APIs are
   released.

@@ -18,6 +18,7 @@ dependencies = [
 ]
 
 [project.urls]
+Documentation = "https://zero-sum-sequences.readthedocs.io/"
 Repository = "https://github.com/behackl/zero-sum-sequences"
 
 [project.optional-dependencies]

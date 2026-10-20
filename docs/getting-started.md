@@ -3,13 +3,15 @@
 ## Installation
 
 The package requires Python 3.12 or newer. These examples describe the
-development version, including invariant functions not yet part of the
-published 0.2.0 release. To run all of them, install from a checkout of
-`zero-sum-constants` or `docs/shibuya`:
+development version on the `main` branch, including invariant functions not
+yet part of the published 0.2.0 release. To run all of them, install it from
+GitHub:
 
 ```console
-python -m pip install --editable .
+python -m pip install "zero-sum-sequences @ git+https://github.com/behackl/zero-sum-sequences"
 ```
+
+or, from a checkout, `python -m pip install --editable .`.
 
 The published version is available separately:
 
