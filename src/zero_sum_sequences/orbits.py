@@ -30,7 +30,7 @@ class AutomorphismActionUnavailable(RuntimeError):
 _UNAVAILABLE = object()
 _ACTION_UNAVAILABLE = (
     "could not determine automorphism generators for the additive "
-    "parent; pass action=AutomorphismAction(...) explicitly"
+    "parent; pass group=... explicitly"
 )
 
 
@@ -423,12 +423,20 @@ def automorphism_action(sequence_space) -> AutomorphismAction:
     return action
 
 
-def _normalize_action(action, sequence) -> AutomorphismAction:
-    if isinstance(action, AutomorphismAction):
-        return action
-    if action is None:
+def _normalize_group(group, sequence) -> AutomorphismAction:
+    """The generators acting in an orbit query.
+
+    ``None`` resolves the parent's automorphisms lazily, without
+    materializing the group.
+    """
+
+    if isinstance(group, AutomorphismAction):
+        return group
+    if isinstance(group, AutomorphismGroup):
+        return _action_from_group(group)
+    if group is None:
         return automorphism_action(sequence.parent())
-    return AutomorphismAction(action)
+    return AutomorphismAction(group)
 
 
 def _require_sequence_pair(
@@ -474,38 +482,38 @@ def _orbit_with_witnesses(
 def orbit(
     sequence: AdditiveSequence[Element],
     *,
-    action: AutomorphismAction[Element, Generator] | Iterable[Generator] | None = None,
+    group: AutomorphismGroup | AutomorphismAction | Iterable[Generator] | None = None,
 ) -> tuple[AdditiveSequence[Element], ...]:
-    """Return all distinct automorphism images of ``sequence``.
+    """Return all distinct automorphism images of ``sequence``, sorted.
 
-    Images are returned in deterministic breadth-first order, beginning with
-    ``sequence`` itself.  The action must have a finite orbit for this
-    materialized traversal to terminate.
+    ``group`` is an :class:`AutomorphismGroup`, an :class:`AutomorphismAction`,
+    or an iterable of callable generators. If omitted, the automorphisms of
+    the additive parent are resolved lazily and cached on the space. The
+    orbit must be finite.
     """
 
     if not isinstance(sequence, AdditiveSequence):
         raise TypeError("expected an additive sequence")
-    normalized_action = _normalize_action(action, sequence)
-    witnesses, _ = _orbit_with_witnesses(sequence, normalized_action)
-    return tuple(witnesses)
+    witnesses, _ = _orbit_with_witnesses(sequence, _normalize_group(group, sequence))
+    return tuple(sorted(witnesses))
 
 
 def is_in_same_orbit(
     source: AdditiveSequence[Element],
     target: AdditiveSequence[Element],
     *,
-    action: AutomorphismAction[Element, Generator] | Iterable[Generator] | None = None,
+    group: AutomorphismGroup | AutomorphismAction | Iterable[Generator] | None = None,
 ) -> bool:
     """Return whether two sequences lie in one automorphism orbit.
 
-    When ``action`` is omitted, equality is recognized without resolving an
-    action from the additive parent.
+    ``group`` is as in :func:`orbit`. When it is omitted, equality is
+    recognized without resolving the parent's automorphisms.
     """
 
     _require_sequence_pair(source, target)
-    if source == target and action is None:
+    if source == target and group is None:
         return True
-    normalized_action = _normalize_action(action, source)
+    normalized_action = _normalize_group(group, source)
     _, found = _orbit_with_witnesses(
         source,
         normalized_action,
@@ -518,22 +526,23 @@ def orbit_witness(
     source: AdditiveSequence[Element],
     target: AdditiveSequence[Element],
     *,
-    action: AutomorphismAction[Element, Generator] | Iterable[Generator] | None = None,
+    group: AutomorphismGroup | AutomorphismAction | Iterable[Generator] | None = None,
 ) -> OrbitWitness | None:
     """Return a shortest deterministic generator word to ``target``.
 
-    The empty word is returned for equal sequences.  If ``action`` is omitted,
-    this equality case does not require the additive parent to expose an
-    action.  If ``target`` is not in the orbit, return ``None``.
+    ``group`` is as in :func:`orbit`; word indices refer to its generators.
+    The empty word is returned for equal sequences; when ``group`` is
+    omitted, this case does not require the parent's automorphisms. If
+    ``target`` is not in the orbit, return ``None``.
     """
 
     _require_sequence_pair(source, target)
-    if source == target and action is None:
+    if source == target and group is None:
         return OrbitWitness()._with_context(
             source.parent(),
             AutomorphismAction(()),
         )
-    normalized_action = _normalize_action(action, source)
+    normalized_action = _normalize_group(group, source)
     witnesses, found = _orbit_with_witnesses(
         source,
         normalized_action,

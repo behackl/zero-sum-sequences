@@ -102,7 +102,7 @@ def test_group_aware_cache_answers_orbits_from_one_solve(setup):
     space, catalogue = setup
     group = space.automorphism_group()
     plain = space.factorization_cache(catalogue)
-    aware = space.factorization_cache(catalogue, group=group)
+    aware = space.factorization_cache(catalogue, symmetry=group)
     rng = random.Random(2)
     for left, right in pairs(catalogue, rng, 10):
         sequence = left * right
@@ -132,7 +132,7 @@ def test_group_without_compose_answers_length_sets_only():
     restricted = AutomorphismGroup(
         full.elements, apply_term=full.apply_term, identity=full.identity
     )
-    cache = space.factorization_cache(catalogue, group=restricted)
+    cache = space.factorization_cache(catalogue, symmetry=restricted)
     sequence = catalogue[-1] * catalogue[-3]
     assert cache.length_set(sequence) == space.factorization_cache(catalogue).length_set(sequence)
     with pytest.raises(TypeError):  # transporting a witness needs compose/inverse
@@ -151,7 +151,7 @@ def test_product_helper(setup):
 def test_persistence_round_trip(setup, tmp_path):
     space, catalogue = setup
     group = space.automorphism_group()
-    cache = space.factorization_cache(catalogue, group=group)
+    cache = space.factorization_cache(catalogue, symmetry=group)
     rng = random.Random(3)
     queried = [left * right for left, right in pairs(catalogue, rng, 15)]
     expected = {sequence: cache.length_set(sequence) for sequence in queried}
@@ -159,7 +159,7 @@ def test_persistence_round_trip(setup, tmp_path):
     count = cache.to_jsonl(path)
     assert count == cache.statistics.cached_length_sets
 
-    loaded = FactorizationCache.from_jsonl(path, catalogue, group=group)
+    loaded = FactorizationCache.from_jsonl(path, catalogue, symmetry=group)
     for sequence, lengths in expected.items():
         assert loaded.length_set(sequence) == lengths
     assert loaded.statistics.misses == 0 and loaded.statistics.solver_builds == 0
@@ -168,11 +168,19 @@ def test_persistence_round_trip(setup, tmp_path):
     assert [r["sequence"] for r in records] == [
         r["sequence"] for r in sorted(records, key=lambda r: (len(r["sequence"]), r["sequence"]))
     ]
-    # the file is bound to the catalogue and to the group
+    # The file is bound to the catalogue; symmetry may differ, since length
+    # sets are automorphism invariants and keys are canonicalized on loading.
+    plain = FactorizationCache.from_jsonl(path, catalogue)
+    assert plain.group is None
+    for sequence, lengths in expected.items():
+        assert plain.length_set(sequence) == lengths
+    anchored = FactorizationCache.from_jsonl(
+        path, catalogue, symmetry=group, canonicalize=AnchoredCanonicalizer(catalogue)
+    )
+    for sequence, lengths in expected.items():
+        assert anchored.length_set(sequence) == lengths
     with pytest.raises(ValueError):
-        FactorizationCache.from_jsonl(path, catalogue)
-    with pytest.raises(ValueError):
-        FactorizationCache.from_jsonl(path, catalogue.restrict(max_length=2), group=group)
+        FactorizationCache.from_jsonl(path, catalogue.restrict(max_length=2), symmetry=group)
 
 
 def test_preload_accepts_external_tables():
@@ -195,7 +203,7 @@ def test_exhaustive_pair_table_is_consistent_with_orbit_classification():
     catalogue = space.enumerate_atom_catalogue()
     group = space.automorphism_group()
     plain = space.factorization_cache(catalogue, maxsize=None)
-    aware = space.factorization_cache(catalogue, group=group, maxsize=None)
+    aware = space.factorization_cache(catalogue, symmetry=group, maxsize=None)
     pair_orbits = group.orbit_representatives(
         [(a, b) for a, b in itertools.combinations_with_replacement(catalogue.atoms, 2)]
     )
@@ -234,7 +242,7 @@ def test_cache_with_anchored_canonicalizer(setup):
     group = space.automorphism_group()
     plain = space.factorization_cache(catalogue)
     cache = space.factorization_cache(
-        catalogue, group=group, canonicalize=AnchoredCanonicalizer(catalogue, group)
+        catalogue, symmetry=group, canonicalize=AnchoredCanonicalizer(catalogue, group)
     )
     rng = random.Random(5)
     for left, right in pairs(catalogue, rng, 10):
@@ -246,14 +254,14 @@ def test_cache_with_anchored_canonicalizer(setup):
             witness = cache.witness(image, min(lengths))
             assert product(space, witness) == image
     # a canonicalizer returning only the image works too (transporter is searched)
-    plain_key = space.factorization_cache(catalogue, group=group, canonicalize=lambda s: group.canonical(s))
+    plain_key = space.factorization_cache(catalogue, symmetry=group, canonicalize=lambda s: group.canonical(s))
     sequence = catalogue[-1] * catalogue[-2]
     witness = plain_key.witness(sequence, min(plain.length_set(sequence)))
     assert product(space, witness) == sequence
     with pytest.raises(ValueError):
         space.factorization_cache(catalogue, canonicalize=lambda s: s)
     with pytest.raises(TypeError):
-        space.factorization_cache(catalogue, group=group, canonicalize="no")
+        space.factorization_cache(catalogue, symmetry=group, canonicalize="no")
 
 
 @pytest.fixture
@@ -268,13 +276,13 @@ def test_group_aware_cache_rejects_a_nonclosed_catalogue(problem):
     group = space.automorphism_group()
     assert atom.length_set(atom_catalogue=catalogue) == {1}
     for factory in (
-        lambda: space.factorization_cache(catalogue, group=group),
+        lambda: space.factorization_cache(catalogue, symmetry=group),
         lambda: AnchoredCanonicalizer(catalogue, group),
     ):
         with pytest.raises(ValueError, match="closed"):
             factory()
     trivial = group.subgroup([group.identity])
-    cache = space.factorization_cache(catalogue, group=trivial)
+    cache = space.factorization_cache(catalogue, symmetry=trivial)
     assert cache.length_set(atom) == {1}
     assert cache.witness(atom, 1) == (atom,)
 
@@ -292,7 +300,7 @@ def test_closure_validation_is_generator_based_and_reused(monkeypatch):
 
     monkeypatch.setattr(AtomCatalogue, "permutation", counted)
     anchored = AnchoredCanonicalizer(catalogue, group)
-    cache = space.factorization_cache(catalogue, group=group, canonicalize=anchored)
+    cache = space.factorization_cache(catalogue, symmetry=group, canonicalize=anchored)
     for atom in catalogue:
         assert cache.length_set(atom) == {1}
     assert Counter(checks) == Counter(group.generators)
@@ -371,3 +379,27 @@ def test_cache_jsonl_rejects_nonintegral_lengths(problem, tmp_path):
     path.write_text(json.dumps(metadata) + "\n" + json.dumps(record) + "\n")
     with pytest.raises(ValueError, match="factor count"):
         FactorizationCache.from_jsonl(path, catalogue)
+
+
+def test_symmetry_option_resolves_the_space_group_or_none():
+    space = space_for(2, 4, bound=5)
+    catalogue = space.enumerate_atom_catalogue()
+    group = space.automorphism_group()
+
+    assert space.factorization_cache(catalogue).group is None
+    assert space.factorization_cache(catalogue, symmetry=False).group is None
+    assert space.factorization_cache(catalogue, symmetry=True).group is group
+    assert space.factorization_cache(catalogue, symmetry=group).group is group
+    assert AnchoredCanonicalizer(catalogue).group is group
+    for bad in (None, 1, "yes"):
+        with pytest.raises(TypeError, match="symmetry must be"):
+            space.factorization_cache(catalogue, symmetry=bad)
+    with pytest.raises(ValueError, match="canonicalize requires symmetry"):
+        space.factorization_cache(catalogue, canonicalize=lambda s: s)
+
+    # Without an available group, symmetry=True falls back to no reduction.
+    plain_space = AdditiveSequenceSpace(
+        FiniteAdditiveGroup(range(3), zero=0, add=lambda a, b: (a + b) % 3)
+    )
+    plain_catalogue = plain_space.enumerate_atom_catalogue()
+    assert plain_space.factorization_cache(plain_catalogue, symmetry=True).group is None

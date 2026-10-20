@@ -58,14 +58,14 @@ def test_callable_generators_produce_deterministic_orbit_and_witnesses(
     sequence = c3_sequences(1, 1, 2)
     image = c3_sequences(1, 2, 2)
 
-    assert orbit(sequence, action=action) == (sequence, image)
-    assert sequence.orbit(action=action) == (sequence, image)
-    assert is_in_same_orbit(sequence, image, action=action)
-    assert sequence.is_in_same_orbit(image, action=action)
-    witness = orbit_witness(sequence, image, action=action)
+    assert orbit(sequence, group=action) == (sequence, image)
+    assert sequence.orbit(group=action) == (sequence, image)
+    assert is_in_same_orbit(sequence, image, group=action)
+    assert sequence.is_in_same_orbit(image, group=action)
+    witness = orbit_witness(sequence, image, group=action)
     assert witness == OrbitWitness((0,))
     assert action.apply_word(sequence, witness) == image
-    assert sequence.orbit_witness(image, action=action) == witness
+    assert sequence.orbit_witness(image, group=action) == witness
 
 
 def test_bound_witness_shows_images_of_additive_generators(capsys):
@@ -103,22 +103,22 @@ def test_matrix_style_generators_use_apply_term_callback():
     )
     sequence = space(0, 1)
 
-    assert orbit(sequence, action=action) == (
+    assert orbit(sequence, group=action) == (
         space(0, 1),
-        space(1, 2),
         space(0, 2),
+        space(1, 2),
     )
 
 
 def test_empty_action_has_singleton_orbit(c3_sequences):
     sequence = c3_sequences(1, 2)
 
-    assert orbit(sequence, action=AutomorphismAction(())) == (sequence,)
-    assert sequence.orbit_witness(sequence, action=()) == OrbitWitness()
+    assert orbit(sequence, group=AutomorphismAction(())) == (sequence,)
+    assert sequence.orbit_witness(sequence, group=()) == OrbitWitness()
     assert not is_in_same_orbit(
         sequence,
         c3_sequences(1),
-        action=AutomorphismAction(()),
+        group=AutomorphismAction(()),
     )
 
 
@@ -136,12 +136,12 @@ def test_orbit_witness_is_none_for_different_orbits(c3_sequences):
     assert orbit_witness(
         c3_sequences(1),
         c3_sequences(1, 1),
-        action=action,
+        group=action,
     ) is None
 
 
 def test_orbit_reports_when_action_cannot_be_discovered(c3_sequences):
-    with pytest.raises(AutomorphismActionUnavailable, match="pass action="):
+    with pytest.raises(AutomorphismActionUnavailable, match="pass group="):
         c3_sequences(1).orbit()
 
 
@@ -202,7 +202,7 @@ def test_orbits_reject_different_sequence_spaces(c3_sequences):
         is_in_same_orbit(
             c3_sequences(1),
             other_space(1),
-            action=[lambda term: -term],
+            group=[lambda term: -term],
         )
 
 
@@ -250,3 +250,17 @@ def test_unavailable_symmetry_is_resolved_once_per_space():
             space(1, 2).orbit()
         assert zero_sum_constant(space, {3}).value == 5
     assert _CountingGroup.queries == 1
+
+
+def test_orbit_queries_accept_a_materialized_group():
+    space = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(2, 4))
+    group = space.automorphism_group()
+    source = space((0, 1), (0, 3))
+    target = space((1, 1), (1, 3))
+
+    assert source.orbit(group=group) == source.orbit() == tuple(sorted(group.orbit(source)))
+    witness = source.orbit_witness(target, group=group)
+    assert group.apply(group.materialize(witness.generator_indices), source) == target
+    assert source.is_in_same_orbit(target, group=group)
+    with pytest.raises(TypeError, match="group must be"):
+        space.enumerate_atom_catalogue().orbits(group="not a group")

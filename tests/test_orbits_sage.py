@@ -64,7 +64,7 @@ def test_infinite_vector_space_requires_an_explicit_action():
     group = QQ ** 2
     space = AdditiveSequenceSpace(group, davenport_bound=3)
 
-    with pytest.raises(AutomorphismActionUnavailable, match="pass action="):
+    with pytest.raises(AutomorphismActionUnavailable, match="pass group="):
         space(group.basis()[0]).orbit()
 
 

@@ -44,6 +44,10 @@ class AtomCatalogue(Generic[Element]):
     The sequence ``0`` of length one is an atom of the monoid of zero-sum
     sequences, but is excluded from these catalogues and from the
     package's factorization queries.
+
+    Orbit methods take ``group=``, an :class:`AutomorphismGroup` defaulting
+    to the automorphism group of the space; the catalogue must be closed
+    under it.
     """
 
     def __init__(
@@ -195,7 +199,9 @@ class AtomCatalogue(Generic[Element]):
     # automorphisms
 
     def _group(self, group):
-        return self.space.automorphism_group() if group is None else group
+        from .automorphisms import _resolve_group
+
+        return _resolve_group(self.space, group)
 
     def permutation(self, element, *, group=None) -> tuple[int, ...]:
         """An automorphism as a permutation of catalogue indices.

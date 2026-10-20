@@ -19,7 +19,7 @@ from typing import Generic
 from ._parent_ops import _immutable_term
 from ._validation import _positive_integer
 from .additive_sequence import AdditiveSequence, AdditiveSequenceSpace, Element
-from .automorphisms import AutomorphismGroup, AutomorphismGroupUnavailable
+from .automorphisms import AutomorphismGroup, _resolve_symmetry, _validate_symmetry
 
 
 @dataclass(frozen=True)
@@ -134,30 +134,6 @@ def _normalize_lengths(lengths: Iterable[int]) -> frozenset[int]:
     if not normalized:
         raise ValueError("lengths must not be empty")
     return normalized
-
-
-def _validate_symmetry(symmetry) -> None:
-    """Reject options other than booleans and explicit automorphism groups."""
-
-    if (
-        symmetry is not True
-        and symmetry is not False
-        and not isinstance(symmetry, AutomorphismGroup)
-    ):
-        raise TypeError("symmetry must be True, False, or an AutomorphismGroup")
-
-
-def _resolve_symmetry(space: AdditiveSequenceSpace, symmetry):
-    """Return the requested group, or None when reduction is disabled or unavailable."""
-
-    if symmetry is False:
-        return None
-    if symmetry is not True:
-        return symmetry
-    try:
-        return space.automorphism_group()
-    except AutomorphismGroupUnavailable:
-        return None
 
 
 def zero_sum_constant(

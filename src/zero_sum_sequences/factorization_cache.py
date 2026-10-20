@@ -4,8 +4,8 @@ A :class:`FactorizationCache` answers length-set questions about many
 sequences over one atom catalogue.  It caches complete length sets without
 bound (they are small), keeps a bounded number of solver objects so that
 follow-up questions (minimum, maximum, witnesses) about a recently seen
-sequence do not rebuild the remainder graph, and can be told the
-automorphism group of the space: length sets are automorphism invariants,
+sequence do not rebuild the remainder graph, and can use the automorphism
+group of the space (``symmetry=``): length sets are automorphism invariants,
 so queries are then answered on canonical orbit representatives and one
 solver run serves a whole orbit.  Witnesses are transported back through
 the inverse automorphism.
@@ -27,6 +27,7 @@ from typing import Generic
 from ._validation import _non_negative_integer, _positive_integer
 from .additive_sequence import AdditiveSequence, Element
 from .atom_catalogue import AtomCatalogue
+from .automorphisms import AutomorphismGroup, _resolve_group, _resolve_symmetry
 from .factorization import Factorization, FactorizationSolver
 
 CACHE_SCHEMA = "length-set-cache-v1"
@@ -75,13 +76,16 @@ class AnchoredCanonicalizer(Generic[Element]):
     input, hence a valid cache key for automorphism-invariant questions.  It
     is not an orbit invariant: sequences of one orbit may anchor differently
     and then receive different keys, which only costs cache efficiency.
-    The catalogue must be closed under the configured group; this is checked
-    at construction.
+    ``group`` defaults to the automorphism group of the catalogue's space.
+    The catalogue must be closed under it; this is checked at construction.
     """
 
-    def __init__(self, catalogue: AtomCatalogue[Element], group, *, reduce: bool = True) -> None:
+    def __init__(
+        self, catalogue: AtomCatalogue[Element], group=None, *, reduce: bool = True
+    ) -> None:
         if not isinstance(catalogue, AtomCatalogue):
             raise TypeError("expected an AtomCatalogue")
+        group = _resolve_group(catalogue.space, group)
         catalogue._require_group_closure(group)
         self.catalogue = catalogue
         self.group = group
@@ -117,13 +121,17 @@ class FactorizationCache(Generic[Element]):
     catalogue:
         The atom catalogue used by every solver.  It must be complete for the
         sequences that will be queried; the cache does not check this.
-    group:
-        Optional :class:`AutomorphismGroup` of the space.  When given, every
-        query is canonicalized first and witnesses are transported back.
-        The catalogue must be closed under this group; construction checks
-        closure under its generators and rejects incompatible catalogues.
+    symmetry:
+        Whether to answer queries on automorphic images: ``False`` (the
+        default) disables this, ``True`` uses the space's automorphism group
+        when one is available, and an :class:`AutomorphismGroup` is used as
+        given. With a group, every query is canonicalized first and witnesses
+        are transported back; results do not change. The catalogue must be
+        closed under the group; construction checks closure under its
+        generators and rejects incompatible catalogues. The resolved group,
+        or ``None``, is available as :attr:`group`.
     canonicalize:
-        How to canonicalize when a group is given: a callable returning
+        How to canonicalize when symmetry is used: a callable returning
         either an automorphic image of the sequence or ``(image,
         automorphism)``.  The default is the full canonical form (one orbit
         traversal of the sequence per query, worthwhile when solving is the
@@ -138,16 +146,17 @@ class FactorizationCache(Generic[Element]):
         self,
         catalogue: AtomCatalogue[Element],
         *,
-        group=None,
+        symmetry: bool | AutomorphismGroup = False,
         canonicalize=None,
         maxsize: int | None = 1024,
     ) -> None:
         if not isinstance(catalogue, AtomCatalogue):
             raise TypeError("expected an AtomCatalogue")
-        if canonicalize is not None and group is None:
-            raise ValueError("canonicalize requires a group")
         if canonicalize is not None and not callable(canonicalize):
             raise TypeError("canonicalize must be callable")
+        group = _resolve_symmetry(catalogue.space, symmetry)
+        if canonicalize is not None and group is None:
+            raise ValueError("canonicalize requires symmetry with an automorphism group")
         self._canonicalize = canonicalize
         if maxsize is not None:
             maxsize = _positive_integer(maxsize, name="maxsize")
@@ -353,7 +362,11 @@ class FactorizationCache(Generic[Element]):
             }
 
     def to_jsonl(self, path: str | Path) -> int:
-        """Write the cached length sets, bound to the catalogue digest."""
+        """Write the cached length sets, bound to the catalogue digest.
+
+        The metadata records the order of the group used, if any, for
+        information only.
+        """
 
         path = Path(path)
         metadata = {
@@ -374,14 +387,18 @@ class FactorizationCache(Generic[Element]):
         path: str | Path,
         catalogue: AtomCatalogue[Element],
         *,
-        group=None,
+        symmetry: bool | AutomorphismGroup = False,
+        canonicalize=None,
         maxsize: int | None = 1024,
     ) -> FactorizationCache[Element]:
         """Read cached length sets written by :meth:`to_jsonl`.
 
-        The catalogue digest must match; the stored group order, if any,
-        must match the supplied group so that keys are canonical in the same
-        sense.
+        The catalogue digest must match. ``symmetry``, ``canonicalize`` and
+        ``maxsize`` configure the new cache as in the constructor. Results are
+        correct whatever the saved cache used, since length sets are invariant
+        under automorphisms and keys are canonicalized again on loading. Stored
+        entries are reused most when the symmetry matches: saved keys are
+        canonical representatives, which other queries need not hit.
         """
 
         path = Path(path)
@@ -394,10 +411,9 @@ class FactorizationCache(Generic[Element]):
             raise ValueError("not a length-set cache file")
         if metadata.get("catalogue_digest") != catalogue.digest():
             raise ValueError("the cache was computed against a different catalogue")
-        stored_order = metadata.get("group_order")
-        if stored_order != (None if group is None else len(group)):
-            raise ValueError("the cache was computed with a different automorphism group")
-        cache = cls(catalogue, group=group, maxsize=maxsize)
+        cache = cls(
+            catalogue, symmetry=symmetry, canonicalize=canonicalize, maxsize=maxsize
+        )
         space = catalogue.space
         records = (json.loads(line) for line in lines[1:])
         count = cache.preload(

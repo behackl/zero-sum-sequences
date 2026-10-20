@@ -96,6 +96,14 @@ They map zero-sum sequences to zero-sum sequences and atoms to atoms, and
 preserve length sets. A **canonical
 representative** selects one element from an orbit.
 
+Queries whose answer depends on the group, such as orbits,
+representatives, and transporters, take `group=`; it defaults to the
+automorphism group of the space. Queries that use symmetry only to save
+work take `symmetry=`, and their results do not depend on it: `True` uses
+the space's automorphism group when one is available, `False` disables
+the reduction, and an explicit group is used as given. The zero-sum
+constants default to `True`, the factorization cache to `False`.
+
 With symmetry reduction, the extremal sequences returned for a zero-sum
 constant are representatives, not necessarily the complete list. The
 chosen action and representative convention are documented in the

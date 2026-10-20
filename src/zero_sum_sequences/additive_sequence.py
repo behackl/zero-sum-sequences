@@ -87,7 +87,9 @@ class AdditiveSequenceSpace(Generic[Element]):
             {"davenport_bound": self._davenport_bound},
         )
 
-    def factorization_cache(self, catalogue, *, group=None, canonicalize=None, maxsize: int | None = 1024):
+    def factorization_cache(
+        self, catalogue, *, symmetry=False, canonicalize=None, maxsize: int | None = 1024
+    ):
         """A :class:`FactorizationCache` over ``catalogue`` for this space."""
 
         from .factorization_cache import FactorizationCache
@@ -95,7 +97,7 @@ class AdditiveSequenceSpace(Generic[Element]):
         if catalogue.space is not self:
             raise TypeError("the catalogue belongs to a different space")
         return FactorizationCache(
-            catalogue, group=group, canonicalize=canonicalize, maxsize=maxsize
+            catalogue, symmetry=symmetry, canonicalize=canonicalize, maxsize=maxsize
         )
 
     def encode_term(self, term: Element) -> object:
@@ -494,35 +496,36 @@ class AdditiveSequence(Generic[Element]):
             raise TypeError("target_space must be an AdditiveSequenceSpace")
         return target_space.from_terms(mapping(term) for term in self)
 
-    def orbit(self, *, action=None):
-        """Return this sequence's finite automorphism orbit.
+    def orbit(self, *, group=None):
+        """Return this sequence's finite automorphism orbit, sorted.
 
-        ``action`` may be an :class:`AutomorphismAction` or an iterable of
-        callable term maps.  When omitted, the action is resolved lazily from
-        the additive parent and cached on the sequence space.
+        ``group`` may be an :class:`AutomorphismGroup`, an
+        :class:`AutomorphismAction`, or an iterable of callable generators.
+        When omitted, the parent's automorphisms are resolved lazily and
+        cached on the sequence space.
         """
 
         from .orbits import orbit
 
-        return orbit(self, action=action)
+        return orbit(self, group=group)
 
     def is_in_same_orbit(
         self,
         other: AdditiveSequence[Element],
         *,
-        action=None,
+        group=None,
     ) -> bool:
-        """Return whether ``other`` is in this sequence's action orbit."""
+        """Return whether ``other`` is in this sequence's orbit (see :meth:`orbit`)."""
 
         from .orbits import is_in_same_orbit
 
-        return is_in_same_orbit(self, other, action=action)
+        return is_in_same_orbit(self, other, group=group)
 
     def orbit_witness(
         self,
         other: AdditiveSequence[Element],
         *,
-        action=None,
+        group=None,
     ):
         """Return a generator word mapping this sequence to ``other``.
 
@@ -532,7 +535,7 @@ class AdditiveSequence(Generic[Element]):
 
         from .orbits import orbit_witness
 
-        return orbit_witness(self, other, action=action)
+        return orbit_witness(self, other, group=group)
 
     def subsequences(
         self,

@@ -504,6 +504,45 @@ def _generator_image_key(automorphism):
     return automorphism.generator_images(), automorphism.table
 
 
+def _resolve_group(space, group) -> AutomorphismGroup:
+    """The group a group-dependent query is about: ``group``, or the space's."""
+
+    if group is None:
+        return space.automorphism_group()
+    if not isinstance(group, AutomorphismGroup):
+        raise TypeError("group must be an AutomorphismGroup or None")
+    return group
+
+
+def _validate_symmetry(symmetry) -> None:
+    """Reject options other than booleans and explicit automorphism groups."""
+
+    if (
+        symmetry is not True
+        and symmetry is not False
+        and not isinstance(symmetry, AutomorphismGroup)
+    ):
+        raise TypeError("symmetry must be True, False, or an AutomorphismGroup")
+
+
+def _resolve_symmetry(space, symmetry) -> AutomorphismGroup | None:
+    """The group used to speed up a group-invariant query, or None.
+
+    ``True`` uses the space's automorphism group when one is available,
+    ``False`` disables reduction, and a group is used as given.
+    """
+
+    _validate_symmetry(symmetry)
+    if symmetry is False:
+        return None
+    if symmetry is not True:
+        return symmetry
+    try:
+        return space.automorphism_group()
+    except AutomorphismGroupUnavailable:
+        return None
+
+
 def _prepare(obj, ordered: bool):
     """Validate an object of the action; sort tuples unless ``ordered``."""
 
