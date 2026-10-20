@@ -2,22 +2,21 @@
 
 ## Installation
 
-The package requires Python 3.12 or newer. These examples describe the
-development version on the `main` branch, including invariant functions not
-yet part of the published 0.2.0 release. To run all of them, install it from
-GitHub:
+The package requires Python 3.12 or newer. Install the latest release from
+PyPI:
+
+```console
+python -m pip install zero-sum-sequences
+```
+
+The [changelog](changelog.md) lists the changes in each release. To use the
+development version on the `main` branch, install it from GitHub:
 
 ```console
 python -m pip install "zero-sum-sequences @ git+https://github.com/behackl/zero-sum-sequences"
 ```
 
 or, from a checkout, `python -m pip install --editable .`.
-
-The published version is available separately:
-
-```console
-python -m pip install zero-sum-sequences
-```
 
 ## A small sequence space
 

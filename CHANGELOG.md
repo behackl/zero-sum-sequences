@@ -7,6 +7,8 @@ minor releases may contain breaking changes; they are listed first.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-20
+
 Sequences now use the multiplicative notation of the literature, and the
 documentation follows its terminology. Breaking changes take effect without a
 deprecation period.
@@ -155,7 +157,8 @@ First release as a standalone package: sequences over configurable additive
 parents, factorization queries, exhaustive atom catalogue enumeration,
 automorphism orbits, and optional SageMath integration.
 
-[Unreleased]: https://github.com/behackl/zero-sum-sequences/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/behackl/zero-sum-sequences/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/behackl/zero-sum-sequences/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/behackl/zero-sum-sequences/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/behackl/zero-sum-sequences/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/behackl/zero-sum-sequences/compare/v0.1.0...v0.1.1

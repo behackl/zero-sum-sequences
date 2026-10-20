@@ -69,8 +69,3 @@ Citations in docstrings use reStructuredText, for example
 `` :cite:p:`gao-geroldinger-2006` ``. In MyST pages use
 `` {cite:p}`gao-geroldinger-2006` ``. Both resolve against `references.bib`.
 Do not add marimo/islands directives to library docstrings.
-
-## Remaining documentation work
-
-- Replace the development-version notice in Getting started at the 0.3.0
-  release.
