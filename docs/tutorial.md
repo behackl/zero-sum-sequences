@@ -16,9 +16,7 @@ python -m pip install --editable '.[tutorial]'
 
 Open the downloaded notebook in a Jupyter-compatible environment.
 
-:::{note}
-A marimo edition is planned for the first documentation release. The
-existing notebook remains the tutorial source until that conversion is
-done; this initial docs scaffold does not publish the experimental
-playgrounds or embed executable snippets into API pages.
-:::
+```{note}
+A marimo edition of the tutorial, runnable in the browser, is in
+preparation. Until then, the Jupyter notebook above is the tutorial source.
+```
