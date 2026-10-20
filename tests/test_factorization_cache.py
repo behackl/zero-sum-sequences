@@ -86,8 +86,8 @@ def test_caching_and_statistics():
     # a length set is answered from the cache even after its solver was evicted
     assert cache.minimum(x) == min(cache.length_set(x))
     assert cache.statistics.solver_builds == 3
-    with pytest.warns(DeprecationWarning):
-        assert cache.statistics()["hits"] == cache.statistics.hits
+    with pytest.raises(TypeError):
+        cache.statistics()
     cache.clear()
     assert cache.statistics == FactorizationCacheStatistics(0, 0, 0, 0, 0)
     with pytest.raises(ValueError):

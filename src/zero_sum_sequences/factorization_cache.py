@@ -17,7 +17,6 @@ the digest of the catalogue they were computed against.
 from __future__ import annotations
 
 import json
-import warnings
 from collections import OrderedDict
 from collections.abc import Iterable, Iterator
 from pathlib import Path
@@ -42,25 +41,6 @@ class FactorizationCacheStatistics:
     hits: int
     misses: int
     solver_builds: int
-
-    def __call__(self) -> FactorizationCacheStatistics:
-        # Transitional: ``statistics`` was a method returning a dict.
-        warnings.warn(
-            "FactorizationCache.statistics is now a property",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return self
-
-    def __getitem__(self, name: str) -> int:
-        warnings.warn(
-            "use attribute access on FactorizationCacheStatistics",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        if name not in self.__dataclass_fields__:
-            raise KeyError(name)
-        return getattr(self, name)
 
 
 class AnchoredCanonicalizer(Generic[Element]):

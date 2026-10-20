@@ -34,9 +34,9 @@ deprecation period.
 - Factorization queries raise `ValueError` when an explicit Davenport bound or
   a supplied atom catalogue provably cannot factor a zero-sum sequence, instead
   of returning empty results. Queries for a single length are unchanged.
-- `FactorizationCache.statistics` is a property returning
-  `FactorizationCacheStatistics`; the call form `statistics()["hits"]` still
-  works but is deprecated. `clear()` now also resets the counters.
+- `FactorizationCache.statistics` is a property returning a
+  `FactorizationCacheStatistics` dataclass instead of a method returning a
+  dict. `clear()` now also resets the counters.
 - `AutomorphismGroup` finds the identity among `Automorphism` elements or, when
   `compose` is given, as the idempotent element; otherwise `identity=` is
   required and its absence raises `TypeError`.
