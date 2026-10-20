@@ -154,7 +154,16 @@ def zero_sum_constant(
     sequences one term at a time, tracking their possible subsequence sums
     and lengths. Since every subsequence of an avoiding sequence also avoids
     the target, the first empty search level gives the exact constant.
-    Finite searches require an iterable parent and can be expensive.
+    Finite searches require an iterable parent.
+
+    The search is exhaustive, so its running time can be long. It processes
+    one level for every length below the result, and each level holds the
+    avoiding sequences of that length, up to symmetry. The result is at
+    least the least multiple of ``exp(G)`` in ``L``: if ``g`` has order
+    ``exp(G)`` and ``m`` is that multiple, then ``g^(m-1)`` avoids ``L``.
+    Large allowed lengths such as ``{10**9}`` are therefore out of reach,
+    and the number of avoiding sequences grows quickly with the group order.
+    Symmetry reduction often helps substantially; see below.
 
     ``symmetry=True`` discovers an automorphism group, using no reduction
     when one is unavailable. ``False`` disables discovery and reduction.
@@ -261,7 +270,8 @@ def davenport_constant(
     :class:`FiniteAdditiveGroup` share the cached value.
 
     The search uses its own certified bound; a configured explicit bound is
-    ignored. An exhaustive computation can be expensive; ``symmetry`` has
+    ignored. An exhaustive computation can take long (see
+    :func:`zero_sum_constant`); ``symmetry`` has
     the meaning described in :func:`zero_sum_constant`.
 
     Notes
@@ -308,7 +318,8 @@ def erdos_ginzburg_ziv_constant(
     ``exp(G)``; see :cite:p:`gao-geroldinger-2006`, Definition 2.1.
     The group exponent is computed, then :func:`zero_sum_constant` searches
     with that single allowed length. No Davenport bound is used or derived.
-    The search can be expensive; ``symmetry`` is passed through unchanged.
+    The search can take long (see :func:`zero_sum_constant`); ``symmetry``
+    is passed through unchanged.
     """
 
     return zero_sum_constant(space, {exponent(space)}, symmetry=symmetry).value
@@ -323,8 +334,8 @@ def eta_constant(
     length at most ``exp(G)``; see :cite:p:`gao-geroldinger-2006`, Definition
     2.1. The group exponent is computed, then :func:`zero_sum_constant`
     searches with allowed lengths ``1, ..., exp(G)``. No Davenport bound is
-    used or derived. The search can be expensive; ``symmetry`` is passed
-    through unchanged.
+    used or derived. The search can take long (see :func:`zero_sum_constant`);
+    ``symmetry`` is passed through unchanged.
     """
 
     return zero_sum_constant(space, range(1, exponent(space) + 1), symmetry=symmetry).value

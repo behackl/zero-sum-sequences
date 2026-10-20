@@ -609,6 +609,12 @@ class AdditiveSequence(Generic[Element]):
         available bound caps atom discovery, with exhaustive discovery on
         this finite sequence as the fallback. See :class:`FactorizationSolver`
         for the search assumptions and cost.
+
+        The solver keeps its discovered atoms and remainder graph between
+        queries. The convenience methods below, such as :meth:`length_set`,
+        build a new solver on every call: for several queries about one
+        sequence, keep a solver instead. :class:`FactorizationCache` reuses
+        results across many sequences.
         """
 
         from .factorization import FactorizationSolver
@@ -621,26 +627,38 @@ class AdditiveSequence(Generic[Element]):
         factor_count: int | None = None,
         atom_catalogue=None,
     ):
-        """Yield each unordered atom factorization, optionally of one length."""
+        """Yield each unordered atom factorization, optionally of one length.
+
+        Builds a new solver on every call; see :meth:`factorization_solver`.
+        """
 
         yield from self.factorization_solver(
             atom_catalogue=atom_catalogue
         ).factorizations(factor_count=factor_count)
 
     def length_set(self, *, atom_catalogue=None) -> set[int]:
-        """Return the length set: the lengths of all factorizations."""
+        """Return the length set: the lengths of all factorizations.
+
+        Builds a new solver on every call; see :meth:`factorization_solver`.
+        """
 
         return self.factorization_solver(atom_catalogue=atom_catalogue).length_set()
 
     def minimum_factorization_length(self, *, atom_catalogue=None) -> int | None:
-        """Return the minimum factorization length, or ``None`` if there is none."""
+        """Return the minimum factorization length, or ``None`` if there is none.
+
+        Builds a new solver on every call; see :meth:`factorization_solver`.
+        """
 
         return self.factorization_solver(
             atom_catalogue=atom_catalogue
         ).minimum_factorization_length()
 
     def maximum_factorization_length(self, *, atom_catalogue=None) -> int | None:
-        """Return the maximum factorization length, or ``None`` if there is none."""
+        """Return the maximum factorization length, or ``None`` if there is none.
+
+        Builds a new solver on every call; see :meth:`factorization_solver`.
+        """
 
         return self.factorization_solver(
             atom_catalogue=atom_catalogue
@@ -652,21 +670,30 @@ class AdditiveSequence(Generic[Element]):
         *,
         atom_catalogue=None,
     ) -> bool:
-        """Return whether a factorization has exactly ``factor_count`` factors."""
+        """Return whether a factorization has exactly ``factor_count`` factors.
+
+        Builds a new solver on every call; see :meth:`factorization_solver`.
+        """
 
         return self.factorization_solver(
             atom_catalogue=atom_catalogue
         ).has_factorization_of_length(factor_count)
 
     def factorization_witnesses(self, *, atom_catalogue=None):
-        """Return one deterministic factorization per attained length."""
+        """Return one deterministic factorization per attained length.
+
+        Builds a new solver on every call; see :meth:`factorization_solver`.
+        """
 
         return self.factorization_solver(
             atom_catalogue=atom_catalogue
         ).factorization_witnesses()
 
     def factorization_digraph(self, *, atom_catalogue=None):
-        """Return the memoized remainder DAG as a NetworkX directed graph."""
+        """Return the memoized remainder DAG as a NetworkX directed graph.
+
+        Builds a new solver on every call; see :meth:`factorization_solver`.
+        """
 
         return self.factorization_solver(atom_catalogue=atom_catalogue).digraph()
 
