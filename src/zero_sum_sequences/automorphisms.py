@@ -42,6 +42,10 @@ class AutomorphismGroupUnavailable(RuntimeError):
     """Raised when no materialized automorphism group can be obtained."""
 
 
+_UNAVAILABLE = object()
+_GROUP_UNAVAILABLE = "could not materialize an automorphism group for the additive parent"
+
+
 # Image-table automorphisms of a finite parent
 
 
@@ -525,6 +529,8 @@ def automorphism_group(space: AdditiveSequenceSpace[Element]) -> AutomorphismGro
     """
 
     cached = getattr(space, "_automorphism_group", None)
+    if cached is _UNAVAILABLE:
+        raise AutomorphismGroupUnavailable(_GROUP_UNAVAILABLE)
     if cached is not None:
         return cached
     parent = space.base_parent
@@ -549,8 +555,8 @@ def automorphism_group(space: AdditiveSequenceSpace[Element]) -> AutomorphismGro
                 parent, [partial(action.apply_term, i) for i in range(len(action))]
             )
     if group is None:
-        raise AutomorphismGroupUnavailable(
-            "could not materialize an automorphism group for the additive parent"
-        )
+        # The parent's capabilities do not change: remember the outcome.
+        space._automorphism_group = _UNAVAILABLE
+        raise AutomorphismGroupUnavailable(_GROUP_UNAVAILABLE)
     space._automorphism_group = group
     return group

@@ -55,6 +55,12 @@ def _is_finite(parent) -> bool:
         return False
 
 
+def _is_sage_parent(parent) -> bool:
+    """Whether ``parent`` comes from Sage, judged without importing Sage."""
+
+    return type(parent).__module__.startswith("sage.")
+
+
 def _native_term_arithmetic(parent) -> bool:
     """Whether the terms' own ``+``, ``-`` and orders are the group operation.
 
@@ -73,7 +79,7 @@ def _addition(parent):
         return parent.add
     if not _native_term_arithmetic(parent):
         operation = parent.add
-    elif type(parent).__module__.startswith("sage."):
+    elif _is_sage_parent(parent):
         # Native Sage addition is closed in its parent. Trust it without
         # importing Sage or querying group metadata.
         return default_add

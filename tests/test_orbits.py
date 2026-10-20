@@ -1,11 +1,15 @@
+import sys
+
 import pytest
 
 from zero_sum_sequences import (
     AdditiveSequenceSpace,
     AutomorphismAction,
     AutomorphismActionUnavailable,
+    AutomorphismGroupUnavailable,
     FiniteAdditiveGroup,
     OrbitWitness,
+    zero_sum_constant,
 )
 from zero_sum_sequences.orbits import is_in_same_orbit, orbit, orbit_witness
 
@@ -200,3 +204,49 @@ def test_orbits_reject_different_sequence_spaces(c3_sequences):
             other_space(1),
             action=[lambda term: -term],
         )
+
+
+class _RecordingModule:
+    """Stand-in for ``sage.all`` that records every attribute lookup."""
+
+    def __init__(self):
+        self.lookups = []
+
+    def __getattr__(self, name):
+        self.lookups.append(name)
+        raise AttributeError(name)
+
+
+def test_pure_python_parents_never_import_sage(monkeypatch):
+    fake = _RecordingModule()
+    monkeypatch.setitem(sys.modules, "sage", fake)
+    monkeypatch.setitem(sys.modules, "sage.all", fake)
+    space = AdditiveSequenceSpace(cyclic_group(3))
+
+    with pytest.raises(AutomorphismActionUnavailable):
+        space(1, 2).orbit()
+    assert zero_sum_constant(space, {3}).value == 5
+    assert fake.lookups == []
+
+
+class _CountingGroup(FiniteAdditiveGroup):
+    """A group without automorphism data that counts provider queries."""
+
+    queries = 0
+
+    def automorphism_generators(self):
+        type(self).queries += 1
+        raise NotImplementedError
+
+
+def test_unavailable_symmetry_is_resolved_once_per_space():
+    group = _CountingGroup(range(3), zero=0, add=lambda a, b: (a + b) % 3)
+    space = AdditiveSequenceSpace(group)
+
+    for _ in range(3):
+        with pytest.raises(AutomorphismGroupUnavailable):
+            space.automorphism_group()
+        with pytest.raises(AutomorphismActionUnavailable):
+            space(1, 2).orbit()
+        assert zero_sum_constant(space, {3}).value == 5
+    assert _CountingGroup.queries == 1

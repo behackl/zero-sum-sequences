@@ -14,6 +14,7 @@ from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass, field
 from typing import Generic, TypeVar
 
+from ._parent_ops import _is_sage_parent
 from ._validation import _non_negative_integer as _non_negative_index
 from .additive_sequence import AdditiveSequence
 from .automorphisms import AutomorphismGroup
@@ -24,6 +25,13 @@ Generator = TypeVar("Generator")
 
 class AutomorphismActionUnavailable(RuntimeError):
     """Raised when an additive parent cannot supply an automorphism action."""
+
+
+_UNAVAILABLE = object()
+_ACTION_UNAVAILABLE = (
+    "could not determine automorphism generators for the additive "
+    "parent; pass action=AutomorphismAction(...) explicitly"
+)
 
 
 class AutomorphismAction(Generic[Element, Generator]):
@@ -281,6 +289,9 @@ def _action_from_parent_provider(parent) -> AutomorphismAction | None:
 def _sage_vector_space_action(parent) -> AutomorphismAction | None:
     """Construct the natural matrix action for a finite Sage vector space."""
 
+    if not _is_sage_parent(parent):
+        # Avoid importing Sage for parents that cannot be Sage vector spaces.
+        return None
     try:
         from sage.all import FiniteFields, GL, VectorSpaces, identity_matrix, matrix
     except ImportError:
@@ -393,6 +404,8 @@ def automorphism_action(sequence_space) -> AutomorphismAction:
     """
 
     cached = sequence_space._automorphism_action
+    if cached is _UNAVAILABLE:
+        raise AutomorphismActionUnavailable(_ACTION_UNAVAILABLE)
     if cached is not None:
         return cached
 
@@ -403,10 +416,9 @@ def automorphism_action(sequence_space) -> AutomorphismAction:
     if action is None:
         action = _cas_automorphism_action(parent)
     if action is None:
-        raise AutomorphismActionUnavailable(
-            "could not determine automorphism generators for the additive "
-            "parent; pass action=AutomorphismAction(...) explicitly"
-        )
+        # The parent's capabilities do not change: remember the outcome.
+        sequence_space._automorphism_action = _UNAVAILABLE
+        raise AutomorphismActionUnavailable(_ACTION_UNAVAILABLE)
     sequence_space._automorphism_action = action
     return action
 
