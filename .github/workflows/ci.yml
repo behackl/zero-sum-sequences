@@ -44,6 +44,20 @@ jobs:
       - run: python -m marimo check notebooks/tutorial.py
       - run: python notebooks/tutorial.py
 
+  docs-doctests:
+    name: Documentation doctests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: python -m pip install --upgrade 'pip>=25.1'
+      - run: python -m pip install --editable . --group docs
+      # The HTML site is built by Read the Docs; this checks the examples.
+      - run: python -m sphinx -E -W --keep-going -b doctest docs docs/_build/doctest
+
   sage-integration:
     name: Sage integration
     runs-on: ubuntu-latest

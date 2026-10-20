@@ -12,6 +12,10 @@ With SageMath available, include the native-parent tests:
 PYTHONPATH="$PWD/src:$PWD" sage -python -m pytest -q -p no:cacheprovider
 ```
 
+Docstring examples in `src` run as part of the same command
+(`--doctest-modules`). The documentation pages' examples run with Sphinx's
+doctest builder; see `docs/README.md`.
+
 ## Coverage ownership
 
 - **Component suites** own public behavior, serialization, and named regressions

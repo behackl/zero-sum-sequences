@@ -64,6 +64,6 @@ include = [
 ]
 
 [tool.pytest.ini_options]
-addopts = "-ra"
-testpaths = ["tests"]
+addopts = "-ra --doctest-modules"
+testpaths = ["tests", "src"]
 pythonpath = ["src"]
