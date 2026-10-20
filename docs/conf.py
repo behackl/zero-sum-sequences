@@ -1,6 +1,10 @@
 """Small, static documentation site; executable tutorials are a separate export."""
 
+import sys
 from importlib.metadata import version as _distribution_version
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent / "_ext"))
 
 project = "zero-sum-sequences"
 author = "Benjamin Hackl"
@@ -14,6 +18,7 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.doctest",
     "sphinxcontrib.bibtex",
+    "marimo_tutorial",
 ]
 source_suffix = {".rst": "restructuredtext", ".md": "markdown"}
 root_doc = "index"

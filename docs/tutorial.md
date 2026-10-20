@@ -1,22 +1,29 @@
 # Tutorial
 
-The existing tutorial covers sequence construction, factorizations and
-targeted witnesses, a NetworkX/Matplotlib visualization, atom catalogues,
-and automorphism orbits. It uses ordinary Python, without Sage.
+The tutorial is a [marimo](https://marimo.io) notebook. It covers sequence
+construction, factorizations and targeted witnesses, a NetworkX/Matplotlib
+view of the factorization graph, atom catalogues, automorphism orbits, and
+zero-sum constants. It uses ordinary Python, without Sage.
 
-- {download}`Download the Jupyter tutorial <../notebooks/tutorial.ipynb>`.
-- [View the notebook on GitHub](https://github.com/behackl/zero-sum-sequences/blob/main/notebooks/tutorial.ipynb).
-- [Launch the notebook on Binder](https://mybinder.org/v2/gh/behackl/zero-sum-sequences/main?urlpath=lab/tree/notebooks/tutorial.ipynb).
+- <a href="tutorial/index.html">Read the tutorial</a>, with precomputed outputs.
+- <a href="tutorial/edit/index.html">Open it in the browser</a> to edit and
+  rerun the examples. Python runs on your device via Pyodide; the first start
+  downloads the runtime and can take a minute. The installed package is built
+  from the same commit as this documentation.
+- Download it as a <a href="tutorial/tutorial.py" download>marimo notebook</a>
+  or a <a href="tutorial/tutorial.ipynb" download>Jupyter notebook</a>.
 
-To install its optional dependencies from a checkout:
+The downloaded marimo notebook declares its dependencies, including this
+version of the package, so it runs in an isolated environment with
+[uv](https://docs.astral.sh/uv/):
+
+```console
+uvx marimo edit --sandbox tutorial.py
+```
+
+From a checkout, install the tutorial dependencies and open the source:
 
 ```console
 python -m pip install --editable '.[tutorial]'
-```
-
-Open the downloaded notebook in a Jupyter-compatible environment.
-
-```{note}
-A marimo edition of the tutorial, runnable in the browser, is in
-preparation. Until then, the Jupyter notebook above is the tutorial source.
+marimo edit notebooks/tutorial.py
 ```

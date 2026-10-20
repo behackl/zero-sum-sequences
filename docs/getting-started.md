@@ -107,8 +107,9 @@ uv sync --locked
 uv run --locked python -m pytest
 ```
 
-The default `dev` group includes the test tools, tutorial dependencies, and
-JupyterLab. Add `--extra sage` to `uv sync` to include the Sage integration.
+The default `dev` group includes the test tools and the tutorial dependencies,
+including marimo. Add `--extra sage` to `uv sync` to include the Sage
+integration.
 Without uv, use `python -m pip install --editable . --group dev` (pip 25.1+).
 
 For performance measurements, run

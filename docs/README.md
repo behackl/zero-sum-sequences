@@ -19,19 +19,23 @@ uv run --locked --group docs --no-default-groups python -m http.server 8768 --bi
 
 Open http://127.0.0.1:8768/. `-W` makes Sphinx warnings fail the build;
 `-E` checks a fresh environment, including references. The doctest builder
-checks examples in the quickstart and API docstrings. No notebook runtime
-or Sage is needed to build the site.
+checks examples in the quickstart and API docstrings. Sage is not needed to
+build the site.
 
 Without uv, install the package editable plus
 `python -m pip install --group docs` (pip 25.1+) in a virtual environment,
-then use `python -m sphinx` for the two builds. The `docs` dependency group
+then use `python -m sphinx` for the two builds. The tutorial exports still
+call `uv`; set `ZSS_SKIP_TUTORIAL_EXPORT=1` if it is unavailable. The `docs` dependency group
 is separate from runtime dependencies and normal test tools.
 
 ## Keep the site small
 
 - **Getting started:** a few executable examples, not a second tutorial.
-- **Tutorial:** the existing notebook for now; replace it with one canonical
-  marimo `.py` source, generating any compatibility exports.
+- **Tutorial:** one canonical marimo source, `notebooks/tutorial.py`. The HTML
+  build exports it under `tutorial/` (see `docs/_ext/marimo_tutorial.py`): a
+  static reading view, a browser-editable WebAssembly notebook installing a
+  wheel built from the same checkout, and `.py`/`.ipynb` downloads. The
+  exports need `uv` on `PATH`; set `ZSS_SKIP_TUTORIAL_EXPORT=1` to skip them.
 - **Definitions:** terminology needed to read the API, not a literature review.
 - **API reference:** docstrings grouped by subject, without a duplicate prose
   explanation of each algorithm or inline execution widgets.
@@ -49,9 +53,6 @@ Do not add marimo/islands directives to library docstrings.
 
 ## Remaining documentation work
 
-- Convert the full tutorial to marimo, adapting stateful examples and plotting
-  for its reactive model and Pyodide.
-- Add static, download, and browser-editing exports from that single source.
 - Add a documentation build and doctest job to CI.
 - Update the quickstart's development-version notice when the new APIs are
   released.

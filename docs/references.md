@@ -43,7 +43,7 @@ search and its completeness assumptions.
 
 The core library uses [NetworkX](https://networkx.org/). SageMath is an
 optional integration, not a requirement. Tutorial visualization uses
-Matplotlib; the planned browser tutorial uses marimo and Pyodide.
+Matplotlib; the tutorial is a marimo notebook, run in the browser with Pyodide.
 The documentation is built with Sphinx and the Shibuya theme.
 
 ## Use of AI

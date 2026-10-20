@@ -41,10 +41,8 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: python -m pip install --editable '.[tutorial]'
-      - run: >-
-          python -m jupyter nbconvert --execute --to notebook
-          --output-dir /tmp --output tutorial-executed.ipynb
-          notebooks/tutorial.ipynb
+      - run: python -m marimo check notebooks/tutorial.py
+      - run: python notebooks/tutorial.py
 
   sage-integration:
     name: Sage integration

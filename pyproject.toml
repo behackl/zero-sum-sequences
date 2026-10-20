@@ -26,9 +26,8 @@ sage = [
   "sagelite[gap]==10.9.post1",
 ]
 tutorial = [
-  "ipykernel>=6.29",
+  "marimo>=0.25.2",
   "matplotlib>=3.8",
-  "nbconvert>=7.16",
 ]
 
 [dependency-groups]
@@ -37,9 +36,13 @@ docs = [
   "shibuya==2026.7.12",
   "myst-parser>=4,<6",
   "sphinxcontrib-bibtex>=2.6,<3",
+  # Tutorial exports: wheel for the browser runtime, marimo, and ipynb export.
+  "hatchling>=1.27",
+  "marimo>=0.25.2",
+  "matplotlib>=3.8",
+  "nbformat>=5.10",
 ]
 dev = [
-  "jupyterlab>=4.2",
   "pytest>=8.3",
   "zero-sum-sequences[tutorial]",
 ]
@@ -52,7 +55,7 @@ exclude = ["/docs/_build"]
 include = [
   "/benchmarks",
   "/docs",
-  "/notebooks/tutorial.ipynb",
+  "/notebooks/tutorial.py",
   "/src/zero_sum_sequences",
   "/tests",
   "/LICENSE",
