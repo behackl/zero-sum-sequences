@@ -19,6 +19,7 @@ dependencies = [
 
 [project.urls]
 Documentation = "https://zero-sum-sequences.readthedocs.io/"
+Changelog = "https://zero-sum-sequences.readthedocs.io/en/latest/changelog.html"
 Repository = "https://github.com/behackl/zero-sum-sequences"
 
 [project.optional-dependencies]
@@ -54,6 +55,7 @@ packages = ["src/zero_sum_sequences"]
 exclude = ["/docs/_build"]
 include = [
   "/benchmarks",
+  "/CHANGELOG.md",
   "/docs",
   "/notebooks/tutorial.py",
   "/src/zero_sum_sequences",

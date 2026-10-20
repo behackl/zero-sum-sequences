@@ -28,6 +28,15 @@ then use `python -m sphinx` for the two builds. The tutorial exports still
 call `uv`; set `ZSS_SKIP_TUTORIAL_EXPORT=1` if it is unavailable. The `docs` dependency group
 is separate from runtime dependencies and normal test tools.
 
+## Changelog
+
+`CHANGELOG.md` at the repository root is the single source; the
+documentation includes it as `changelog.md`. Commits that change behavior or
+the public API add a line under `## [Unreleased]`, breaking changes first. At
+a release, rename that section to `## [x.y.z] - YYYY-MM-DD`, add a new empty
+`Unreleased` section and the comparison links at the bottom, and use the
+section as the GitHub release notes.
+
 ## Keep the site small
 
 - **Getting started:** a few executable examples, not a second tutorial.

@@ -70,6 +70,7 @@ conditions and which queries are targeted.
 - **[API reference](api/index.rst)** — parameters, examples, and computational
   notes, generated from the code's docstrings.
 - **[References](references.md)** — mathematical background and attribution.
+- **[Changelog](changelog.md)** — changes in each release.
 
 ```{toctree}
 :hidden:
@@ -80,4 +81,5 @@ tutorial
 definitions
 api/index
 references
+changelog
 ```
