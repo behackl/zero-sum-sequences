@@ -57,8 +57,9 @@ class _ParentTable(Generic[Element]):
     def __init__(self, parent) -> None:
         try:
             elements = tuple(_immutable_term(term) for term in _iter_parent(parent))
-        except _ParentIterationUnavailable:
-            raise TypeError(
+        except (_ParentIterationUnavailable, NotImplementedError):
+            # A TypeError for callers; group resolution treats it as unavailable.
+            raise _ParentIterationUnavailable(
                 "image-table automorphisms require a finite iterable parent"
             ) from None
         try:
@@ -590,9 +591,13 @@ def automorphism_group(space: AdditiveSequenceSpace[Element]) -> AutomorphismGro
         except AutomorphismActionUnavailable:
             action = None
         if action is not None and _is_finite(parent):
-            group = AutomorphismGroup.closure(
-                parent, [partial(action.apply_term, i) for i in range(len(action))]
-            )
+            try:
+                group = AutomorphismGroup.closure(
+                    parent, [partial(action.apply_term, i) for i in range(len(action))]
+                )
+            except _ParentIterationUnavailable:
+                # Generators act on sequences, but image tables need iteration.
+                group = None
     if group is None:
         # The parent's capabilities do not change: remember the outcome.
         space._automorphism_group = _UNAVAILABLE

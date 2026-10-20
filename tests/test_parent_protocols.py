@@ -8,6 +8,7 @@ from zero_sum_sequences import (
     AdditiveSequenceSpace,
     AtomCatalogue,
     AutomorphismGroup,
+    AutomorphismGroupUnavailable,
     FiniteAdditiveGroup,
     davenport_constant,
     zero_sum_constant,
@@ -308,3 +309,61 @@ def test_unsupported_symmetry_still_falls_back():
         )
     })
     assert zero_sum_constant(AdditiveSequenceSpace(cls()), {3}).value == 5
+
+
+def _negation(term):
+    return (-term) % 3
+
+
+class MissingIterationC3:
+    __call__ = MetadataC3.__call__
+    zero = MetadataC3.zero
+    add = MetadataC3.add
+    is_finite = MetadataC3.is_finite
+
+    def cardinality(self):
+        return 3
+
+    def automorphism_generators(self):
+        return (_negation,)
+
+
+@pytest.mark.parametrize(
+    "parent_type",
+    [
+        MissingIterationC3,
+        type("DisabledIteration", (MissingIterationC3,), {"__iter__": None}),
+        type(
+            "UnsupportedIteration",
+            (MissingIterationC3,),
+            {"__iter__": lambda self: (_ for _ in ()).throw(NotImplementedError())},
+        ),
+    ],
+    ids=["missing", "disabled", "not-implemented"],
+)
+def test_symmetry_falls_back_when_image_tables_need_iteration(parent_type):
+    space = AdditiveSequenceSpace(parent_type())
+    a, b, c = space(1, 1, 1), space(2, 2, 2), space(1, 2)
+    catalogue = AtomCatalogue(space, [a, b, c])
+
+    assert set(a.orbit()) == {a, b}
+    with pytest.raises(AutomorphismGroupUnavailable):
+        space.automorphism_group()
+    cache = space.factorization_cache(catalogue, symmetry=True)
+    assert cache.group is None
+    assert cache.length_set(a * b) == {2, 3}
+
+
+def test_broken_iteration_is_not_mistaken_for_unavailable_symmetry():
+    error = TypeError("broken iterator")
+
+    def broken(self):
+        raise error
+
+    space = AdditiveSequenceSpace(
+        type("BrokenIteration", (MissingIterationC3,), {"__iter__": broken})()
+    )
+    catalogue = AtomCatalogue(space, [space(1, 1, 1), space(2, 2, 2), space(1, 2)])
+    with pytest.raises(TypeError) as raised:
+        space.factorization_cache(catalogue, symmetry=True)
+    assert raised.value is error
