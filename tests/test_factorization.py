@@ -7,6 +7,7 @@ from zero_sum_sequences import (
     AdditiveSequenceSpace,
     AtomCatalogue,
     FactorizationSolver,
+    FiniteAdditiveGroup,
 )
 
 from groups import IndexableInteger, cyclic_group
@@ -14,10 +15,53 @@ from groups import IndexableInteger, cyclic_group
 
 def test_solver_uses_the_space_davenport_bound():
     complete = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=3)
-    truncated = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=2)
-
     assert complete(1, 1, 1).length_set() == {1}
-    assert truncated(1, 1, 1).length_set() == set()
+
+
+FULL_QUERIES = [
+    lambda solver: solver.length_set(),
+    lambda solver: solver.minimum_factorization_length(),
+    lambda solver: solver.maximum_factorization_length(),
+    lambda solver: solver.factorization_witnesses(),
+    lambda solver: list(solver.factorizations()),
+]
+
+
+@pytest.mark.parametrize("query", FULL_QUERIES)
+def test_insufficient_bound_is_reported_by_full_queries(query):
+    truncated = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=2)
+    solver = truncated(1, 1, 1).factorization_solver()
+
+    with pytest.raises(ValueError, match="Davenport bound 2 is too small"):
+        query(solver)
+    # Targeted queries cannot tell a missing length from missing atoms.
+    assert not solver.has_factorization_of_length(1)
+    assert solver.factorization_witness(1) is None
+    assert list(solver.factorizations(factor_count=1)) == []
+
+
+@pytest.mark.parametrize("query", FULL_QUERIES)
+def test_incomplete_catalogue_is_reported_by_full_queries(query):
+    space = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(2, 4))
+    short_atoms = space.enumerate_atom_catalogue().restrict(max_length=3)
+    atom = space((0, 1)) ** 3 * space((1, 0), (1, 1))
+    solver = (atom ** 2).factorization_solver(atom_catalogue=short_atoms)
+
+    with pytest.raises(ValueError, match="catalogue lacks some of its atom divisors"):
+        query(solver)
+    with pytest.raises(ValueError, match="catalogue lacks"):
+        space.factorization_cache(short_atoms).length_set(atom ** 2)
+
+
+def test_sequences_that_are_not_zero_sum_have_no_factorizations():
+    truncated = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=2)
+    solver = truncated(1, 1).factorization_solver()
+
+    assert solver.length_set() == set()
+    assert solver.minimum_factorization_length() is None
+    assert solver.maximum_factorization_length() is None
+    assert solver.factorization_witnesses() == {}
+    assert list(solver.factorizations()) == []
 
 
 def test_targeted_factorization_witness_honors_generic_predicate():

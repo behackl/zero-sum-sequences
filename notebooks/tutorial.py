@@ -79,7 +79,8 @@ def _(mo):
     $D(G)$, the maximal length of an atom. When none is supplied, the space
     derives one without an exhaustive search; here $C_3$ is recognized as
     cyclic, so the bound is $D(C_3)=3$. An explicit `davenport_bound=` is used
-    as given, and a bound below $D(G)$ can make results incomplete.
+    as given. A bound below $D(G)$ can make results incomplete; factorization
+    queries raise an error when the available atoms provably do not suffice.
     """)
     return
 

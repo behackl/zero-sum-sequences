@@ -63,6 +63,13 @@ class FactorizationSolver(Generic[Element]):
     complete; a smaller explicit bound can omit factorizations. Exhaustive
     discovery can be expensive, especially without a bound.
 
+    Every zero-sum sequence factors into atoms. If the available atoms admit
+    no factorization of a zero-sum input at all, the bound or catalogue is
+    provably insufficient: the length set, extreme lengths, witnesses, and
+    full enumeration then raise :class:`ValueError`. Missing individual
+    lengths cannot be detected this way. Inputs that are not zero-sum have
+    no factorizations and give empty results.
+
     Queries reuse solutions for equal remainder sequences. Complete length
     sets and graph queries build the remainder graph; targeted existence and
     witness queries can avoid building it in full.
@@ -87,6 +94,7 @@ class FactorizationSolver(Generic[Element]):
             )
 
         self.sequence = sequence
+        self._uses_catalogue = atom_catalogue is not None
         self.support = sequence.support
         self._support_index = {
             term: index for index, term in enumerate(self.support)
@@ -347,11 +355,30 @@ class FactorizationSolver(Generic[Element]):
             transitions=sum(len(edges) for edges in transitions.values()),
         )
 
+    def _require_some_factorization(self, factorizable: bool) -> None:
+        """Raise if a zero-sum input has no factorization into the available atoms."""
+
+        if factorizable or not self.sequence.is_zero_sum():
+            return
+        if self._uses_catalogue:
+            cause = "the atom catalogue lacks some of its atom divisors"
+        else:
+            bound = self.sequence.parent()._optional_davenport_bound()
+            cause = (
+                "atom discovery was incomplete" if bound is None
+                else f"the Davenport bound {bound} is too small"
+            )
+        raise ValueError(
+            f"the zero-sum sequence {self.sequence} has no factorization into "
+            f"the available atoms: {cause}"
+        )
+
     def length_set(self) -> set[int]:
         """Return the length set: the lengths of all factorizations."""
 
         length_bits = self._solve_lengths()
         bits = length_bits[self.initial_state]
+        self._require_some_factorization(bits != 0)
         return {
             length
             for length in range(bits.bit_length())
@@ -369,11 +396,13 @@ class FactorizationSolver(Generic[Element]):
             minimum, _ = self._extreme_lengths_from_bits(
                 self._length_bits[self.initial_state]
             )
-            return minimum
-        if not self._minimum_length_is_solved:
-            self._minimum_length = self._shortest_factorization_length()
-            self._minimum_length_is_solved = True
-        return self._minimum_length
+        else:
+            if not self._minimum_length_is_solved:
+                self._minimum_length = self._shortest_factorization_length()
+                self._minimum_length_is_solved = True
+            minimum = self._minimum_length
+        self._require_some_factorization(minimum is not None)
+        return minimum
 
     def _shortest_factorization_length(self) -> int | None:
         pending = deque(((self.initial_state, 0),))
@@ -399,6 +428,7 @@ class FactorizationSolver(Generic[Element]):
             _, maximum = self._extreme_lengths_from_bits(
                 self._length_bits[self.initial_state]
             )
+            self._require_some_factorization(maximum is not None)
             return maximum
         if not self._maximum_length_is_solved:
             transitions = self._build_state_graph()
@@ -415,6 +445,7 @@ class FactorizationSolver(Generic[Element]):
                 maxima[state] = None if best is None else best + 1
             self._maximum_length = maxima[self.initial_state]
             self._maximum_length_is_solved = True
+        self._require_some_factorization(self._maximum_length is not None)
         return self._maximum_length
 
     def has_factorization_of_length(self, factor_count: int) -> bool:
@@ -568,12 +599,14 @@ class FactorizationSolver(Generic[Element]):
             if not self.has_factorization_of_length(factor_count):
                 return
 
+        found = False
         path: list[AdditiveSequence[Element]] = []
         stack: list[tuple[MultiplicityState, int]] = [(self.initial_state, 0)]
         while stack:
             state, next_atom = stack[-1]
             if state == self.zero_state:
                 if factor_count is None or len(path) == factor_count:
+                    found = True
                     yield tuple(path)
                 stack.pop()
                 if stack:
@@ -605,6 +638,8 @@ class FactorizationSolver(Generic[Element]):
                     remainder[index] -= count
                 path.append(atom.sequence)
                 stack.append((tuple(remainder), next_atom))
+        if factor_count is None:
+            self._require_some_factorization(found)
 
     def digraph(self):
         """Return the memoized remainder graph as a NetworkX ``DiGraph``.

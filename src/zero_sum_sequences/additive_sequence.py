@@ -35,7 +35,9 @@ class AdditiveSequenceSpace(Generic[Element]):
         whatever labels the parent uses.
     davenport_bound:
         Optional positive upper bound for the parent's Davenport constant.
-        An explicit value is used as supplied; its sufficiency is not checked.
+        An explicit value is used as supplied; its sufficiency is not checked
+        up front, but factorization queries raise when it provably fails
+        (see :class:`FactorizationSolver`).
         If omitted, :attr:`davenport_bound` derives a bound when needed,
         without starting an exhaustive constant search.
     """
