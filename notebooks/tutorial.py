@@ -21,12 +21,13 @@ def _(mo):
 
     `zero_sum_sequences` represents finite multisets over additive groups and
     computes zero-sum atoms, factorizations and their lengths, automorphism
-    orbits, and zero-sum constants. The examples use $C_3$,
-    $C_2\oplus C_4$, and a four-point support in $C_3^3$.
+    orbits, and zero-sum constants. The examples use $C_3$, $C_2\oplus C_4$,
+    a four-point support in $C_3^3$, and finally a few small groups for
+    zero-sum constants.
 
-    This is a [marimo](https://marimo.io) notebook: cells rerun automatically
-    when the definitions they use change. It runs in ordinary Python, or in
-    the browser from the documentation.
+    This is a [marimo](https://marimo.io) notebook: when you edit a cell, the
+    cells that depend on it rerun automatically. It runs in ordinary Python,
+    or in the browser from the documentation.
     """)
     return
 
@@ -35,44 +36,6 @@ def _(mo):
 def _():
     import marimo as mo
 
-    return (mo,)
-
-
-@app.cell(hide_code=True)
-def _(mo):
-    def facts(*rows):
-        """Show ``(label, value)`` pairs as a two-column table."""
-
-        lines = ["| | |", "|:--|:--|"]
-        lines += [f"| {label} | `{value}` |" for label, value in rows]
-        return mo.md("\n".join(lines))
-
-    def format_factorization(factors):
-        return "  *  ".join(str(factor) for factor in factors) or "1"
-
-    return facts, format_factorization
-
-
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(r"""
-    ## 1. Configure a sequence space
-
-    A finite abelian group can be given by its elements and its addition.
-    An `AdditiveSequenceSpace` over it constructs immutable finite multisets
-    of group elements.
-
-    Enumerating atoms needs an upper bound for the Davenport constant
-    $D(G)$, the maximal length of an atom. When none is supplied, the space
-    derives one without an exhaustive search: here $C_3$ is recognized as
-    cyclic, so $D(C_3)=3$. An explicit `davenport_bound=` is used as given;
-    a bound below $D(G)$ can make results incomplete.
-    """)
-    return
-
-
-@app.cell
-def _():
     from zero_sum_sequences import (
         AdditiveSequenceSpace,
         AtomCatalogue,
@@ -96,12 +59,31 @@ def _():
         davenport_constant,
         erdos_ginzburg_ziv_constant,
         eta_constant,
+        mo,
         zero_sum_constant,
     )
 
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## 1. Configure a sequence space
+
+    A finite abelian group can be given by its elements and its addition.
+    An `AdditiveSequenceSpace` over it constructs immutable finite multisets
+    of group elements.
+
+    Enumerating atoms needs an upper bound for the Davenport constant
+    $D(G)$, the maximal length of an atom. When none is supplied, the space
+    derives one without an exhaustive search; here $C_3$ is recognized as
+    cyclic, so the bound is $D(C_3)=3$. An explicit `davenport_bound=` is used
+    as given, and a bound below $D(G)$ can make results incomplete.
+    """)
+    return
+
+
 @app.cell
-def _(AdditiveSequenceSpace, FiniteAdditiveGroup, facts):
+def _(AdditiveSequenceSpace, FiniteAdditiveGroup):
     modulo_three = FiniteAdditiveGroup(
         range(3),
         zero=0,
@@ -109,7 +91,8 @@ def _(AdditiveSequenceSpace, FiniteAdditiveGroup, facts):
         coerce=lambda value: int(value) % 3,
     )
     C3 = AdditiveSequenceSpace(modulo_three)
-    facts(("group order", modulo_three.order()), ("Davenport bound", C3.davenport_bound))
+    print("group order:", modulo_three.order())
+    print("Davenport bound:", C3.davenport_bound)
     return (C3,)
 
 
@@ -127,22 +110,21 @@ def _(mo):
 
 
 @app.cell
-def _(C3, facts):
+def _(C3):
     sample = C3([2, 1, 2, 1])
     negated_sample = sample.map_terms(lambda term: -term)
 
-    facts(
-        ("sequence", sample),
-        ("terms", tuple(sample)),
-        ("length", len(sample)),
-        ("support", sample.support),
-        ("multiplicities", sample.multiplicities),
-        ("sum", sample.total()),
-        ("zero-sum", sample.is_zero_sum()),
-        ("atom", sample.is_atom()),
-        ("termwise negation", negated_sample),
-        ("negation fixes the sequence", negated_sample == sample),
-    )
+    print("sequence:", sample)
+    print("parent is C3:", sample.parent() is C3)
+    print("terms:", tuple(sample))
+    print("length:", len(sample))
+    print("support:", sample.support)
+    print("multiplicities:", sample.multiplicities)
+    print("sum:", sample.total())
+    print("zero-sum:", sample.is_zero_sum())
+    print("atom:", sample.is_atom())
+    print("termwise negation:", negated_sample)
+    print("negation fixes the sequence:", negated_sample == sample)
     return (sample,)
 
 
@@ -159,18 +141,16 @@ def _(mo):
 
 
 @app.cell
-def _(C3, facts, sample):
+def _(C3, sample):
     pair = C3([1, 2])
     triple_pair = 3 * pair
 
-    facts(
-        ("pair", pair),
-        ("pair + pair", pair + pair),
-        ("sample - pair", sample - pair),
-        ("3 * pair", triple_pair),
-        ("pair divides sample", pair.divides(sample)),
-        ("3 * pair divides sample", triple_pair.divides(sample)),
-    )
+    print("pair:", pair)
+    print("pair + pair:", pair + pair)
+    print("sample - pair:", sample - pair)
+    print("3 * pair:", triple_pair)
+    print("pair divides sample:", pair.divides(sample))
+    print("triple pair divides sample:", triple_pair.divides(sample))
     return
 
 
@@ -192,42 +172,37 @@ def _(mo):
 
 
 @app.cell
-def _(C3, facts, format_factorization):
+def _(C3):
     sequence = C3([1, 1, 1, 2, 2, 2])
     one_cubed = C3([1, 1, 1])
     two_cubed = C3([2, 2, 2])
     mixed_pair = C3([1, 2])
 
-    facts(
-        ("length set", sorted(sequence.length_set())),
-        *(
-            (f"length {_length}", format_factorization(_factors))
-            for _length, _factors in sequence.factorization_witnesses().items()
-        ),
-    )
-    return mixed_pair, one_cubed, sequence, two_cubed
+
+    def format_factorization(factors):
+        return "  *  ".join(str(factor) for factor in factors) or "1"
+
+
+    print("length set:", sorted(sequence.length_set()))
+    for _length, _factors in sequence.factorization_witnesses().items():
+        print(f"length {_length}: {format_factorization(_factors)}")
+    return format_factorization, mixed_pair, one_cubed, sequence, two_cubed
 
 
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
     `factorizations()` enumerates every unordered factorization exactly once.
-    For larger examples, prefer the length set or one witness per length.
-
-    Each of these convenience methods solves the problem afresh. For several
-    questions about one sequence, keep a solver (section 6).
+    Here these are just the two factorizations above. For larger examples,
+    prefer the length set or one witness per length.
     """)
     return
 
 
 @app.cell
-def _(facts, format_factorization, sequence):
-    facts(
-        *(
-            (f"length {len(_factors)}", format_factorization(_factors))
-            for _factors in sorted(sequence.factorizations(), key=len)
-        )
-    )
+def _(format_factorization, sequence):
+    for _factors in sorted(sequence.factorizations(), key=len):
+        print(f"length {len(_factors)}: {format_factorization(_factors)}")
     return
 
 
@@ -249,7 +224,6 @@ def _(mo):
 @app.cell
 def _(
     FactorizationRelation,
-    facts,
     format_factorization,
     mixed_pair,
     one_cubed,
@@ -260,13 +234,11 @@ def _(
         target=(mixed_pair,) * 4,
     )
 
-    facts(
-        ("common factor", format_factorization(relation.common_factor)),
-        ("reduced source", format_factorization(relation.reduced_source)),
-        ("reduced target", format_factorization(relation.reduced_target)),
-        ("distance", relation.distance),
-        ("reduced product", relation.reduced().product),
-    )
+    print("common factor:", format_factorization(relation.common_factor))
+    print("reduced source:", format_factorization(relation.reduced_source))
+    print("reduced target:", format_factorization(relation.reduced_target))
+    print("distance:", relation.distance)
+    print("reduced product:", relation.reduced().product)
     return
 
 
@@ -275,30 +247,29 @@ def _(mo):
     mo.md(r"""
     ## 6. Reuse a factorization solver
 
-    A `FactorizationSolver` keeps its discovered atoms and its graph of
-    remainders between queries. Exact-length and minimum-length queries use
-    targeted searches unless complete length data is already available.
-    `statistics` reports the numbers of atom divisors, remainder states, and
-    transitions.
+    Each of the sequence methods above solves its problem afresh. For several
+    questions about one sequence, keep a `FactorizationSolver`: it retains
+    its discovered atoms and its graph of remainders between queries.
+    Exact-length and minimum-length queries use targeted searches unless
+    complete length data is already available. `statistics` reports the
+    numbers of atom divisors, remainder states, and transitions.
     """)
     return
 
 
 @app.cell
-def _(FactorizationSolver, facts, sequence):
+def _(FactorizationSolver, sequence):
     solver = FactorizationSolver(sequence)
-    _stats = solver.statistics
+    stats = solver.statistics
 
-    facts(
-        ("has length 3", solver.has_factorization_of_length(3)),
-        ("minimum length", solver.minimum_factorization_length()),
-        ("maximum length", solver.maximum_factorization_length()),
-        ("length set", sorted(solver.length_set())),
-        ("witness lengths", sorted(solver.factorization_witnesses())),
-        ("candidate atoms", _stats.candidate_atoms),
-        ("remainder states", _stats.states),
-        ("transitions", _stats.transitions),
-    )
+    print("has length 3:", solver.has_factorization_of_length(3))
+    print("minimum length:", solver.minimum_factorization_length())
+    print("maximum length:", solver.maximum_factorization_length())
+    print("length set:", sorted(solver.length_set()))
+    print("witness lengths:", sorted(solver.factorization_witnesses()))
+    print("candidate atoms:", stats.candidate_atoms)
+    print("remainder states:", stats.states)
+    print("transitions:", stats.transitions)
     return
 
 
@@ -313,25 +284,24 @@ def _(mo):
 
     For $T=S^3=1^9 2^9$, ask for length seven and check the witness by
     multiplying its factors. A fresh solver ensures that no complete length
-    data has been computed yet.
+    data has been computed yet. Since $T$ only factors into 6 to 9 atoms, a
+    request for length five returns `None`.
     """)
     return
 
 
 @app.cell
-def _(C3, FactorizationSolver, facts, format_factorization, sequence):
+def _(C3, FactorizationSolver, format_factorization, sequence):
     target = 3 * sequence
     targeted_solver = FactorizationSolver(target)
     witness = targeted_solver.factorization_witness(7)
     assert witness is not None and len(witness) == 7
     assert sum(witness, C3()) == target
-    assert all(_atom.is_atom() for _atom in witness)
+    assert all(atom.is_atom() for atom in witness)
 
-    facts(
-        ("length-7 witness", format_factorization(witness)),
-        ("correct product", sum(witness, C3()) == target),
-        ("length-5 witness", targeted_solver.factorization_witness(5)),
-    )
+    print("length-7 witness:", format_factorization(witness))
+    print("correct product:", sum(witness, C3()) == target)
+    print("length-5 witness:", targeted_solver.factorization_witness(5))
     return target, targeted_solver
 
 
@@ -355,28 +325,27 @@ def _(mo):
 
 
 @app.cell
-def _(C3, facts, format_factorization, target, targeted_solver):
-    def _is_cube(atom):
+def _(C3, format_factorization, target, targeted_solver):
+    def is_cube(atom):
         return len(atom) == 3
 
+
     with_four_cubes = targeted_solver.factorization_witness(
-        7, minimum_matching_factors=4, factor_predicate=_is_cube
+        7, minimum_matching_factors=4, factor_predicate=is_cube
     )
     assert with_four_cubes is not None and len(with_four_cubes) == 7
     assert sum(with_four_cubes, C3()) == target
-    assert sum(map(_is_cube, with_four_cubes)) >= 4
+    assert sum(map(is_cube, with_four_cubes)) >= 4
 
     impossible_profile = targeted_solver.factorization_witness(
-        8, minimum_matching_factors=4, factor_predicate=_is_cube
+        8, minimum_matching_factors=4, factor_predicate=is_cube
     )
     assert impossible_profile is None
     assert targeted_solver.has_factorization_of_length(8)
 
-    facts(
-        ("length 7 with four cubes", format_factorization(with_four_cubes)),
-        ("length 8 exists", targeted_solver.has_factorization_of_length(8)),
-        ("length 8 with four cubes", impossible_profile),
-    )
+    print("length 7 with four cubes:", format_factorization(with_four_cubes))
+    print("length 8 exists:", targeted_solver.has_factorization_of_length(8))
+    print("length 8 with four cubes:", impossible_profile)
     return
 
 
@@ -386,34 +355,30 @@ def _(mo):
     ## 7. Inspect the factorization graph
 
     `factorization_digraph()` returns the remainder graph as a NetworkX
-    directed acyclic graph. Each vertex is a remainder sequence, and each edge
-    records the removed atom. A path from the input to the empty sequence
-    encodes a factorization.
+    directed acyclic graph. Each vertex is a remainder sequence, and each
+    edge records the removed atom. A path from the input to the empty
+    sequence encodes a factorization.
     """)
     return
 
 
 @app.cell
-def _(C3, facts, sequence):
+def _(C3, sequence):
     import networkx as nx
 
     dag = sequence.factorization_digraph()
-    path_lengths = {
-        len(_path) - 1 for _path in nx.all_simple_paths(dag, sequence, C3())
-    }
-
-    facts(
-        ("vertices", dag.number_of_nodes()),
-        ("edges", dag.number_of_edges()),
-        ("acyclic", nx.is_directed_acyclic_graph(dag)),
-        ("path lengths", sorted(path_lengths)),
-        *(
-            (f"{_source} → {_target}", f"remove {_atom}")
-            for _source, _target, _atom in sorted(
-                (str(_s), str(_t), str(_a)) for _s, _t, _a in dag.edges(data="atom")
-            )
-        ),
+    edges = sorted(
+        (str(source), str(end), str(atom))
+        for source, end, atom in dag.edges(data="atom")
     )
+
+    print(f"vertices: {dag.number_of_nodes()}; edges: {dag.number_of_edges()}")
+    for _source, _end, _atom in edges:
+        print(f"{_source}  -- remove {_atom} -->  {_end}")
+
+    path_lengths = {len(path) - 1 for path in nx.all_simple_paths(dag, sequence, C3())}
+    print("acyclic:", nx.is_directed_acyclic_graph(dag))
+    print("path lengths:", sorted(path_lengths))
     return dag, nx
 
 
@@ -421,36 +386,36 @@ def _(C3, facts, sequence):
 def _(dag, nx):
     import matplotlib.pyplot as plt
 
-    _positions = {}
-    for _depth, _nodes in enumerate(nx.topological_generations(dag)):
-        _ordered = sorted(_nodes, key=str)
-        _offset = (len(_ordered) - 1) / 2
-        for _index, _node in enumerate(_ordered):
-            _positions[_node] = (_index - _offset, -_depth)
+    positions = {}
+    for depth, nodes in enumerate(nx.topological_generations(dag)):
+        ordered_nodes = sorted(nodes, key=str)
+        offset = (len(ordered_nodes) - 1) / 2
+        for index, node in enumerate(ordered_nodes):
+            positions[node] = (index - offset, -depth)
 
-    _figure, _axis = plt.subplots(figsize=(7, 4.5))
+    figure, axis = plt.subplots(figsize=(7, 4.5))
     nx.draw_networkx_edges(
-        dag, pos=_positions, node_size=900, node_shape="s", arrowsize=18, ax=_axis
+        dag, pos=positions, node_size=900, node_shape="s", arrowsize=18, ax=axis
     )
     nx.draw_networkx_labels(
         dag,
-        pos=_positions,
-        labels={_node: str(_node) for _node in dag},
+        pos=positions,
+        labels={node: str(node) for node in dag},
         font_size=10,
         bbox={"boxstyle": "round,pad=0.45", "facecolor": "#e8eef7", "edgecolor": "#607089"},
-        ax=_axis,
+        ax=axis,
     )
     nx.draw_networkx_edge_labels(
         dag,
-        pos=_positions,
-        edge_labels={(_s, _t): str(_a) for _s, _t, _a in dag.edges(data="atom")},
+        pos=positions,
+        edge_labels={(source, end): str(atom) for source, end, atom in dag.edges(data="atom")},
         font_size=10,
         rotate=False,
-        ax=_axis,
+        ax=axis,
     )
-    _axis.set_axis_off()
-    _figure.tight_layout()
-    _axis
+    axis.set_axis_off()
+    figure.tight_layout()
+    axis
     return
 
 
@@ -472,24 +437,20 @@ def _(mo):
 
 
 @app.cell
-def _(AdditiveSequenceSpace, FiniteAdditiveGroup, facts):
+def _(AdditiveSequenceSpace, FiniteAdditiveGroup):
     from collections import Counter
 
     group = FiniteAdditiveGroup.cyclic_product(2, 4)
     C2xC4 = AdditiveSequenceSpace(group)
     c2_c4_catalogue = C2xC4.enumerate_atom_catalogue()
 
-    facts(
-        ("Davenport bound", C2xC4.davenport_bound),
-        ("atoms", len(c2_c4_catalogue)),
-        *(
-            (f"atoms of length {_length}", _count)
-            for _length, _count in sorted(Counter(map(len, c2_c4_catalogue)).items())
-        ),
-        (
-            "all are atoms without the identity",
-            all(_a.is_atom() and group.zero() not in _a for _a in c2_c4_catalogue),
-        ),
+    print("Davenport bound:", C2xC4.davenport_bound)
+    print("atoms:", len(c2_c4_catalogue))
+    for _length, _count in sorted(Counter(map(len, c2_c4_catalogue)).items()):
+        print(f"length {_length}: {_count}")
+    print(
+        "all are atoms without the identity:",
+        all(atom.is_atom() and group.zero() not in atom for atom in c2_c4_catalogue),
     )
     return C2xC4, Counter, c2_c4_catalogue, group
 
@@ -497,78 +458,69 @@ def _(AdditiveSequenceSpace, FiniteAdditiveGroup, facts):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    ## 9. Automorphism orbits
+    ## 9. Reuse a complete atom catalogue
 
-    Automorphisms act term by term. `FiniteAdditiveGroup.cyclic_product(...)`
-    supplies generators of the full automorphism group.
+    An `AtomCatalogue` indexes atoms for reuse: a solver given a catalogue
+    looks up atom divisors instead of searching for them. Results are
+    complete when the catalogue contains every atom divisor of the input,
+    as the full catalogue above does; this is not checked.
 
-    The eight atoms of length 5 over $C_2\oplus C_4$ form one orbit. An orbit
-    witness is a shortest word in the generators mapping one atom to another;
-    it can show the induced images of the standard additive generators.
+    Take the length-five atom $A=(0,1)^3(1,0)(1,1)$ and its termwise negative
+    $B$. Their product has factorizations of lengths 2, 4, and 5, but not 3:
+    a set of lengths need not be an interval.
     """)
     return
 
 
 @app.cell
-def _(AutomorphismAction, C2xC4, c2_c4_catalogue, facts, group):
-    maximal_atom = C2xC4([(0, 1)] * 3 + [(1, 0), (1, 1)])
-    other_maximal_atom = C2xC4([(0, 1), (1, 0)] + [(1, 1)] * 3)
-    maximal_orbit = maximal_atom.orbit()
-    orbit_witness = maximal_atom.orbit_witness(other_maximal_atom)
-    action = AutomorphismAction(group.automorphism_generators())
+def _(C2xC4, FactorizationSolver, c2_c4_catalogue, format_factorization, group):
+    A = C2xC4([(0, 1)] * 3 + [(1, 0), (1, 1)])
+    B = A.map_terms(group.negate)
+    product = A + B
+    catalogue_solver = FactorizationSolver(product, atom_catalogue=c2_c4_catalogue)
 
-    facts(
-        ("orbit size", len(maximal_orbit)),
-        ("same orbit", maximal_atom.is_in_same_orbit(other_maximal_atom)),
-        ("generator word", orbit_witness.generator_indices),
-        *(
-            (f"generator {_g}", f"↦ {_image}")
-            for _g, _image in orbit_witness.additive_generator_images()
-        ),
-        (
-            "orbit is every length-5 atom",
-            set(maximal_orbit) == {_a for _a in c2_c4_catalogue if len(_a) == 5},
-        ),
-        (
-            "witness maps atom to target",
-            action.apply_word(maximal_atom, orbit_witness) == other_maximal_atom,
-        ),
-    )
-    return
+    print("A:", A)
+    print("B:", B)
+    print("atom divisors in the catalogue:", len(list(c2_c4_catalogue.divisors(product))))
+    print("length set:", sorted(catalogue_solver.length_set()))
+    for _length, _factors in catalogue_solver.factorization_witnesses().items():
+        print(f"length {_length}: {format_factorization(_factors)}")
+    return (A,)
 
 
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    ## 10. Reuse a complete atom catalogue
+    ## 10. Automorphism orbits
 
-    An `AtomCatalogue` indexes precomputed atoms for reuse. For the earlier
-    $C_3$ input, the relevant atoms are $1^3$, $2^3$, and $1\cdot2$.
-    Complete factorization results require every atom divisor of the
-    sequence; the catalogue's completeness is not checked.
+    Automorphisms act term by term. `FiniteAdditiveGroup.cyclic_product(...)`
+    supplies generators of the full automorphism group.
+
+    The eight atoms of length 5 over $C_2\oplus C_4$, including $A$, form one
+    orbit. An orbit witness is a shortest word in the generators mapping one
+    atom to another; `show()` prints the induced images of the standard
+    additive generators.
     """)
     return
 
 
 @app.cell
-def _(
-    AtomCatalogue,
-    C3,
-    FactorizationSolver,
-    facts,
-    mixed_pair,
-    one_cubed,
-    sequence,
-    two_cubed,
-):
-    catalogue = AtomCatalogue(C3, (one_cubed, two_cubed, mixed_pair))
-    catalogue_solver = FactorizationSolver(sequence, atom_catalogue=catalogue)
+def _(A, AutomorphismAction, C2xC4, c2_c4_catalogue, group):
+    other_maximal_atom = C2xC4([(0, 1), (1, 0)] + [(1, 1)] * 3)
+    maximal_orbit = A.orbit()
+    orbit_witness = A.orbit_witness(other_maximal_atom)
 
-    facts(
-        ("catalogue atoms", [str(_a) for _a in catalogue]),
-        ("divisors of S", [str(_a) for _a in catalogue.divisors(sequence)]),
-        ("length set", sorted(sequence.length_set(atom_catalogue=catalogue))),
-        ("solver statistics", catalogue_solver.statistics),
+    print("orbit size:", len(maximal_orbit))
+    print("same orbit:", A.is_in_same_orbit(other_maximal_atom))
+    print("generator word:", orbit_witness.generator_indices)
+    orbit_witness.show()
+
+    action = AutomorphismAction(group.automorphism_generators())
+    length_five_atoms = {atom for atom in c2_c4_catalogue if len(atom) == 5}
+    print("orbit contains every length-5 atom:", set(maximal_orbit) == length_five_atoms)
+    print(
+        "witness maps A to the target:",
+        action.apply_word(A, orbit_witness) == other_maximal_atom,
     )
     return
 
@@ -592,15 +544,16 @@ def _(mo):
 
 
 @app.cell
-def _(AdditiveSequenceSpace, Counter, FiniteAdditiveGroup, facts):
+def _(AdditiveSequenceSpace, Counter, FiniteAdditiveGroup):
     C3cubed = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(3, 3, 3))
     e1, e2, e3, e4 = (1, 0, 0), (0, 1, 0), (0, 0, 1), (1, 1, 1)
     G0 = [e1, e2, e3, e4]
     support_catalogue = C3cubed.enumerate_atom_catalogue(support=G0)
 
     assert Counter(map(len, support_catalogue)) == {3: 4, 5: 1, 7: 1}
-    assert all(set(_a.support) <= set(G0) for _a in support_catalogue)
-    facts(*((f"term length {len(_a)}", _a) for _a in support_catalogue))
+    assert all(set(atom.support) <= set(G0) for atom in support_catalogue)
+    for atom in support_catalogue:
+        print(f"term length {len(atom)}: {atom}")
     return C3cubed, e1, e2, e3, e4, support_catalogue
 
 
@@ -608,9 +561,9 @@ def _(AdditiveSequenceSpace, Counter, FiniteAdditiveGroup, facts):
 def _(mo):
     mo.md(r"""
     The restricted catalogue is complete for **every sequence on this
-    support**, given a sufficient bound: every factor of such a sequence
-    also has its terms in $G_0$. It is generally not complete for sequences
-    with terms outside $G_0$.
+    support**, given a sufficient bound: every factor of such a sequence also
+    has its terms in $G_0$. It is generally not complete for sequences with
+    terms outside $G_0$.
 
     For the length-seven atom $U$, the sequence $U^3$ has length set
     $\{3,5,7\}$. We first ask for a length-five witness and for the missing
@@ -627,7 +580,6 @@ def _(
     e2,
     e3,
     e4,
-    facts,
     format_factorization,
     support_catalogue,
 ):
@@ -639,11 +591,9 @@ def _(
     assert support_solver.factorization_witness(4) is None
     assert support_solver.length_set() == {3, 5, 7}
 
-    facts(
-        ("length-5 witness", format_factorization(middle_witness)),
-        ("length-4 witness", support_solver.factorization_witness(4)),
-        ("complete length set", sorted(support_solver.length_set())),
-    )
+    print("length-5 witness:", format_factorization(middle_witness))
+    print("length-4 witness:", support_solver.factorization_witness(4))
+    print("complete length set:", sorted(support_solver.length_set()))
     return
 
 
@@ -660,11 +610,11 @@ def _(mo):
       $\exp(G)$ (the Erdős–Ginzburg–Ziv constant).
 
     Known formulas are used where they apply; otherwise the functions search
-    exhaustively, reduced by automorphisms. Exhaustive searches grow quickly
-    with the group. For a rank-two group $C_m\oplus C_n$ with $m\mid n$,
-    the known values are $D=m+n-1$, $\eta=2m+n-2$, and $\mathsf s=2m+2n-3$.
+    exhaustively, reduced by automorphisms. Such searches grow quickly with
+    the group. For a rank-two group $C_m\oplus C_n$ with $m\mid n$, the known
+    values are $D=m+n-1$, $\eta=2m+n-2$, and $\mathsf s=2m+2n-3$.
 
-    Choose a group:
+    Choose a group; the computations below update automatically.
     """)
     return
 
@@ -693,20 +643,17 @@ def _(
     davenport_constant,
     erdos_ginzburg_ziv_constant,
     eta_constant,
-    facts,
     group_choice,
 ):
-    _moduli = group_choice.value
-    chosen_space = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(*_moduli))
-    _rows = [
-        ("D(G)", davenport_constant(chosen_space)),
-        ("η(G)", eta_constant(chosen_space)),
-        ("s(G)", erdos_ginzburg_ziv_constant(chosen_space)),
-    ]
-    if len(_moduli) == 2:
-        _m, _n = _moduli
-        _rows.append(("rank-two formulas", (_m + _n - 1, 2 * _m + _n - 2, 2 * _m + 2 * _n - 3)))
-    facts(*_rows)
+    moduli = group_choice.value
+    chosen_space = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(*moduli))
+
+    print("D(G):", davenport_constant(chosen_space))
+    print("eta(G):", eta_constant(chosen_space))
+    print("s(G):", erdos_ginzburg_ziv_constant(chosen_space))
+    if len(moduli) == 2:
+        m, n = moduli
+        print("rank-two formulas (D, eta, s):", (m + n - 1, 2 * m + n - 2, 2 * m + 2 * n - 3))
     return (chosen_space,)
 
 
@@ -715,24 +662,22 @@ def _(mo):
     mo.md(r"""
     `zero_sum_constant(space, L)` is the general form: the least length
     forcing a nonempty zero-sum subsequence whose length lies in $L$. Its
-    result also lists the extremal sequences, one of length one less than the
-    constant per automorphism orbit. Here $L=\{\exp(G)\}$ gives
-    $\mathsf s(G)$ again:
+    result also lists the extremal sequences, of length one less than the
+    constant, one per automorphism orbit. With $L=\{\exp(G)\}$ it gives
+    $\mathsf s(G)$ again. Unlike factorizations, these searches allow the
+    identity as a term, and extremal sequences can contain it.
     """)
     return
 
 
 @app.cell
-def _(chosen_space, facts, zero_sum_constant):
-    _exponent = chosen_space.base_parent.exponent()
-    egz = zero_sum_constant(chosen_space, {_exponent})
+def _(chosen_space, zero_sum_constant):
+    egz = zero_sum_constant(chosen_space, {chosen_space.base_parent.exponent()})
 
-    facts(
-        ("allowed lengths", sorted(egz.lengths)),
-        ("constant", egz.value),
-        ("extremal orbits", len(egz.extremal)),
-        ("first extremal sequence", egz.extremal[0]),
-    )
+    print("allowed lengths:", sorted(egz.lengths))
+    print("constant:", egz.value)
+    print("extremal orbits:", len(egz.extremal))
+    print("first extremal sequence:", egz.extremal[0])
     return
 
 
