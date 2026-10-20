@@ -18,7 +18,7 @@ extensions = [
 source_suffix = {".rst": "restructuredtext", ".md": "markdown"}
 root_doc = "index"
 exclude_patterns = ["_build", "README.md"]
-myst_enable_extensions = ["dollarmath"]
+myst_enable_extensions = ["colon_fence", "dollarmath"]
 myst_heading_anchors = 3
 
 # API pages render the source docstrings, including their Notes and citations.
