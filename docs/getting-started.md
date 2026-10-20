@@ -32,8 +32,9 @@ products use coordinate tuples, even in rank one.
 (3, True, True)
 ```
 
-An atom is a minimal nonempty zero-sum sequence. An input's term order is
-irrelevant: these are finite multisets, not ordered lists.
+An atom is a minimal zero-sum sequence. A sequence is a finite unordered
+sequence of terms with repetition allowed, so the order of the arguments
+is irrelevant.
 
 ## Factorizations and their lengths
 
@@ -48,7 +49,7 @@ of lengths 2 and 3.
 
 The sequence has six terms; the numbers 2 and 3 count **atom factors**, not
 terms. See [Definitions](definitions.md) for this distinction and the
-identity-term convention.
+convention for the term $0$.
 
 ## A zero-sum constant
 

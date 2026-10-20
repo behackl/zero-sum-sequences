@@ -20,14 +20,14 @@ implements the algorithms in those sources.
   {py:attr}`zero_sum_sequences.AdditiveSequenceSpace.davenport_bound`
   uses a conservative integer relaxation, not the original real-valued bound.
 - {cite:t}`geroldinger-halter-koch-2006` provides the factorization-theoretic
-  background, including atoms and sets of lengths.
+  background, including atoms and length sets.
 
 ## Related computational work
 
 - {cite:t}`zerdoum-2021`, Chapters IV–V, develops sequence-propagation
   methods with interval-compressed representations.
 - {cite:t}`geroldinger-liebmann-philipp-2012`, Section 4, describes a
-  sequence-extension search for long zero-sum-free sequences. Its
+  sequence-extension search for long zero-sum free sequences. Its
   introduction also records the logarithmic Davenport estimate.
 
 These are useful comparisons for the package's exhaustive avoidance

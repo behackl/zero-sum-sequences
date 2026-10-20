@@ -23,7 +23,7 @@ PYTHONPATH="$PWD/src:$PWD" sage -python -m pytest -q -p no:cacheprovider
   check delegation and API-specific interactions, notably validation before
   cache lookup and rejection of booleans/floats that compare equal to cached keys.
 - **`test_coordinate_oracle.py`** independently computes sums and enumerates
-  multisets in cyclic coordinates. Its mathematical ground truth does not use
+  sequences in cyclic coordinates. Its mathematical ground truth does not use
   package sequence predicates. Larger invariant cases complement that oracle.
 - **`test_generic_parents.py` and `test_orbits_sage.py`** cover native Sage parents
   and are skipped when Sage is unavailable.

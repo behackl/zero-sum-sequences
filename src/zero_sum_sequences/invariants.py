@@ -2,7 +2,7 @@
 
 The classical constants and notation follow :cite:p:`gao-geroldinger-2006`,
 Definition 2.1. :func:`zero_sum_constant` allows any finite set of positive
-subsequence lengths. Its search includes the identity element, unlike the
+subsequence lengths. Its search allows the term ``0``, unlike the
 package's factorization queries.
 
 For related computational approaches, see :cite:p:`zerdoum-2021`, Chapters
@@ -268,7 +268,7 @@ def zero_sum_constant(
         for key in sorted(level, reverse=True)
     )
     if all(k in lengths for k in range(1, length + 1)):
-        # Every extremal is zero-sum-free, while the next level forces a zero sum.
+        # Every extremal is zero-sum free, while the next level forces a zero sum.
         table._record_exact_davenport(length + 1)
     return ZeroSumConstant(lengths, length + 1, extremal)
 

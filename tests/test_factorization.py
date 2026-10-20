@@ -184,8 +184,8 @@ def test_maximum_of_a_long_atom_power_avoids_length_sets(monkeypatch):
     assert solver.maximum_factorization_length() == 20_000
 
 
-def test_factorization_rejects_sequences_with_identity_terms():
+def test_factorization_rejects_sequences_with_the_term_zero():
     space = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=3)
 
-    with pytest.raises(ValueError, match="without identity terms"):
+    with pytest.raises(ValueError, match="without the term 0"):
         FactorizationSolver(space(0, 1, 2))

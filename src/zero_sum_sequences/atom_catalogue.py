@@ -41,8 +41,9 @@ class AtomCatalogue(Generic[Element]):
     order, which is therefore a stable identifier namespace for any
     serialized data that refers to atoms.
 
-    The singleton zero is an atom in the full block monoid, but is excluded
-    from these catalogues and from the package's factorization queries.
+    The sequence ``0`` of length one is an atom of the monoid of zero-sum
+    sequences, but is excluded from these catalogues and from the
+    package's factorization queries.
     """
 
     def __init__(

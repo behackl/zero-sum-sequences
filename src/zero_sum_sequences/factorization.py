@@ -51,7 +51,7 @@ class _IndexedAtom(Generic[Element]):
 
 
 class FactorizationSolver(Generic[Element]):
-    """Find atom factorizations of a sequence without identity terms.
+    """Find atom factorizations of a sequence without the term ``0``.
 
     A supplied :class:`AtomCatalogue` is used without resolving a Davenport
     bound. It must contain every atom divisor of the input for complete
@@ -83,7 +83,7 @@ class FactorizationSolver(Generic[Element]):
                 raise TypeError("atom catalogue and sequence use different spaces")
         if sequence.parent()._canonical_zero() in sequence:
             raise ValueError(
-                "factorization queries require a sequence without identity terms"
+                "factorization queries require a sequence without the term 0"
             )
 
         self.sequence = sequence
@@ -348,7 +348,7 @@ class FactorizationSolver(Generic[Element]):
         )
 
     def length_set(self) -> set[int]:
-        """Return the complete set of attained factorization lengths."""
+        """Return the length set: the lengths of all factorizations."""
 
         length_bits = self._solve_lengths()
         bits = length_bits[self.initial_state]

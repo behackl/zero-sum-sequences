@@ -31,8 +31,8 @@ class AdditiveSequenceSpace(Generic[Element]):
         ``zero()``.  Elements must be hashable and mutually orderable.  They
         may implement addition themselves, or the parent may provide
         ``add(left, right)``. Sums and ``zero()`` are canonicalized through
-        the parent, so ``parent(parent.zero())`` is the identity whatever
-        labels the parent uses.
+        the parent, so ``parent(parent.zero())`` is the zero element ``0``
+        whatever labels the parent uses.
     davenport_bound:
         Optional positive upper bound for the parent's Davenport constant.
         An explicit value is used as supplied; its sufficiency is not checked.
@@ -146,7 +146,7 @@ class AdditiveSequenceSpace(Generic[Element]):
         return self._addition_op
 
     def _canonical_zero(self):
-        """The identity as a canonical, immutable parent element."""
+        """The zero element ``0`` as a canonical, immutable parent element."""
 
         if self._zero is None:
             self._zero = _immutable_term(self._parent(self._parent.zero()))
@@ -268,12 +268,12 @@ class AdditiveSequenceSpace(Generic[Element]):
 
         The base parent must be a finite iterable abelian group. By default,
         use every nonzero element. A supplied ``support`` is coerced through
-        the parent, with duplicates and zero removed. It need not be a
+        the parent, with duplicates and the term ``0`` removed. It need not be a
         subgroup: sums and inverses are taken in the ambient group.
 
         A derived bound gives a complete catalogue on the chosen support; an
-        explicit bound must cover all atom lengths there. The singleton zero
-        is excluded, as in :class:`AtomCatalogue`. Full enumeration with a
+        explicit bound must cover all atom lengths there. The atom ``0`` of
+        length one is excluded, as in :class:`AtomCatalogue`. Full enumeration with a
         derived bound also records the exact Davenport constant.
 
         The search completes each sorted prefix with its uniquely determined
@@ -374,11 +374,15 @@ def _looks_like_term_iterable(parent, argument) -> bool:
 
 @functools.total_ordering
 class AdditiveSequence(Generic[Element]):
-    """An immutable finite multiset in an :class:`AdditiveSequenceSpace`.
+    """A sequence over the parent of an :class:`AdditiveSequenceSpace`.
 
-    Construct sequences by calling their configured space. Terms are coerced
-    through its parent, copied when necessary to make them immutable, and
-    stored as a sorted multiplicity table.
+    By a sequence, we mean a finite unordered sequence of terms, with
+    repetition of terms allowed: an element ``g_1 · … · g_l`` of the free
+    abelian monoid over the parent. Construct sequences by calling their
+    space, ``S(g, h, ...)``. Sequences are immutable and written
+    multiplicatively: ``S * T``, ``S ** k``, ``S / T`` for a divisor ``T``,
+    and ``-S``. Terms are coerced through the parent, copied when necessary
+    to make them immutable, and stored with their multiplicities.
     """
 
     __slots__ = ("_space", "_items", "_length", "_hash")
@@ -449,7 +453,7 @@ class AdditiveSequence(Generic[Element]):
         return dict(self._items)
 
     def multiplicity(self, term: Element) -> int:
-        """Return how often ``term`` occurs."""
+        """Return the multiplicity ``v_g(S)`` of the term ``g``."""
 
         coerced = _immutable_term(self._space.base_parent(term))
         return next(
@@ -464,7 +468,7 @@ class AdditiveSequence(Generic[Element]):
         return reduce(space._add_operation(), self, space._canonical_zero())
 
     def is_zero_sum(self) -> bool:
-        """Return whether the sum of the sequence is zero."""
+        """Return whether this is a zero-sum sequence, ``σ(S) = 0``."""
 
         return bool(self.sum() == self._space._canonical_zero())
 
@@ -474,7 +478,7 @@ class AdditiveSequence(Generic[Element]):
         *,
         target_space: AdditiveSequenceSpace[TargetElement] | None = None,
     ) -> AdditiveSequence[TargetElement]:
-        """Apply ``mapping`` to every term and construct the image sequence.
+        """Return ``φ(S) = φ(g_1) · … · φ(g_l)`` for the map ``φ = mapping``.
 
         By default the image is constructed in this sequence's space.  A
         different ``target_space`` may be supplied when the mapping takes
@@ -579,7 +583,7 @@ class AdditiveSequence(Generic[Element]):
             )
 
     def is_atom(self) -> bool:
-        """Return whether this is a nonempty minimal zero-sum sequence."""
+        """Return whether this is a minimal zero-sum sequence (an atom)."""
 
         if not self or not self.is_zero_sum():
             return False
@@ -593,7 +597,7 @@ class AdditiveSequence(Generic[Element]):
         )
 
     def factorization_solver(self, *, atom_catalogue=None):
-        """Return a factorization solver for a sequence without identity terms.
+        """Return a factorization solver for a sequence without the term ``0``.
 
         A supplied catalogue must contain every atom divisor for complete
         results; no Davenport bound is needed in that case. Otherwise an
@@ -619,7 +623,7 @@ class AdditiveSequence(Generic[Element]):
         ).factorizations(factor_count=factor_count)
 
     def length_set(self, *, atom_catalogue=None) -> set[int]:
-        """Return the complete set of factorization lengths."""
+        """Return the length set: the lengths of all factorizations."""
 
         return self.factorization_solver(atom_catalogue=atom_catalogue).length_set()
 

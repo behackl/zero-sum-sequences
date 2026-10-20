@@ -240,7 +240,7 @@ class FactorizationCache(Generic[Element]):
         return key, self._length_sets.get(key)
 
     def length_set(self, sequence: AdditiveSequence[Element]) -> frozenset[int]:
-        """The complete set of factorization lengths of ``sequence``."""
+        """The length set of ``sequence``."""
 
         key, cached = self._cached(sequence)
         if cached is not None:

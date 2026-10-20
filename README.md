@@ -1,8 +1,8 @@
 # Zero-sum sequences
 
-`zero-sum-sequences` computes with finite multisets over additive groups:
-zero-sum atoms, factorizations and their lengths, automorphism orbits, and
-zero-sum constants. It runs in ordinary Python; SageMath is optional.
+`zero-sum-sequences` computes with sequences over finite additive groups:
+minimal zero-sum sequences (atoms), factorizations and their length sets,
+automorphism orbits, and zero-sum constants. It runs in ordinary Python; SageMath is optional.
 
 ## Installation
 

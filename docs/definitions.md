@@ -5,42 +5,52 @@ For background, see {cite:p}`gao-geroldinger-2006,geroldinger-halter-koch-2006`.
 
 ## Sequences and subsequences
 
-A sequence over an additive abelian group $G$ is a finite multiset, written
+Let $G$ be an additive abelian group. By a **sequence** over $G$ we mean a
+finite unordered sequence of terms from $G$, with repetition of terms
+allowed. As usual, sequences are elements of the free abelian monoid
+$\mathcal F(G)$ with basis $G$ and are written multiplicatively:
 
 $$
-S = \prod_{g\in G} g^{v_g(S)}.
+S = g_1\cdot\ldots\cdot g_\ell = \prod_{g\in G} g^{\mathsf v_g(S)}.
 $$
 
-Its **length** $|S|=\sum_g v_g(S)$ counts terms, its **support** consists
-of the terms with positive multiplicity, and its **sum** is
-$\sigma(S)=\sum_g v_g(S)g$. A subsequence is obtained by decreasing
-multiplicities. The empty sequence has length zero and sum zero.
+Here $\mathsf v_g(S)$ is the **multiplicity** of $g$ in $S$. The
+**length** $|S|=\ell$ counts terms, the **support** consists of the terms
+with positive multiplicity, and the **sum** is
+$\sigma(S)=g_1+\ldots+g_\ell$. A sequence $T$ is a **subsequence** of $S$,
+or **divides** $S$, if $\mathsf v_g(T)\le\mathsf v_g(S)$ for every $g$;
+then $ST^{-1}$ is the sequence of the remaining terms. The empty sequence
+$1$ has length zero and sum zero. We write
+$-S=(-g_1)\cdot\ldots\cdot(-g_\ell)$.
 
-The implementation uses `S + T` for multiset union, despite the
-multiplicative notation customary in the literature.
+In code, `S(g, h)` is the sequence $g\cdot h$, `S * T` is the product,
+`S ** k` the $k$-th power, `S / T` is $ST^{-1}$, `-S` is the negative, and
+`S.sum()` is $\sigma(S)$.
 
 ## Zero-sum sequences and atoms
 
-A sequence is **zero-sum** if its sum is zero. An **atom** is a nonempty
-zero-sum sequence with no proper nonempty zero-sum subsequence. In
-particular, the empty sequence is not an atom.
+A sequence $S$ is a **zero-sum sequence** if $\sigma(S)=0$, and a
+**minimal zero-sum sequence** if it is a nontrivial zero-sum sequence
+without proper nontrivial zero-sum subsequences. The zero-sum sequences
+form a submonoid $\mathcal B(G)\subseteq\mathcal F(G)$, the **monoid of
+zero-sum sequences**, whose only unit is the empty sequence. Its atoms are
+precisely the minimal zero-sum sequences; the package calls them **atoms**.
 
-The singleton containing the group identity is an atom. The package's
-atom catalogues omit that singleton, and its factorization solver accepts
-sequences without identity terms. Zero-sum constants include identity terms.
+The sequence $0$ of length one is an atom. The package's atom catalogues
+omit it, and factorization queries take sequences over
+$G^\bullet=G\setminus\{0\}$, that is, without the term $0$; this loses
+nothing, since $\mathsf L(0^kS)=k+\mathsf L(S)$. Zero-sum constants allow
+the term $0$.
 
-In standard monoid terminology, the full monoid of zero-sum sequences is
-already **reduced**: its only unit is the empty sequence.
+For a subset $G_0\subseteq G$, sequences over $G_0$ are still added in $G$;
+$G_0$ need not be a subgroup.
 
-Restricting the permitted terms to a subset $G_0\subseteq G$ does not
-change the ambient addition. The support need not be a subgroup.
+## Factorizations and length sets
 
-## Factorizations and sets of lengths
-
-A factorization of a zero-sum sequence expresses it as a product of
-atoms. Its **factorization length** is the number of atom factors, not
-the number of terms in the original sequence. The **set of lengths**
-$\mathsf L(S)$ contains the lengths of all such factorizations.
+A factorization of a zero-sum sequence writes it as a product of atoms.
+Its **length** is the number of atoms, not the length $|S|$ of the
+sequence. The **length set** $\mathsf L(S)$ contains the lengths of all
+factorizations of $S$.
 
 For example, over $C_3$,
 
@@ -81,8 +91,9 @@ API accepts finite nonempty sets of positive allowed lengths; see
 
 ## Symmetry
 
-Group automorphisms act on sequences term by term. They preserve
-zero-sumness, atoms, and factorization lengths. A **canonical
+Group automorphisms act on sequences term by term, $\varphi(S)=\varphi(g_1)\cdot\ldots\cdot\varphi(g_\ell)$.
+They map zero-sum sequences to zero-sum sequences and atoms to atoms, and
+preserve length sets. A **canonical
 representative** selects one element from an orbit.
 
 With symmetry reduction, the extremal sequences returned for a zero-sum

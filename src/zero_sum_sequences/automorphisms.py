@@ -13,7 +13,8 @@ parent's canonical order) the index of its image.  It needs nothing but a
 finite iterable parent, so it works for every :class:`FiniteAdditiveGroup`.
 
 The group acts on additive sequences and on tuples of them.  Tuples are
-treated as multisets unless ``ordered=True`` is requested, which is the
+treated as unordered (compared after sorting) unless ``ordered=True`` is
+requested, which is the
 natural notion for contexts, decompositions and unordered pairs.  Canonical
 forms are minima of orbits with respect to the total order on sequences
 (length first, then the sorted term list), and the automorphism returned
@@ -379,7 +380,7 @@ class AutomorphismGroup(Generic[Element, Auto]):
         return tuple(sorted(self.orbit_words(obj, ordered=ordered)))
 
     def stabilizer(self, obj, *, ordered: bool = False) -> AutomorphismGroup[Element, Auto]:
-        """The subgroup fixing ``obj`` (as a multiset for tuples)."""
+        """The subgroup fixing ``obj`` (as an unordered collection for tuples)."""
 
         obj = _prepare(obj, ordered)
         return self.subgroup(

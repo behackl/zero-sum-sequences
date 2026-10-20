@@ -1,8 +1,8 @@
 # Zero-sum sequences
 
-A Python library for computing with finite multisets over additive groups:
-zero-sum atoms, factorizations and their lengths, automorphism orbits, and
-zero-sum constants.
+A Python library for computing with sequences over finite additive groups:
+minimal zero-sum sequences (atoms), factorizations and their length sets,
+automorphism orbits, and zero-sum constants.
 
 The package provides ordinary-Python group adapters, including products of
 cyclic groups. Compatible parents from SageMath can also be used directly;
@@ -36,8 +36,9 @@ and installation options.
 
 ## What you can compute
 
-- **Sequences and group arithmetic:** construct and combine multisets, test
-  zero-sumness and minimality, and work with additive orders and inverses.
+- **Sequences and group arithmetic:** construct and multiply sequences, test
+  for zero-sum and minimal zero-sum sequences, and work with additive orders
+  and inverses.
   See [Groups and sequences](api/sequences.rst).
 - **Factorizations and relations:** compute length sets and extrema, find
   targeted witnesses, enumerate unordered factorizations, compare them by

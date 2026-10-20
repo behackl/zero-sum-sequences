@@ -19,9 +19,9 @@ def _(mo):
     mo.md(r"""
     # Tutorial: additive and zero-sum sequences
 
-    `zero_sum_sequences` represents finite multisets over additive groups and
-    computes zero-sum atoms, factorizations and their lengths, automorphism
-    orbits, and zero-sum constants. The examples use $C_3$, $C_2\oplus C_4$,
+    `zero_sum_sequences` computes with sequences over finite additive groups:
+    minimal zero-sum sequences (atoms), factorizations and their length
+    sets, automorphism orbits, and zero-sum constants. The examples use $C_3$, $C_2\oplus C_4$,
     a four-point support in $C_3^3$, and finally a few small groups for
     zero-sum constants.
 
@@ -71,8 +71,9 @@ def _(mo):
     ## 1. Configure a sequence space
 
     A finite abelian group can be given by its elements and its addition.
-    An `AdditiveSequenceSpace` over it constructs immutable finite multisets
-    of group elements.
+    An `AdditiveSequenceSpace` over it constructs sequences over the group:
+    by a sequence, we mean a finite unordered sequence of terms, with
+    repetition of terms allowed. `S(g, h)` is the sequence $g\cdot h$.
 
     Enumerating atoms needs an upper bound for the Davenport constant
     $D(G)$, the maximal length of an atom. When none is supplied, the space
@@ -102,10 +103,10 @@ def _(mo):
     mo.md(r"""
     ## 2. Construct and inspect sequences
 
-    Terms are coerced through the group and stored as a canonical
-    multiplicity table, so their input order is irrelevant. A nonempty
-    zero-sum sequence is an *atom* if it has no proper nonempty zero-sum
-    subsequence. `-S` negates every term; more generally,
+    Terms are coerced through the group and stored with their
+    multiplicities, so their order is irrelevant. A *minimal zero-sum
+    sequence*, or *atom*, is a nontrivial zero-sum sequence without proper
+    nontrivial zero-sum subsequences. `-S` negates every term; more generally,
     `map_terms(mapping)` applies a map term by term.
     """)
     return
@@ -125,8 +126,8 @@ def _(C3):
     print("sum:", sample.sum())
     print("zero-sum:", sample.is_zero_sum())
     print("atom:", sample.is_atom())
-    print("termwise negation:", negated_sample)
-    print("negation fixes the sequence:", negated_sample == sample)
+    print("-sample:", negated_sample)
+    print("-sample == sample:", negated_sample == sample)
     return (sample,)
 
 
@@ -313,7 +314,7 @@ def _(mo):
     mo.md(r"""
     A witness can also be required to contain a minimum number of factors
     satisfying a predicate. Here we request at least four cubes (atoms of
-    term length three). This is possible at length seven, but not at length
+    length three). This is possible at length seven, but not at length
     eight, although length eight itself occurs.
 
     So `None` from a constrained query means that **both conditions cannot
@@ -429,8 +430,8 @@ def _(mo):
 
     Every atom over a finite group $G$ has length at most $D(G)$.
     `enumerate_atom_catalogue()` lists all atoms up to the space's Davenport
-    bound. Like the factorization queries, it omits the singleton of the
-    identity, which is an atom on its own.
+    bound. Like the factorization queries, it works over
+    $G^\bullet=G\setminus\{0\}$ and omits the atom $0$ of length one.
 
     For $C_2\oplus C_4$ the derived bound is exact,
     $D(C_2\oplus C_4)=1+(2-1)+(4-1)=5$, and the complete enumeration is
@@ -452,7 +453,7 @@ def _(AdditiveSequenceSpace, FiniteAdditiveGroup):
     for _length, _count in sorted(Counter(map(len, c2_c4_catalogue)).items()):
         print(f"length {_length}: {_count}")
     print(
-        "all are atoms without the identity:",
+        "all are atoms without the term 0:",
         all(atom.is_atom() and group.zero() not in atom for atom in c2_c4_catalogue),
     )
     return C2xC4, Counter, c2_c4_catalogue, group
@@ -470,7 +471,7 @@ def _(mo):
 
     Take the length-five atom $A=(0,1)^3(1,0)(1,1)$ and its negative
     $B=-A$. Their product has factorizations of lengths 2, 4, and 5, but not 3:
-    a set of lengths need not be an interval.
+    a length set need not be an interval.
     """)
     return
 
@@ -540,8 +541,8 @@ def _(mo):
 
     Take $G=C_3^3$, with $D(G)=7$, and
     $G_0=\{e_1,e_2,e_3,e_1+e_2+e_3\}$. There are just six atoms on this
-    support: four cubes, one atom of term length five, and one of term
-    length seven.
+    support: four cubes, one atom of length five, and one of length
+    seven.
     """)
     return
 
@@ -556,7 +557,7 @@ def _(AdditiveSequenceSpace, Counter, FiniteAdditiveGroup):
     assert Counter(map(len, support_catalogue)) == {3: 4, 5: 1, 7: 1}
     assert all(set(atom.support) <= set(G0) for atom in support_catalogue)
     for atom in support_catalogue:
-        print(f"term length {len(atom)}: {atom}")
+        print(f"length {len(atom)}: {atom}")
     return C3cubed, e1, e2, e3, e4, support_catalogue
 
 
@@ -646,7 +647,7 @@ def _(mo):
     result also lists the extremal sequences, of length one less than the
     constant, one per automorphism orbit. With $L=\{\exp(G)\}$ it gives
     $\mathsf s(G)$ again. Unlike factorizations, these searches allow the
-    identity as a term, and extremal sequences can contain it.
+    term $0$, and extremal sequences can contain it.
     """)
     return
 

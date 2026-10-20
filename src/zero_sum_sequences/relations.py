@@ -72,8 +72,8 @@ def _counter_factorization(
 class FactorizationRelation(Generic[Element]):
     """An oriented equality between two unordered factorizations.
 
-    Factors are canonicalized as multisets, but the source and target sides
-    are not interchanged. The constructor verifies compatible sequence spaces
+    Factorizations are formal products of atoms, so their factors are
+    sorted, but the source and target sides are not interchanged. The constructor verifies compatible sequence spaces
     and equal sequence products. It assumes, without recomputing, that the
     supplied factors are atoms when atom factorizations are required.
     """
@@ -139,7 +139,7 @@ class FactorizationRelation(Generic[Element]):
 
     @property
     def common_factor(self) -> Factorization[Element]:
-        """Return the multiset gcd of the source and target."""
+        """Return the gcd of the source and target factorizations."""
 
         return self._common_factor
 

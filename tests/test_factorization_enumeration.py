@@ -114,7 +114,7 @@ def test_empty_atom_nonzero_and_zero_term_cases():
     assert nonzero.minimum_factorization_length() is None
     assert nonzero.maximum_factorization_length() is None
     assert nonzero.length_set() == set()
-    with pytest.raises(ValueError, match="without identity terms"):
+    with pytest.raises(ValueError, match="without the term 0"):
         zero_times_atom.length_set()
 
 
