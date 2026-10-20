@@ -22,36 +22,36 @@ def test_catalogue_support_index_finds_exact_divisors():
     catalogue = AtomCatalogue(
         space,
         [
-            space([one, two]),
-            space([one, one, one]),
-            space([two, two, two]),
+            space(one, two),
+            space(one, one, one),
+            space(two, two, two),
         ],
     )
-    sequence = space([one, one, one, two, two, two])
+    sequence = space(one, one, one, two, two, two)
 
     assert list(catalogue.divisors(sequence)) == [
-        space([one, two]),
-        space([one, one, one]),
-        space([two, two, two]),
+        space(one, two),
+        space(one, one, one),
+        space(two, two, two),
     ]
 
 
 def test_catalogue_ignores_target_terms_absent_from_its_index():
     space = sequence_space()
-    atom = space([1, 1, 1])
+    atom = space(1, 1, 1)
     catalogue = AtomCatalogue(space, [atom])
 
-    assert list(catalogue.divisors(space([1, 1, 1, 2]))) == [atom]
+    assert list(catalogue.divisors(space(1, 1, 1, 2))) == [atom]
 
 
 def test_catalogue_rejects_a_sequence_from_another_space():
     space = sequence_space()
     other_space = sequence_space()
     one, two = (space.base_parent(value) for value in range(1, 3))
-    catalogue = AtomCatalogue(space, [space([one, two])])
+    catalogue = AtomCatalogue(space, [space(one, two)])
 
     with pytest.raises(TypeError, match="different spaces"):
-        list(catalogue.divisors(other_space([other_space.base_parent(0)])))
+        list(catalogue.divisors(other_space(other_space.base_parent(0))))
 
 
 def test_catalogue_rejects_zero_and_non_atoms():
@@ -60,9 +60,9 @@ def test_catalogue_rejects_zero_and_non_atoms():
     one = space.base_parent(1)
 
     with pytest.raises(ValueError, match="must not contain zero"):
-        AtomCatalogue(space, [space([zero])])
+        AtomCatalogue(space, [space(zero)])
     with pytest.raises(ValueError, match="must be atoms"):
-        AtomCatalogue(space, [space([one, one])])
+        AtomCatalogue(space, [space(one, one)])
 
 
 @pytest.mark.parametrize(
@@ -112,7 +112,7 @@ def test_enumeration_uses_additive_inverses_for_tuple_elements():
 def test_enumeration_respects_the_configured_bound():
     space = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=2)
 
-    assert tuple(space.enumerate_atom_catalogue()) == (space([1, 2]),)
+    assert tuple(space.enumerate_atom_catalogue()) == (space(1, 2),)
 
 
 def test_enumeration_rejects_an_infinite_parent():
@@ -170,7 +170,7 @@ def test_enumeration_does_not_require_an_iterator_length_hint():
 
     space = AdditiveSequenceSpace(Parent())
     assert tuple(space.enumerate_atom_catalogue()) == (
-        space([1, 2]), space([1, 1, 1]), space([2, 2, 2]),
+        space(1, 2), space(1, 1, 1), space(2, 2, 2),
     )
 
 
@@ -211,30 +211,30 @@ class CountedMasks(dict):
 
 def test_wide_support_scans_only_occupied_masks():
     space = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(17))
-    catalogue = AtomCatalogue(space, [space([(i,), (17 - i,)]) for i in range(1, 9)])
+    catalogue = AtomCatalogue(space, [space((i,), (17 - i,)) for i in range(1, 9)])
     masks = catalogue._by_support_mask = CountedMasks(catalogue._by_support_mask)
-    sequence = space([(i,) for i in range(1, 17)])
+    sequence = space.from_terms([(i,) for i in range(1, 17)])
     assert list(catalogue.divisors(sequence)) == list(catalogue)
     assert masks.lookups + masks.visits <= 8
 
 
 def test_narrow_support_limits_mask_work():
     space = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(7))
-    atoms = [space([(i,)] * 7) for i in range(1, 7)]
-    atoms += [space([(i,), (7 - i,)]) for i in range(1, 4)]
+    atoms = [space((i,)) ** 7 for i in range(1, 7)]
+    atoms += [space((i,), (7 - i,)) for i in range(1, 4)]
     catalogue = AtomCatalogue(space, atoms)
     masks = catalogue._by_support_mask = CountedMasks(catalogue._by_support_mask)
-    sequence = space([(1,)] * 7 + [(6,)] * 7)
+    sequence = space.from_terms([(1,)] * 7 + [(6,)] * 7)
     assert list(catalogue.divisors(sequence)) == [a for a in catalogue if a.divides(sequence)]
     assert masks.lookups + masks.visits <= 3
 
 
 def test_empty_or_disjoint_support_has_no_divisors():
     space = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(3))
-    catalogue = AtomCatalogue(space, [space([(1,)] * 3)])
+    catalogue = AtomCatalogue(space, [space((1,)) ** 3])
     assert list(catalogue.divisors(space())) == []
-    assert list(catalogue.divisors(space([(2,)] * 3))) == []
-    assert list(AtomCatalogue(space, []).divisors(space([(1,)]))) == []
+    assert list(catalogue.divisors(space((2,)) ** 3)) == []
+    assert list(AtomCatalogue(space, []).divisors(space((1,)))) == []
 
 
 def test_enumeration_does_not_repeat_accepted_atom_tests(monkeypatch):

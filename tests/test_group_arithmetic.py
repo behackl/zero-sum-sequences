@@ -253,7 +253,7 @@ def test_automatic_bound_enumerates_complete_catalogues_and_factorizations():
     assert [tuple(a) for a in automatic.enumerate_atom_catalogue()] == [
         tuple(a) for a in explicit.enumerate_atom_catalogue()
     ]
-    assert automatic([(0, 1)] * 8).length_set() == {2}
+    assert (automatic((0, 1)) ** 8).length_set() == {2}
 
 
 def test_unknown_parent_requires_a_bound_only_when_needed():
@@ -268,12 +268,12 @@ def test_unknown_parent_requires_a_bound_only_when_needed():
             return False
 
     space = AdditiveSequenceSpace(Integers())
-    assert space([1, -1]).is_atom()
-    assert "davenport_bound=None" in repr(space)
+    assert space(1, -1).is_atom()
+    assert "davenport_bound" not in repr(space)
     with pytest.raises(ValueError, match="supply davenport_bound explicitly"):
         _ = space.davenport_bound
     explicit = AdditiveSequenceSpace(Integers(), davenport_bound=2)
-    assert explicit([1, -1]).length_set() == {1}
+    assert explicit(1, -1).length_set() == {1}
 
 
 def test_repeated_foreign_elements_are_rejected():

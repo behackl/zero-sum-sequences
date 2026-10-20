@@ -57,7 +57,7 @@ def space_for(*moduli, bound):
 
 def random_sequence(space, length, rng):
     elements = [e for e in space.base_parent if e != space.base_parent.zero()]
-    return space(rng.choice(elements) for _ in range(length))
+    return space.from_terms(rng.choice(elements) for _ in range(length))
 
 
 # the group itself
@@ -188,11 +188,11 @@ def test_canonical_form_is_an_orbit_invariant(moduli, bound):
 def test_transporter():
     space = space_for(2, 4, bound=5)
     group = space.automorphism_group()
-    x = space([(1, 1), (1, 1), (0, 2)])
-    y = space([(1, 3), (1, 3), (0, 2)])
+    x = space((1, 1), (1, 1), (0, 2))
+    y = space((1, 3), (1, 3), (0, 2))
     auto = group.transporter(x, y)
     assert auto is not None and group.apply(auto, x) == y
-    assert group.transporter(x, space([(0, 1), (0, 3)])) is None
+    assert group.transporter(x, space((0, 1), (0, 3))) is None
     assert group.transporter(x, x) is group.identity
 
 
@@ -227,9 +227,9 @@ def test_elementary_abelian_atom_orbits(moduli, bound, orbits):
 def test_tuple_actions_multiset_and_ordered():
     space = space_for(2, 4, bound=5)
     group = space.automorphism_group()
-    x = space([(0, 1), (0, 1), (0, 2)])
-    y = space([(1, 0), (1, 0)])
-    z = space([(1, 1), (1, 3)])
+    x = space((0, 1), (0, 1), (0, 2))
+    y = space((1, 0), (1, 0))
+    z = space((1, 1), (1, 3))
     pair = (x, y)
     assert group.orbit(pair) == group.orbit((y, x))
     assert group.stabilizer(pair).elements == group.stabilizer((y, x)).elements
@@ -249,7 +249,7 @@ def test_tuple_objects_must_share_a_space():
     a = space_for(2, 4, bound=5)
     b = space_for(2, 4, bound=6)
     with pytest.raises(TypeError):
-        a.automorphism_group().orbit((a([(0, 1)]), b([(0, 1)])))
+        a.automorphism_group().orbit((a((0, 1)), b((0, 1))))
     with pytest.raises(TypeError):
         a.automorphism_group().orbit("no")
 
@@ -284,8 +284,8 @@ def test_parent_supplied_group_is_used():
     reference = space_for(42, bound=42).automorphism_group()
     rng = random.Random(3)
     for _ in range(10):
-        x = space((rng.choice(units),) for _ in range(rng.randint(1, 6)))
-        mirrored = space_for(42, bound=42)(tuple(x))
+        x = space.from_terms((rng.choice(units),) for _ in range(rng.randint(1, 6)))
+        mirrored = space_for(42, bound=42).from_terms(tuple(x))
         assert [tuple(s) for s in group.orbit(x)] == [tuple(s) for s in reference.orbit(mirrored)]
         assert len(group.stabilizer(x)) == len(reference.stabilizer(mirrored))
     assert space.automorphism_group() is group  # cached
@@ -344,13 +344,13 @@ def test_subgroup_and_element_api():
 
 def test_sequence_order_is_length_then_terms():
     space = space_for(6, bound=6)
-    a = space([(5,)])
-    b = space([(1,), (1,)])
-    c = space([(1,), (2,)])
+    a = space((5,))
+    b = space((1,), (1,))
+    c = space((1,), (2,))
     assert a < b < c and c > b > a and a <= a and c >= c
     assert sorted([c, a, b]) == [a, b, c]
     with pytest.raises(TypeError):
-        _ = a < space_for(6, bound=7)([(1,)])
+        _ = a < space_for(6, bound=7)((1,))
     assert not isinstance(AdditiveSequence.__lt__(a, 3), bool)
 
 
@@ -382,7 +382,7 @@ def test_subgroup_generators_generate_and_are_few(moduli, bound):
 def test_orbit_words_and_materialize():
     space = space_for(2, 4, bound=5)
     group = space.automorphism_group()
-    x = space([(1, 1), (1, 1), (0, 2)])
+    x = space((1, 1), (1, 1), (0, 2))
     words = group.orbit_words(x)
     assert set(words) == set(group.orbit(x)) and words[x] == ()
     for image, word in words.items():
@@ -404,7 +404,7 @@ def test_catalogue_representatives_and_transporters(moduli, bound):
         orbit.representative for orbit in catalogue.orbits()
     }
     with pytest.raises(ValueError):
-        catalogue.transporter(catalogue[0] + catalogue[1])
+        catalogue.transporter(catalogue[0] * catalogue[1])
 
 
 def test_identity_is_found_by_composition_or_must_be_supplied():
@@ -431,7 +431,7 @@ def test_orbit_methods_use_a_parent_supplied_group():
         automorphism_group=lambda: materialized,
     )
     space = AdditiveSequenceSpace(parent)
-    source, target = space([(0, 1), (0, 3)]), space([(1, 1), (1, 3)])
+    source, target = space((0, 1), (0, 3)), space((1, 1), (1, 3))
 
     assert sorted(source.orbit()) == [source, target]
     witness = source.orbit_witness(target)

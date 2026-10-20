@@ -27,9 +27,9 @@ def space_for(*moduli, bound):
 
 
 def product(space, atoms):
-    result = space(())
+    result = space()
     for atom in atoms:
-        result = result + atom
+        result = result * atom
     return result
 
 
@@ -53,7 +53,7 @@ def test_answers_match_the_solver(setup):
     cache = space.factorization_cache(catalogue)
     rng = random.Random(1)
     for left, right in pairs(catalogue, rng, 25):
-        sequence = left + right
+        sequence = left * right
         solver = FactorizationSolver(sequence, atom_catalogue=catalogue)
         assert cache.length_set(sequence) == frozenset(solver.length_set())
         assert cache.minimum(sequence) == solver.minimum_factorization_length()
@@ -75,7 +75,7 @@ def test_caching_and_statistics():
     catalogue = space.enumerate_atom_catalogue()
     cache = space.factorization_cache(catalogue, maxsize=2)
     a, b, c = catalogue[-1], catalogue[-2], catalogue[-3]
-    x, y, z = a + b, a + c, b + c
+    x, y, z = a * b, a * c, b * c
     assert cache.length_set(x) == cache.length_set(x)
     stats = cache.statistics
     assert stats.hits == 1 and stats.misses == 1 and stats.solver_builds == 1
@@ -93,7 +93,7 @@ def test_caching_and_statistics():
     with pytest.raises(ValueError):
         space.factorization_cache(catalogue, maxsize=0)
     with pytest.raises(TypeError):
-        cache.length_set(space_for(2, 4, bound=6)([(0, 1), (0, 3)]))
+        cache.length_set(space_for(2, 4, bound=6)((0, 1), (0, 3)))
     with pytest.raises(TypeError):
         space.factorization_cache(space_for(2, 4, bound=6).enumerate_atom_catalogue())
 
@@ -105,7 +105,7 @@ def test_group_aware_cache_answers_orbits_from_one_solve(setup):
     aware = space.factorization_cache(catalogue, group=group)
     rng = random.Random(2)
     for left, right in pairs(catalogue, rng, 10):
-        sequence = left + right
+        sequence = left * right
         lengths = plain.length_set(sequence)
         assert aware.length_set(sequence) == lengths
         builds = aware.statistics.solver_builds
@@ -133,7 +133,7 @@ def test_group_without_compose_answers_length_sets_only():
         full.elements, apply_term=full.apply_term, identity=full.identity
     )
     cache = space.factorization_cache(catalogue, group=restricted)
-    sequence = catalogue[-1] + catalogue[-3]
+    sequence = catalogue[-1] * catalogue[-3]
     assert cache.length_set(sequence) == space.factorization_cache(catalogue).length_set(sequence)
     with pytest.raises(TypeError):  # transporting a witness needs compose/inverse
         cache.witness(sequence, min(cache.length_set(sequence)))
@@ -144,7 +144,7 @@ def test_product_helper(setup):
     cache = space.factorization_cache(catalogue)
     atoms = (catalogue[0], catalogue[-1], catalogue[-1])
     assert cache.product(atoms) == product(space, atoms)
-    assert cache.product(()) == space(())
+    assert cache.product(()) == space()
     assert cache.length_set(cache.product(atoms)) == cache.length_set(product(space, atoms))
 
 
@@ -153,7 +153,7 @@ def test_persistence_round_trip(setup, tmp_path):
     group = space.automorphism_group()
     cache = space.factorization_cache(catalogue, group=group)
     rng = random.Random(3)
-    queried = [left + right for left, right in pairs(catalogue, rng, 15)]
+    queried = [left * right for left, right in pairs(catalogue, rng, 15)]
     expected = {sequence: cache.length_set(sequence) for sequence in queried}
     path = tmp_path / "lengths.jsonl"
     count = cache.to_jsonl(path)
@@ -179,7 +179,7 @@ def test_preload_accepts_external_tables():
     space = space_for(6, bound=6)
     catalogue = space.enumerate_atom_catalogue()
     cache = space.factorization_cache(catalogue)
-    sequence = catalogue[-1] + catalogue[-2]
+    sequence = catalogue[-1] * catalogue[-2]
     truth = FactorizationSolver(sequence, atom_catalogue=catalogue).length_set()
     assert cache.preload([(sequence, sorted(truth))]) == 1
     assert cache.length_set(sequence) == frozenset(truth)
@@ -200,7 +200,7 @@ def test_exhaustive_pair_table_is_consistent_with_orbit_classification():
         [(a, b) for a, b in itertools.combinations_with_replacement(catalogue.atoms, 2)]
     )
     for a, b in itertools.combinations_with_replacement(catalogue.atoms, 2):
-        assert aware.length_set(a + b) == plain.length_set(a + b)
+        assert aware.length_set(a * b) == plain.length_set(a * b)
     # products of pairs in one orbit are in one orbit, so at most one solve each
     assert aware.statistics.solver_builds <= len(pair_orbits)
 
@@ -214,7 +214,7 @@ def test_anchored_canonicalizer_gives_automorphic_images(setup):
     for reduce in (True, False):
         anchored = AnchoredCanonicalizer(catalogue, group, reduce=reduce)
         for left, right in pairs(catalogue, rng, 10):
-            sequence = left + right
+            sequence = left * right
             image, automorphism = anchored(sequence)
             assert group.apply(automorphism, sequence) == image
             assert automorphism in group
@@ -223,7 +223,7 @@ def test_anchored_canonicalizer_gives_automorphic_images(setup):
             mate_image, _ = anchored(mate)
             assert group.canonical(mate_image) == group.canonical(image)
         # a sequence with no catalogue divisor is its own key
-        atom_free = space([left.support[0]])
+        atom_free = space(left.support[0])
         assert anchored(atom_free) == (atom_free, group.identity)
 
 
@@ -238,7 +238,7 @@ def test_cache_with_anchored_canonicalizer(setup):
     )
     rng = random.Random(5)
     for left, right in pairs(catalogue, rng, 10):
-        sequence = left + right
+        sequence = left * right
         lengths = plain.length_set(sequence)
         for element in group.elements[:: max(1, len(group) // 5)]:
             image = group.apply(element, sequence)
@@ -247,7 +247,7 @@ def test_cache_with_anchored_canonicalizer(setup):
             assert product(space, witness) == image
     # a canonicalizer returning only the image works too (transporter is searched)
     plain_key = space.factorization_cache(catalogue, group=group, canonicalize=lambda s: group.canonical(s))
-    sequence = catalogue[-1] + catalogue[-2]
+    sequence = catalogue[-1] * catalogue[-2]
     witness = plain_key.witness(sequence, min(plain.length_set(sequence)))
     assert product(space, witness) == sequence
     with pytest.raises(ValueError):
@@ -259,7 +259,7 @@ def test_cache_with_anchored_canonicalizer(setup):
 @pytest.fixture
 def problem():
     space = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(3))
-    atom = space([(2,)] * 3)
+    atom = space((2,)) ** 3
     return space, atom, AtomCatalogue(space, [atom])
 
 

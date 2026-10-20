@@ -5,6 +5,7 @@ enumerate multisets with ``itertools``; they never use the package's own
 sequence predicates as ground truth.
 """
 
+import math
 from collections import Counter
 from functools import cache
 from itertools import combinations_with_replacement, product
@@ -59,10 +60,10 @@ def test_predicates_and_factorizations(moduli):
     nonzero = tuple(t for t in elements if t != zero)
     inputs = list(multisets(elements, 5 if len(elements) <= 8 else 4))
     atoms = [t for t in inputs if zero not in t and is_atom(t, moduli)]
-    catalogue = AtomCatalogue(space, [space(a) for a in atoms])
+    catalogue = AtomCatalogue(space, [space.from_terms(a) for a in atoms])
     cache_ = space.factorization_cache(catalogue)
     vectors = [tuple(a.count(t) for t in nonzero) for a in atoms]
-    atom_ids = {space(a): i for i, a in enumerate(atoms)}
+    atom_ids = {space.from_terms(a): i for i, a in enumerate(atoms)}
 
     @cache
     def factorizations(state, start=0):
@@ -78,8 +79,8 @@ def test_predicates_and_factorizations(moduli):
         return tuple(found)
 
     for terms in inputs:
-        sequence = space(terms)
-        assert tuple(sequence.total()) == vector_sum(terms, moduli)
+        sequence = space.from_terms(terms)
+        assert tuple(sequence.sum()) == vector_sum(terms, moduli)
         assert sequence.is_atom() == is_atom(terms, moduli)
         if zero in terms:
             continue
@@ -97,13 +98,13 @@ def test_predicates_and_factorizations(moduli):
             witness = local.factorization_witness(k)
             assert (witness is not None) == (k in lengths)
             if witness is not None:
-                assert sum(witness, space()) == sequence
+                assert math.prod(witness, start=space()) == sequence
         found = {tuple(sorted(atom_ids[a] for a in f)) for f in local.factorizations()}
         assert found == set(expected)
         if len(terms) <= 3:
             graph = local.digraph()
             assert nx.is_directed_acyclic_graph(graph)
-            assert all(t + data["atom"] == s for s, t, data in graph.edges(data=True))
+            assert all(t * data["atom"] == s for s, t, data in graph.edges(data=True))
 
 
 @pytest.mark.parametrize("moduli", GROUPS, ids=str)
@@ -112,7 +113,7 @@ def test_orbits_and_canonical_forms(moduli):
     group = space.automorphism_group()
     inputs = list(multisets(elements_of(moduli), 4))
     for terms in inputs[:: max(1, len(inputs) // 9)]:
-        sequence = space(terms)
+        sequence = space.from_terms(terms)
         images = {group.apply(g, sequence) for g in group}
         assert set(sequence.orbit()) == images
         form = group.canonical_form(sequence)
@@ -157,7 +158,7 @@ def test_zero_sum_constants(moduli, lengths):
     space = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(*moduli), davenport_bound=1)
     full = space.automorphism_group()
     subgroup = cyclic_subgroup(full, full.generators[0]) if full.generators else full
-    all_extremal = {space(t) for t in extremal}
+    all_extremal = {space.from_terms(t) for t in extremal}
     for symmetry, group in ((False, None), (True, full), (subgroup, subgroup)):
         result = zero_sum_constant(space, lengths, symmetry=symmetry)
         expected = all_extremal if group is None else {group.canonical(s) for s in all_extremal}

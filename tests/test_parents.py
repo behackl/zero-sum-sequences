@@ -22,9 +22,9 @@ def test_parent_operation_supports_plain_tuple_elements():
     group = product_of_cyclic_groups(2, 4)
     space = AdditiveSequenceSpace(group, davenport_bound=5)
 
-    sequence = space([(1, 1), (1, 3)])
+    sequence = space((1, 1), (1, 3))
 
-    assert sequence.total() == (0, 0)
+    assert sequence.sum() == (0, 0)
     assert sequence.is_zero_sum()
     assert sequence.is_atom()
 

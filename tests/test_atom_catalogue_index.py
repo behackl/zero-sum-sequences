@@ -36,7 +36,7 @@ def test_catalogue_order_is_the_sequence_order(catalogue):
         assert catalogue.index(atom) == position
         assert catalogue[position] is atom
         assert atom in catalogue
-    not_an_atom = catalogue.space(tuple(atoms[0]) + tuple(atoms[1]))
+    not_an_atom = catalogue.space.from_terms(tuple(atoms[0]) + tuple(atoms[1]))
     assert not_an_atom not in catalogue
     with pytest.raises(ValueError):
         catalogue.index(not_an_atom)
@@ -185,7 +185,7 @@ def test_from_jsonl_rejects_tampering(tmp_path):
 def test_annotations_must_belong_to_the_catalogue():
     space = space_for(6, bound=6)
     catalogue = space.enumerate_atom_catalogue()
-    stranger = space([(1,), (5,), (2,), (4,)])
+    stranger = space((1,), (5,), (2,), (4,))
     with pytest.raises(ValueError):
         AtomCatalogue(space, catalogue.atoms, annotations=[(stranger, {})])
 
@@ -203,7 +203,7 @@ def test_term_codec_on_parents():
     )
     assert custom.encode_term(3) == "t3" and custom.decode_term("t3") == 3
     space = AdditiveSequenceSpace(custom, davenport_bound=5)
-    x = space([1, 1, 3])
+    x = space(1, 1, 3)
     assert x.encode() == ["t1", "t1", "t3"] and space.decode(x.encode()) == x
     with pytest.raises(TypeError):
         FiniteAdditiveGroup(range(5), zero=0, add=lambda a, b: (a + b) % 5, encode_term=str)

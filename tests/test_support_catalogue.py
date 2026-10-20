@@ -28,25 +28,25 @@ def test_non_subgroup_support_uses_ambient_inverses():
     support = (1, 2)  # Not closed under sums or negation.
     catalogue = space.enumerate_atom_catalogue(support=support)
     expected = {
-        space(terms)
+        space.from_terms(terms)
         for length in range(2, 6)
         for terms in combinations_with_replacement(support, length)
-        if space(terms).is_atom()
+        if space.from_terms(terms).is_atom()
     }
 
     assert set(catalogue) == expected
-    assert space([1, 2, 2]) in catalogue
-    assert space([1] * 5) in catalogue
-    assert space([2] * 5) in catalogue
+    assert space(1, 2, 2) in catalogue
+    assert space(1) ** 5 in catalogue
+    assert space(2) ** 5 in catalogue
 
 
 def test_support_is_coerced_deduplicated_and_zero_is_ignored():
     space = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=3)
     support = (term for term in [0, 4, 1, 4, 3])
 
-    assert tuple(space.enumerate_atom_catalogue(support=support)) == (space([1] * 3),)
-    assert tuple(space.enumerate_atom_catalogue(support=space([1, 1]))) == (
-        space([1] * 3),
+    assert tuple(space.enumerate_atom_catalogue(support=support)) == (space(1) ** 3,)
+    assert tuple(space.enumerate_atom_catalogue(support=space(1, 1))) == (
+        space(1) ** 3,
     )
 
 
@@ -67,7 +67,7 @@ def test_support_generation_does_not_enumerate_outside_atoms(monkeypatch):
 
     monkeypatch.setattr(AdditiveSequence, "is_atom", check_supported_candidate)
 
-    assert tuple(space.enumerate_atom_catalogue(support=[1])) == (space([1] * 5),)
+    assert tuple(space.enumerate_atom_catalogue(support=[1])) == (space(1) ** 5,)
 
 
 def test_four_point_support_catalogue_and_factorizations():
@@ -77,15 +77,15 @@ def test_four_point_support_catalogue_and_factorizations():
     support = [e1, e2, e3, e4]
     # Lists are coerced to the ambient group's tuple representation.
     catalogue = space.enumerate_atom_catalogue(support=[list(g) for g in support])
-    long_atom = space([e1, e1, e2, e2, e3, e3, e4])
-    other_atom = space([e1, e2, e3, e4, e4])
+    long_atom = space(e1, e1, e2, e2, e3, e3, e4)
+    other_atom = space(e1, e2, e3, e4, e4)
 
     assert Counter(map(len, catalogue)) == {3: 4, 5: 1, 7: 1}
-    assert set(catalogue) == {space([g] * 3) for g in support} | {
+    assert set(catalogue) == {space(g) ** 3 for g in support} | {
         long_atom, other_atom
     }
-    assert (3 * long_atom).length_set(atom_catalogue=catalogue) == {3, 5, 7}
-    assert (long_atom + other_atom).length_set(atom_catalogue=catalogue) == {2, 4}
+    assert (long_atom ** 3).length_set(atom_catalogue=catalogue) == {3, 5, 7}
+    assert (long_atom * other_atom).length_set(atom_catalogue=catalogue) == {2, 4}
 
 
 def test_support_generation_respects_the_bound():

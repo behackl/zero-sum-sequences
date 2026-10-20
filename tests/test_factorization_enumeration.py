@@ -1,6 +1,5 @@
 import itertools
-from functools import reduce
-from operator import add
+import math
 
 import networkx as nx
 import pytest
@@ -17,11 +16,11 @@ C3 = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=3)
 
 
 def c3(*values: int):
-    return C3(values)
+    return C3.from_terms(values)
 
 
 def product(factors, space=C3):
-    return reduce(add, factors, space())
+    return math.prod(factors, start=space())
 
 
 def reference_atoms(space, length):
@@ -29,7 +28,7 @@ def reference_atoms(space, length):
     for terms in itertools.combinations_with_replacement(
         tuple(space.base_parent), length
     ):
-        sequence = space(terms)
+        sequence = space.from_terms(terms)
         if sequence.is_atom() and zero not in sequence:
             yield sequence
 
@@ -43,7 +42,7 @@ def naive_factorizations(sequence, atoms, minimum_index=0):
     for index in range(minimum_index, len(atoms)):
         atom = atoms[index]
         if atom.divides(sequence):
-            for rest in naive_factorizations(sequence - atom, atoms, index):
+            for rest in naive_factorizations(sequence / atom, atoms, index):
                 yield (atom, *rest)
 
 
@@ -65,7 +64,7 @@ def test_remainder_digraph_records_states_and_atom_edges():
         len(path) - 1 for path in nx.all_simple_paths(graph, sequence, empty)
     } == sequence.length_set()
     assert all(
-        source - atom == target
+        source / atom == target
         for source, target, atom in graph.edges(data="atom")
     )
 
@@ -74,7 +73,7 @@ def test_factorizations_length_sets_and_witnesses():
     atom_1 = c3(1, 1, 1)
     atom_2 = c3(2, 2, 2)
     pair = c3(1, 2)
-    sequence = atom_1 + atom_2
+    sequence = atom_1 * atom_2
 
     assert set(sequence.factorizations()) == {
         (atom_1, atom_2),
@@ -100,7 +99,7 @@ def test_empty_atom_nonzero_and_zero_term_cases():
     empty = C3()
     atom = c3(1, 1, 1)
     nonzero = c3(1)
-    zero_times_atom = c3(0) + atom
+    zero_times_atom = c3(0) * atom
 
     assert empty.length_set() == {0}
     assert empty.has_factorization_of_length(0)

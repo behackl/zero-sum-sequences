@@ -18,8 +18,8 @@ from zero_sum_sequences.orbits import automorphism_action
 def test_finite_vector_space_action_is_discovered_and_cached():
     group = GF(3) ** 2
     space = AdditiveSequenceSpace(group, davenport_bound=5)
-    nonzero = space([group.basis()[0]])
-    zero = space([group.zero()])
+    nonzero = space(group.basis()[0])
+    zero = space(group.zero())
 
     assert len(nonzero.orbit()) == 8
     assert zero.orbit() == (zero,)
@@ -30,7 +30,7 @@ def test_sage_matrix_word_materialization_has_application_order():
     group = GF(3) ** 2
     space = AdditiveSequenceSpace(group, davenport_bound=5)
     action = automorphism_action(space)
-    sequence = space(group.basis())
+    sequence = space(*group.basis())
     word = OrbitWitness((0, 1))
 
     matrix = action.materialize_word(word)
@@ -43,7 +43,7 @@ def test_bound_sage_witness_reports_basis_images():
     group = GF(3) ** 2
     space = AdditiveSequenceSpace(group, davenport_bound=5)
     action = automorphism_action(space)
-    source = space([group.basis()[0]])
+    source = space(group.basis()[0])
     target = next(
         image
         for generator_index in range(len(action))
@@ -55,7 +55,7 @@ def test_bound_sage_witness_reports_basis_images():
 
     assert tuple(generator for generator, _ in images) == tuple(group.basis())
     assert all(
-        action.apply_word(space([generator]), witness) == space([image])
+        action.apply_word(space(generator), witness) == space(image)
         for generator, image in images
     )
 
@@ -65,13 +65,13 @@ def test_infinite_vector_space_requires_an_explicit_action():
     space = AdditiveSequenceSpace(group, davenport_bound=3)
 
     with pytest.raises(AutomorphismActionUnavailable, match="pass action="):
-        space([group.basis()[0]]).orbit()
+        space(group.basis()[0]).orbit()
 
 
 def test_zero_dimensional_vector_space_has_trivial_action():
     group = GF(3) ** 0
     space = AdditiveSequenceSpace(group, davenport_bound=1)
-    sequence = space([group.zero()])
+    sequence = space(group.zero())
 
     assert sequence.orbit() == (sequence,)
     assert action_matrix_shape(space) == (0, 0)
@@ -89,7 +89,7 @@ def test_sage_vector_space_automorphism_group_by_closure():
     assert len(materialized) == 168  # GL(3, 2)
     assert space.automorphism_group() is materialized
     e1, e2, e3 = group.basis()
-    line = space([e1, e2, e1 + e2])
+    line = space(e1, e2, e1 + e2)
     assert len(materialized.orbit(line)) * len(materialized.stabilizer(line)) == 168
     assert len(materialized.orbit(line)) == 7
     # generator images come from the Sage basis, so elements are in "matrix order"

@@ -50,17 +50,17 @@ def test_parent_arithmetic_agrees_across_predicates_catalogues_and_constants(par
     space = AdditiveSequenceSpace(parent)
     nonzero = tuple(t for t in parent if t != parent.zero())
     a, b = nonzero
-    pair, pure_a, pure_b = space([a, b]), space([a] * 3), space([b] * 3)
+    pair, pure_a, pure_b = space(a, b), space(a) ** 3, space(b) ** 3
     for sequence in (pair, pure_a, pure_b):
-        assert sequence.total() == parent.zero()
+        assert sequence.sum() == parent.zero()
         assert sequence.is_zero_sum()
         assert sequence.is_atom()
-    assert not space([a]).is_zero_sum()
-    assert not (pair + pair).is_atom()
+    assert not space(a).is_zero_sum()
+    assert not (pair * pair).is_atom()
     assert space().is_zero_sum()
     catalogue = space.enumerate_atom_catalogue()
     assert set(catalogue) == {pair, pure_a, pure_b}
-    sequence = pure_a + pure_b
+    sequence = pure_a * pure_b
     assert sequence.length_set() == sequence.length_set(atom_catalogue=catalogue) == {2, 3}
     assert davenport_constant(space, symmetry=False) == 3
     assert zero_sum_constant(space, {1, 2, 3}, symmetry=False).value == 3
@@ -72,8 +72,8 @@ def test_identity_is_the_coerced_zero_label():
             return 3  # A non-canonical label of the identity 0.
 
     space = AdditiveSequenceSpace(ShiftedZero())
-    assert space().total() == 0
-    assert space([1, 2]).is_zero_sum() and space([1, 2]).is_atom()
+    assert space().sum() == 0
+    assert space(1, 2).is_zero_sum() and space(1, 2).is_atom()
     assert len(space.enumerate_atom_catalogue()) == 3
     assert davenport_constant(space, symmetry=False) == 3
 
@@ -88,7 +88,7 @@ def test_unknown_finiteness_is_handled_alike_everywhere():
         _ = space.davenport_bound
     with pytest.raises(ValueError, match="requires a finite parent"):
         space.enumerate_atom_catalogue()
-    assert space([1, 2]).length_set() == {1}
+    assert space(1, 2).length_set() == {1}
 
 
 def test_native_group_totals_do_not_coerce_an_already_canonical_result():
@@ -100,13 +100,13 @@ def test_native_group_totals_do_not_coerce_an_already_canonical_result():
 
     parent = FiniteAdditiveGroup(range(3), zero=0, add=lambda a, b: (a + b) % 3, coerce=coerce)
     space = AdditiveSequenceSpace(parent, davenport_bound=3)
-    sequence = space([1, 2])
-    zero = space().total()
+    sequence = space(1, 2)
+    zero = space().sum()
     coercions.clear()
     expected = reduce(parent.add, sequence, zero)
     native_coercions = len(coercions)
     coercions.clear()
-    assert sequence.total() == expected
+    assert sequence.sum() == expected
     assert len(coercions) == native_coercions
 
 
@@ -119,7 +119,7 @@ def test_totals_do_not_require_a_finite_parent():
             return 0
 
     space = AdditiveSequenceSpace(Integers())
-    assert space([-2, 1, 1]).is_atom()
+    assert space(-2, 1, 1).is_atom()
 
 
 class MetadataC3:
@@ -172,7 +172,7 @@ def test_bound_provider_errors_are_not_unavailability(provider, error_type):
 def test_bound_consumers_do_not_hide_broken_metadata(query, tmp_path):
     error = ValueError("broken metadata provider")
     space = AdditiveSequenceSpace(parent_with_failure("cardinality", error))
-    sequence = space([1, 2])
+    sequence = space(1, 2)
     catalogue = AtomCatalogue(space, [sequence])
     queries = {
         "factorization": sequence.factorization_solver,
@@ -192,7 +192,7 @@ def test_bound_consumers_do_not_hide_broken_metadata(query, tmp_path):
 def test_invalid_metadata_is_not_silently_ignored(metadata, message):
     space = AdditiveSequenceSpace(type("InvalidParent", (MetadataC3,), metadata)())
     with pytest.raises(ValueError, match=message):
-        space([1, 2]).factorization_solver()
+        space(1, 2).factorization_solver()
 
 
 def test_unsupported_metadata_uses_remaining_capabilities():
@@ -205,7 +205,7 @@ def test_unsupported_metadata_uses_remaining_capabilities():
     })
     space = AdditiveSequenceSpace(cls())
     assert space.davenport_bound == 3
-    assert space([1, 2]).length_set() == {1}
+    assert space(1, 2).length_set() == {1}
 
 
 @pytest.mark.parametrize("iterator", [None, lambda self: (_ for _ in ()).throw(NotImplementedError())])
@@ -213,14 +213,14 @@ def test_explicitly_unsupported_iteration_allows_local_fallback(iterator):
     cls = type("NoIteration", (MetadataC3,), {"__iter__": iterator})
     space = AdditiveSequenceSpace(cls())
     assert space._optional_davenport_bound() is None
-    assert space([1, 2]).length_set() == {1}
+    assert space(1, 2).length_set() == {1}
 
 
 @pytest.mark.parametrize("provider", ["__iter__", "__len__"])
 def test_invalid_iteration_provider_does_not_allow_local_fallback(provider):
     space = AdditiveSequenceSpace(type("InvalidIteration", (MetadataC3,), {provider: 5})())
     with pytest.raises(TypeError):
-        space([1, 2]).factorization_solver()
+        space(1, 2).factorization_solver()
 
 
 def test_sequence_indexing_protocol_still_supplies_iteration():
@@ -235,7 +235,7 @@ def test_sequence_indexing_protocol_still_supplies_iteration():
 
     space = AdditiveSequenceSpace(Indexing())
     assert space.davenport_bound == 3
-    assert space([1, 2]).length_set() == {1}
+    assert space(1, 2).length_set() == {1}
 
 
 def test_missing_metadata_still_allows_boundless_local_solving():
@@ -254,7 +254,7 @@ def test_missing_metadata_still_allows_boundless_local_solving():
 
     space = AdditiveSequenceSpace(Limited())
     assert space._optional_davenport_bound() is None
-    assert space([1, 2]).length_set() == {1}
+    assert space(1, 2).length_set() == {1}
     with pytest.raises(ValueError, match="supply davenport_bound explicitly"):
         _ = space.davenport_bound
 

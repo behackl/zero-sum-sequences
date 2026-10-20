@@ -1,5 +1,6 @@
 """Single-witness queries must not require the complete remainder DAG."""
 
+import math
 from itertools import combinations_with_replacement
 
 import pytest
@@ -16,7 +17,7 @@ def fail_full_solve(*args, **kwargs):
 @pytest.mark.parametrize("warmup", ["none", "existence", "maximum", "length_set"])
 def test_witness_queries_use_targeted_search_or_existing_cache(monkeypatch, warmup):
     space = AdditiveSequenceSpace(cyclic_group(4), davenport_bound=4)
-    sequence = space([1] * 4 + [3] * 4)
+    sequence = space.from_terms([1] * 4 + [3] * 4)
     solver = FactorizationSolver(sequence)
     if warmup == "existence":
         assert solver.has_factorization_of_length(2)
@@ -34,8 +35,8 @@ def test_witness_queries_use_targeted_search_or_existing_cache(monkeypatch, warm
     assert solver.factorization_witness(3) is None  # A hole, not a term bound.
     assert solver.factorization_witness(10**30) is None
     assert solver.factorization_witness(0) is None
-    assert solver.factorization_witness(4) == (space([1, 3]),) * 4
-    assert solver.factorization_witness(2) == (space([1] * 4), space([3] * 4))
+    assert solver.factorization_witness(4) == (space(1, 3),) * 4
+    assert solver.factorization_witness(2) == (space(1) ** 4, space(3) ** 4)
 
     assert solver.factorization_witness(
         2, minimum_matching_factors=1, factor_predicate=lambda atom: len(atom) == 2
@@ -47,7 +48,7 @@ def test_witness_queries_use_targeted_search_or_existing_cache(monkeypatch, warm
     )
     assert witness is not None
     assert len(witness) == 2
-    assert sum(witness, space()) == sequence
+    assert math.prod(witness, start=space()) == sequence
     assert solver.has_factorization_of_length(2)
     assert solver.factorization_witness(2) == witness
 
@@ -60,9 +61,9 @@ def test_witness_queries_use_targeted_search_or_existing_cache(monkeypatch, warm
 def test_targeted_witnesses_match_exhaustive_enumeration(modulus):
     space = AdditiveSequenceSpace(cyclic_group(modulus), davenport_bound=modulus)
     catalogue = space.enumerate_atom_catalogue()
-    sequences = {space([1])}  # Also test a sequence with no factorization.
+    sequences = {space(1)}  # Also test a sequence with no factorization.
     sequences.update(
-        sum(factors, space())
+        math.prod(factors, start=space())
         for count in range(4)
         for factors in combinations_with_replacement(catalogue, count)
     )
@@ -82,7 +83,7 @@ def test_targeted_witnesses_match_exhaustive_enumeration(modulus):
             saved_witnesses[count] = witness
             if witness is not None:
                 assert len(witness) == count
-                assert sum(witness, space()) == sequence
+                assert math.prod(witness, start=space()) == sequence
             for predicate in predicates:
                 for matches in range(count + 1):
                     witness = solver.factorization_witness(
@@ -97,7 +98,7 @@ def test_targeted_witnesses_match_exhaustive_enumeration(modulus):
                     assert (witness is not None) == possible
                     if witness is not None:
                         assert len(witness) == count
-                        assert sum(witness, space()) == sequence
+                        assert math.prod(witness, start=space()) == sequence
                         assert all(atom.is_atom() for atom in witness)
                         assert sum(map(predicate, witness)) >= matches
         assert solver._transitions is None
@@ -120,8 +121,8 @@ def test_targeted_witness_empty_sequence(monkeypatch):
 
 def test_long_targeted_witness_does_not_recurse_or_build_full_graph(monkeypatch):
     space = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=3)
-    atom = space([1, 1, 1])
-    solver = FactorizationSolver(5000 * atom, atom_catalogue=AtomCatalogue(space, [atom]))
+    atom = space(1, 1, 1)
+    solver = FactorizationSolver(atom ** 5000, atom_catalogue=AtomCatalogue(space, [atom]))
     monkeypatch.setattr(solver, "_solve_lengths", fail_full_solve)
     monkeypatch.setattr(solver, "_build_state_graph", fail_full_solve)
 

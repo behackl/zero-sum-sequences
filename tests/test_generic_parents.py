@@ -1,5 +1,6 @@
 """Integration tests over structurally different Sage additive parents."""
 
+import math
 from collections import Counter
 
 import pytest
@@ -58,7 +59,7 @@ def test_sage_exact_integer_protocols_are_supported():
     one = space.base_parent(1)
 
     assert space.davenport_bound == 3
-    assert space.from_multiplicities({one: Integer(2)}) == space([1, 1])
+    assert space.from_multiplicities({one: Integer(2)}) == space(1, 1)
     with pytest.raises(ValueError, match="positive integer"):
         AdditiveSequenceSpace(Zmod(3), davenport_bound=QQ(3) / 2)
 
@@ -66,7 +67,7 @@ def test_sage_exact_integer_protocols_are_supported():
 def test_mutable_sage_terms_are_copied_before_becoming_immutable():
     space = AdditiveSequenceSpace(GF(3) ** 1, davenport_bound=3)
     term = space.base_parent([1])
-    sequence = space([term])
+    sequence = space(term)
 
     assert term.is_mutable()
     assert not next(iter(sequence)).is_mutable()
@@ -80,7 +81,7 @@ def test_sage_shifted_identity_labels_are_not_native_integer_zero():
         add=lambda a, b: Integer((int(a) + int(b) - 2) % 3 + 1),
     )
     space = AdditiveSequenceSpace(parent)
-    assert space([2, 3]).is_atom()
+    assert space(2, 3).is_atom()
     assert len(space.enumerate_atom_catalogue()) == 3
     assert davenport_constant(space) == 3
 
@@ -94,7 +95,7 @@ def test_sage_compressed_construction_copies_mutable_terms():
             return [(term, Integer(2))]
 
     sequence = space.from_multiplicities(Counts())
-    assert sequence == space([term, term])
+    assert sequence == space(term, term)
     assert term.is_mutable()
     assert all(not t.is_mutable() for t in sequence)
 
@@ -102,7 +103,7 @@ def test_sage_compressed_construction_copies_mutable_terms():
 def test_sage_cache_counts_use_exact_integer_protocols():
     space = AdditiveSequenceSpace(Zmod(3))
     catalogue = space.enumerate_atom_catalogue()
-    atom = space([1, 1, 1])
+    atom = space(1, 1, 1)
     cache = space.factorization_cache(catalogue, maxsize=Integer(1))
     cache.preload([(atom, [Integer(1)])])
     assert cache.has_length(atom, Integer(1))
@@ -117,7 +118,7 @@ def test_native_sage_addition_retains_its_canonical_fast_path(parent):
 
     space = AdditiveSequenceSpace(parent())
     assert _addition(space.base_parent) is add
-    assert space().total() == space.base_parent.zero()
+    assert space().sum() == space.base_parent.zero()
     assert space._arithmetic_context is None
 
 
@@ -135,7 +136,7 @@ def assert_factorization_profiles(sequence, expected_profiles):
         len(profile) for profile in expected_profiles
     }
     assert all(
-        sum(factorization, sequence.parent()()) == sequence
+        math.prod(factorization, start=sequence.parent()()) == sequence
         for factorization in factorizations
     )
 
@@ -143,7 +144,7 @@ def assert_factorization_profiles(sequence, expected_profiles):
     assert set(witnesses) == sequence.length_set()
     assert all(
         len(factorization) == length
-        and sum(factorization, sequence.parent()()) == sequence
+        and math.prod(factorization, start=sequence.parent()()) == sequence
         for length, factorization in witnesses.items()
     )
 
@@ -152,8 +153,8 @@ def test_klein_four_group_has_two_distinct_factorization_lengths():
     group = GF(2) ** 2
     space = AdditiveSequenceSpace(group, davenport_bound=3)
     e1, e2 = group.basis()
-    maximal_atom = space([e1, e2, e1 + e2])
-    sequence = 2 * maximal_atom
+    maximal_atom = space(e1, e2, e1 + e2)
+    sequence = maximal_atom ** 2
 
     assert maximal_atom.is_atom()
     assert_factorization_profiles(
@@ -169,9 +170,9 @@ def test_mixed_exponent_additive_abelian_group_is_supported():
     group = AdditiveAbelianGroup([2, 4])
     space = AdditiveSequenceSpace(group, davenport_bound=5)
     a, b, c = group((1, 0)), group((0, 1)), group((1, 3))
-    atom = space([a, b, c])
-    inverse_atom = space(-term for term in atom)
-    sequence = atom + inverse_atom
+    atom = space(a, b, c)
+    inverse_atom = -atom
+    sequence = atom * inverse_atom
 
     assert atom.is_atom()
     assert inverse_atom.is_atom()
@@ -188,9 +189,9 @@ def test_rank_two_ternary_vector_space_has_richer_factorizations():
     group = GF(3) ** 2
     space = AdditiveSequenceSpace(group, davenport_bound=5)
     e1, e2 = group.basis()
-    maximal_atom = space([e1, e1, e2, e2, e1 + e2])
-    inverse_atom = space(-term for term in maximal_atom)
-    sequence = maximal_atom + inverse_atom
+    maximal_atom = space(e1, e1, e2, e2, e1 + e2)
+    inverse_atom = -maximal_atom
+    sequence = maximal_atom * inverse_atom
 
     assert maximal_atom.is_atom()
     assert inverse_atom.is_atom()

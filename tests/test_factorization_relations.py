@@ -10,9 +10,9 @@ from zero_sum_sequences import (
 
 
 C3 = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=3)
-A = C3([1, 1, 1])
-B = C3([2, 2, 2])
-P = C3([1, 2])
+A = C3(1, 1, 1)
+B = C3(2, 2, 2)
+P = C3(1, 2)
 
 
 def test_relation_canonicalizes_cancels_and_computes_distance():
@@ -23,7 +23,7 @@ def test_relation_canonicalizes_cancels_and_computes_distance():
 
     assert relation.source == (P, A, B)
     assert relation.target == (P, P, P, P)
-    assert relation.product == A + B + P
+    assert relation.product == A * B * P
     assert relation.common_factor == (P,)
     assert relation.reduced_source == (A, B)
     assert relation.reduced_target == (P, P, P)
@@ -33,7 +33,7 @@ def test_relation_canonicalizes_cancels_and_computes_distance():
     reduced = relation.reduced()
     assert reduced.source == (A, B)
     assert reduced.target == (P, P, P)
-    assert reduced.product == A + B
+    assert reduced.product == A * B
     assert reduced.is_reduced
     assert reduced.distance == 3
 
@@ -91,7 +91,7 @@ def test_relation_rejects_unequal_products_and_incompatible_spaces():
         FactorizationRelation((A, B), (P, P))
 
     other_space = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=3)
-    other_a = other_space([1, 1, 1])
+    other_a = other_space(1, 1, 1)
     with pytest.raises(TypeError, match="different sequence spaces"):
         FactorizationRelation((A,), (other_a,))
 
@@ -106,7 +106,7 @@ def test_relation_rejects_malformed_inputs():
 
 
 def test_relation_treats_factorization_entries_as_trusted():
-    composite = A + B
+    composite = A * B
     assert not composite.is_atom()
 
     relation = FactorizationRelation((composite,), (composite,))

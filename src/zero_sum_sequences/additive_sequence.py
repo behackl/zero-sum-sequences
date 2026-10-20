@@ -119,7 +119,7 @@ class AdditiveSequenceSpace(Generic[Element]):
     def decode(self, data: Iterable[object]) -> AdditiveSequence[Element]:
         """Construct a sequence from a list of encoded terms."""
 
-        return self(self.decode_term(item) for item in data)
+        return self.from_terms(self.decode_term(item) for item in data)
 
     def automorphism_group(self):
         """Return the materialized automorphism group of the additive parent.
@@ -206,8 +206,33 @@ class AdditiveSequenceSpace(Generic[Element]):
         except _ArithmeticUnavailable:
             return None
 
-    def __call__(self, terms: Iterable[Element] = ()) -> AdditiveSequence[Element]:
-        """Construct a sequence, coercing every term through the parent."""
+    def __call__(self, *terms: Element) -> AdditiveSequence[Element]:
+        """Construct the sequence ``g_1 · … · g_l`` of the given terms.
+
+        Each argument is one term, coerced through the parent; ``S()`` is the
+        empty sequence ``1``. Use :meth:`from_terms` for an iterable of terms.
+        A sequence of this space is returned unchanged.
+        """
+
+        if len(terms) == 1 and isinstance(terms[0], AdditiveSequence):
+            if terms[0].parent() is self:
+                return terms[0]
+            raise TypeError(
+                "the sequence belongs to a different space; "
+                "use from_terms() to coerce its terms"
+            )
+        try:
+            return AdditiveSequence(self, terms)
+        except (TypeError, ValueError) as error:
+            if len(terms) == 1 and _looks_like_term_iterable(self._parent, terms[0]):
+                raise TypeError(
+                    "pass terms as separate arguments, S(g, h, ...), "
+                    "or use S.from_terms(iterable)"
+                ) from error
+            raise
+
+    def from_terms(self, terms: Iterable[Element]) -> AdditiveSequence[Element]:
+        """Construct the sequence of the terms of an iterable."""
 
         if isinstance(terms, AdditiveSequence) and terms.parent() is self:
             return terms
@@ -283,7 +308,7 @@ class AdditiveSequenceSpace(Generic[Element]):
         if support is None:
             allowed_terms = terms
         else:
-            allowed_terms = self(support).support
+            allowed_terms = self.from_terms(support).support
             if not set(allowed_terms).issubset(terms):
                 raise ValueError("support terms must belong to the ambient group")
         nonzero_terms = tuple(term for term in allowed_terms if term != zero)
@@ -311,7 +336,7 @@ class AdditiveSequenceSpace(Generic[Element]):
                 final = completions[prefix_total]
                 if term_index[final] < prefix_indices[-1]:
                     continue
-                candidate = self((*prefix, final))
+                candidate = self(*prefix, final)
                 if candidate.is_atom():
                     atoms.append(candidate)
         catalogue = AtomCatalogue(self, atoms, verify=False)
@@ -321,10 +346,30 @@ class AdditiveSequenceSpace(Generic[Element]):
         return catalogue
 
     def __repr__(self) -> str:
-        return (
-            f"{type(self).__name__}({self._parent!r}, "
-            f"davenport_bound={self._davenport_bound})"
+        bound = (
+            "" if self._davenport_bound is None
+            else f", davenport_bound={self._davenport_bound}"
         )
+        return f"{type(self).__name__}({self._parent!r}{bound})"
+
+
+def _looks_like_term_iterable(parent, argument) -> bool:
+    """Whether a rejected single argument is an iterable of terms (old call style)."""
+
+    if isinstance(argument, (str, bytes)):
+        return False
+    if isinstance(argument, Iterator):
+        return True
+    try:
+        items = list(argument)
+    except TypeError:
+        return False
+    try:
+        for item in items:
+            parent(item)
+    except (TypeError, ValueError, ArithmeticError):
+        return False
+    return True
 
 
 @functools.total_ordering
@@ -412,8 +457,8 @@ class AdditiveSequence(Generic[Element]):
             0,
         )
 
-    def total(self):
-        """Return the additive sum of the terms in the base parent."""
+    def sum(self):
+        """Return the sum ``σ(S)`` of the terms, in the base parent."""
 
         space = self._space
         return reduce(space._add_operation(), self, space._canonical_zero())
@@ -421,7 +466,7 @@ class AdditiveSequence(Generic[Element]):
     def is_zero_sum(self) -> bool:
         """Return whether the sum of the sequence is zero."""
 
-        return bool(self.total() == self._space._canonical_zero())
+        return bool(self.sum() == self._space._canonical_zero())
 
     def map_terms(
         self,
@@ -443,7 +488,7 @@ class AdditiveSequence(Generic[Element]):
             target_space = self._space
         elif not isinstance(target_space, AdditiveSequenceSpace):
             raise TypeError("target_space must be an AdditiveSequenceSpace")
-        return target_space(mapping(term) for term in self)
+        return target_space.from_terms(mapping(term) for term in self)
 
     def orbit(self, *, action=None):
         """Return this sequence's finite automorphism orbit.
@@ -647,46 +692,58 @@ class AdditiveSequence(Generic[Element]):
             return False
         return any(candidate == coerced for candidate, _ in self._items)
 
-    def __add__(self, other: object) -> Self:
+    def __mul__(self, other: object) -> Self:
+        """Return the product ``S · T`` of two sequences."""
+
         if not isinstance(other, AdditiveSequence):
             return NotImplemented
         self._require_same_space(other)
-        counts = self.multiplicities
+        counts = dict(self._items)
         for term, count in other._items:
             counts[term] = counts.get(term, 0) + count
-        return self._space.from_multiplicities(counts)
+        return AdditiveSequence._from_items(self._space, tuple(sorted(counts.items())))
 
-    def __radd__(self, other: object) -> Self:
-        # sum() starts with the integer zero when no explicit start is given.
-        if type(other) is int and other == 0:
+    def __rmul__(self, other: object) -> Self:
+        # math.prod() starts with the integer one when no explicit start is given.
+        if type(other) is int and other == 1:
             return self
         return NotImplemented
 
-    def __sub__(self, other: object) -> Self:
+    def __truediv__(self, other: object) -> Self:
+        """Return ``S · T^{-1}`` for a divisor ``T`` of ``S``."""
+
         if not isinstance(other, AdditiveSequence):
             return NotImplemented
         self._require_same_space(other)
         if not other.divides(self):
-            raise ValueError(f"{other} is not a subsequence of {self}")
-        counts = self.multiplicities
+            raise ValueError(f"{other} does not divide {self}")
+        counts = dict(self._items)
         for term, count in other._items:
             counts[term] -= count
-        return self._space.from_multiplicities(counts)
-
-    def __mul__(self, repetitions: object) -> Self:
-        if isinstance(repetitions, bool):
-            return NotImplemented
-        try:
-            index(repetitions)
-        except TypeError:
-            return NotImplemented
-        repetitions = _non_negative_integer(repetitions, name="sequence repetitions")
-        return self._space.from_multiplicities(
-            {term: count * repetitions for term, count in self._items}
+        return AdditiveSequence._from_items(
+            self._space,
+            tuple((term, counts[term]) for term, _ in self._items if counts[term]),
         )
 
-    def __rmul__(self, repetitions: object) -> Self:
-        return self * repetitions
+    def __pow__(self, exponent: object, modulo: object = None) -> Self:
+        """Return ``S^k`` for a nonnegative integer ``k``."""
+
+        if modulo is not None or isinstance(exponent, bool):
+            return NotImplemented
+        try:
+            index(exponent)
+        except TypeError:
+            return NotImplemented
+        exponent = _non_negative_integer(exponent, name="sequence exponent")
+        return AdditiveSequence._from_items(
+            self._space,
+            tuple((term, count * exponent) for term, count in self._items if exponent),
+        )
+
+    def __neg__(self) -> Self:
+        """Return ``-S``, the sequence of the negatives of the terms."""
+
+        return self._map_canonical(self._space._group_arithmetic().negate)
 
     def encode(self) -> list[object]:
         """The sorted term list with multiplicities, terms encoded by the space."""
@@ -710,7 +767,7 @@ class AdditiveSequence(Generic[Element]):
         return self._hash
 
     def __repr__(self) -> str:
-        return f"{self._space!r}({list(self)!r})"
+        return str(self)
 
     def __str__(self) -> str:
         if not self:

@@ -43,7 +43,7 @@ def maximal_L_free_sequences(space, lengths):
     free = {space()}
     while True:
         extended = {
-            sequence + space([term])
+            sequence * space(term)
             for sequence in free
             for term in elements
         }
@@ -108,12 +108,12 @@ def test_parent_without_automorphisms_is_enumerated_without_reduction():
 
     assert result.value == 9
     assert result.extremal == (
-        space([0, 0, 0, 0, 1, 1, 1, 1]),
-        space([0, 0, 0, 0, 2, 2, 2, 2]),
-        space([0, 0, 0, 0, 3, 3, 3, 3]),
-        space([0, 0, 0, 0, 4, 4, 4, 4]),
+        space(0, 0, 0, 0, 1, 1, 1, 1),
+        space(0, 0, 0, 0, 2, 2, 2, 2),
+        space(0, 0, 0, 0, 3, 3, 3, 3),
+        space(0, 0, 0, 0, 4, 4, 4, 4),
         *(
-            space([a] * 4 + [b] * 4)
+            space.from_terms([a] * 4 + [b] * 4)
             for a, b in [(1, 2), (1, 3), (1, 4), (2, 3), (2, 4), (3, 4)]
         ),
     )
@@ -124,7 +124,7 @@ def test_result_records_the_normalized_lengths():
 
     # zero is excluded (length 1), and 1*1*2*2 has zero sums only of length 2
     assert zero_sum_constant(space, [3, 3, 1]) == ZeroSumConstant(
-        frozenset({1, 3}), 5, (space([(1,), (1,), (2,), (2,)]),)
+        frozenset({1, 3}), 5, (space((1,), (1,), (2,), (2,)),)
     )
 
 
@@ -336,4 +336,4 @@ def test_trivial_group_constants_and_extremal_sequences():
     assert zero_sum_constant(space, {1}).extremal == (space(),)
     result = zero_sum_constant(space, {3}, symmetry=False)
     assert result.value == 3
-    assert result.extremal == (space([(0,), (0,)]),)
+    assert result.extremal == (space((0,), (0,)),)

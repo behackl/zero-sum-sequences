@@ -479,4 +479,7 @@ class FiniteAdditiveGroup(Generic[Element]):
         return len(self._elements)
 
     def __repr__(self) -> str:
-        return f"{type(self).__name__}({list(self._elements)!r}, zero={self._zero!r})"
+        name = type(self).__name__
+        if self._cyclic_moduli is not None:
+            return f"{name}.cyclic_product({', '.join(map(str, self._cyclic_moduli))})"
+        return f"{name}(order={len(self._elements)}, zero={self._zero!r})"

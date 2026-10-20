@@ -1,5 +1,6 @@
 """Local factorization and catalogue persistence without an ambient bound."""
 
+import math
 import json
 
 import networkx as nx
@@ -27,12 +28,12 @@ class IntegerParent:
 @pytest.fixture
 def integer_problem():
     space = AdditiveSequenceSpace(IntegerParent())
-    pair = space([-1, 1])
-    other_pair = space([-2, 2])
-    positive = space([-2, 1, 1])
-    negative = space([-1, -1, 2])
+    pair = space(-1, 1)
+    other_pair = space(-2, 2)
+    positive = space(-2, 1, 1)
+    negative = space(-1, -1, 2)
     catalogue = AtomCatalogue(space, [pair, other_pair, positive, negative])
-    sequence = positive + negative
+    sequence = positive * negative
     expected = {
         tuple(sorted((positive, negative))),
         tuple(sorted((pair, pair, other_pair))),
@@ -58,7 +59,7 @@ def test_boundless_factorization_queries(integer_problem, use_catalogue):
         assert (witness is not None) == (length in {2, 3})
         if witness is not None:
             assert len(witness) == length
-            assert sum(witness, space()) == sequence
+            assert math.prod(witness, start=space()) == sequence
     assert solver.factorization_witness(
         3, minimum_matching_factors=3, factor_predicate=lambda atom: len(atom) == 2
     ) in expected
@@ -69,7 +70,7 @@ def test_boundless_factorization_queries(integer_problem, use_catalogue):
     graph = solver.digraph()
     assert nx.is_directed_acyclic_graph(graph)
     for source, target, data in graph.edges(data=True):
-        assert target + data["atom"] == source
+        assert target * data["atom"] == source
     if use_catalogue:
         assert space._arithmetic_context is None
     with pytest.raises(ValueError, match="supply davenport_bound explicitly"):
@@ -125,7 +126,7 @@ def test_empty_factorization_never_resolves_a_bound(monkeypatch):
 def test_large_inputs_keep_the_bound_capped_search(bound, monkeypatch):
     group = FiniteAdditiveGroup.cyclic_product(3)
     space = AdditiveSequenceSpace(group, davenport_bound=bound)
-    sequence = space([(1,)] * 15_000 + [(2,)] * 15_000)
+    sequence = space.from_terms([(1,)] * 15_000 + [(2,)] * 15_000)
     expected_bound = 3 if bound is None else bound
     original_subsequences = AdditiveSequence.subsequences
     caps = []
@@ -165,7 +166,7 @@ def test_local_search_has_no_ambient_cutoff(integer_problem, monkeypatch):
 )
 def test_local_search_handles_empty_atomic_and_nonzero_sums(terms, lengths):
     space = AdditiveSequenceSpace(IntegerParent())
-    assert space(terms).length_set() == lengths
+    assert space.from_terms(terms).length_set() == lengths
 
 
 def test_local_search_needs_no_finiteness_protocol():
@@ -177,7 +178,7 @@ def test_local_search_needs_no_finiteness_protocol():
             return 0
 
     space = AdditiveSequenceSpace(MinimalParent())
-    assert space([-1, -1, 1, 1]).length_set() == {2}
+    assert space(-1, -1, 1, 1).length_set() == {2}
 
 
 def test_local_search_supports_a_finite_parent_without_order_metadata():
@@ -192,14 +193,14 @@ def test_local_search_supports_a_finite_parent_without_order_metadata():
             return (left + right) % 3
 
     space = AdditiveSequenceSpace(NonIterableC3())
-    assert space([1, 1, 1, 2, 2, 2]).length_set() == {2, 3}
+    assert space(1, 1, 1, 2, 2, 2).length_set() == {2, 3}
 
 
 @pytest.mark.parametrize("bound", [None, 2])
 @pytest.mark.parametrize("empty", [False, True])
 def test_catalogue_jsonl_with_optional_bound(tmp_path, bound, empty):
     space = AdditiveSequenceSpace(IntegerParent(), davenport_bound=bound)
-    atoms = [] if empty else [space([-1, 1])]
+    atoms = [] if empty else [space(-1, 1)]
     catalogue = AtomCatalogue(
         space, atoms, annotations=[(atom, {"tag": "pair"}) for atom in atoms]
     )
@@ -221,7 +222,7 @@ def test_catalogue_jsonl_with_optional_bound(tmp_path, bound, empty):
 def test_catalogue_export_preserves_an_automatic_bound(tmp_path, monkeypatch):
     group = FiniteAdditiveGroup.cyclic_product(2, 2)
     space = AdditiveSequenceSpace(group)
-    catalogue = AtomCatalogue(space, [space([(0, 1), (0, 1)])])
+    catalogue = AtomCatalogue(space, [space((0, 1), (0, 1))])
 
     def forbidden(*args, **kwargs):
         raise AssertionError("export must not start an exact search")

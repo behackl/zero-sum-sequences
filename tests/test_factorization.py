@@ -1,3 +1,4 @@
+import math
 from fractions import Fraction
 
 import pytest
@@ -15,15 +16,15 @@ def test_solver_uses_the_space_davenport_bound():
     complete = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=3)
     truncated = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=2)
 
-    assert complete([1, 1, 1]).length_set() == {1}
-    assert truncated([1, 1, 1]).length_set() == set()
+    assert complete(1, 1, 1).length_set() == {1}
+    assert truncated(1, 1, 1).length_set() == set()
 
 
 def test_targeted_factorization_witness_honors_generic_predicate():
     space = AdditiveSequenceSpace(cyclic_group(4), davenport_bound=4)
-    short = space([2, 2])
-    long = space([1, 1, 1, 1])
-    sequence = short * 2 + long
+    short = space(2, 2)
+    long = space(1, 1, 1, 1)
+    sequence = short ** 2 * long
     catalogue = AtomCatalogue(space, [short, long])
     solver = FactorizationSolver(sequence, atom_catalogue=catalogue)
 
@@ -34,7 +35,7 @@ def test_targeted_factorization_witness_honors_generic_predicate():
     )
 
     assert witness is not None
-    assert sum(witness, space()) == sequence
+    assert math.prod(witness, start=space()) == sequence
     assert sum(len(factor) <= 3 for factor in witness) >= 2
     assert (
         solver.factorization_witness(
@@ -52,7 +53,7 @@ def test_targeted_factorization_witness_accepts_indexable_integers():
         cyclic_group(3),
         davenport_bound=IndexableInteger(3),
     )
-    sequence = space([1, 1, 1, 2, 2, 2])
+    sequence = space(1, 1, 1, 2, 2, 2)
     solver = FactorizationSolver(sequence)
 
     witness = solver.factorization_witness(
@@ -61,11 +62,11 @@ def test_targeted_factorization_witness_accepts_indexable_integers():
         factor_predicate=lambda factor: len(factor) == 2,
     )
 
-    assert witness == (space([1, 2]),) * 3
+    assert witness == (space(1, 2),) * 3
     assert solver.has_factorization_of_length(IndexableInteger(3))
     assert list(
         solver.factorizations(factor_count=IndexableInteger(3))
-    ) == [(space([1, 2]),) * 3]
+    ) == [(space(1, 2),) * 3]
     with pytest.raises(ValueError, match="factor count"):
         solver.factorization_witness(Fraction(3, 2))
     with pytest.raises(ValueError, match="minimum matching factors"):
@@ -103,7 +104,7 @@ def test_targeted_factorization_witness_rejects_invalid_constraints(
 @pytest.mark.parametrize("factor_count", [-1, True, Fraction(3, 2)])
 def test_fixed_length_queries_reject_invalid_factor_counts(factor_count):
     space = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=3)
-    sequence = space([1, 1, 1, 2, 2, 2])
+    sequence = space(1, 1, 1, 2, 2, 2)
     solver = FactorizationSolver(sequence)
 
     with pytest.raises(ValueError, match="factor count"):
@@ -121,11 +122,11 @@ def test_solver_requires_a_catalogue_from_the_same_space():
     other_space = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=3)
 
     with pytest.raises(TypeError, match="AtomCatalogue"):
-        FactorizationSolver(space([0]), atom_catalogue=[space([0])])
+        FactorizationSolver(space(0), atom_catalogue=[space(0)])
     with pytest.raises(TypeError, match="different spaces"):
         FactorizationSolver(
-            space([1, 2]),
-            atom_catalogue=AtomCatalogue(other_space, [other_space([1, 2])]),
+            space(1, 2),
+            atom_catalogue=AtomCatalogue(other_space, [other_space(1, 2)]),
         )
 
 
@@ -136,7 +137,7 @@ def test_solver_requires_a_catalogue_from_the_same_space():
 )
 def test_maximum_only_avoids_length_sets_and_caches_its_answer(terms, expected, monkeypatch):
     space = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=3)
-    solver = FactorizationSolver(space(terms))
+    solver = FactorizationSolver(space.from_terms(terms))
 
     def forbidden():
         raise AssertionError("maximum-only queries must not compute length sets")
@@ -153,7 +154,7 @@ def test_maximum_only_avoids_length_sets_and_caches_its_answer(terms, expected, 
 )
 def test_maximum_reuses_existing_length_sets(terms, monkeypatch):
     space = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=3)
-    solver = FactorizationSolver(space(terms))
+    solver = FactorizationSolver(space.from_terms(terms))
     lengths = solver.length_set()
 
     def forbidden():
@@ -165,7 +166,7 @@ def test_maximum_reuses_existing_length_sets(terms, monkeypatch):
 
 def test_maximum_then_length_set_returns_complete_lengths():
     space = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=3)
-    solver = FactorizationSolver(space([1, 1, 1, 2, 2, 2]))
+    solver = FactorizationSolver(space(1, 1, 1, 2, 2, 2))
     assert solver.maximum_factorization_length() == 3
     assert solver.length_set() == {2, 3}
     assert solver.maximum_factorization_length() == 3
@@ -187,4 +188,4 @@ def test_factorization_rejects_sequences_with_identity_terms():
     space = AdditiveSequenceSpace(cyclic_group(3), davenport_bound=3)
 
     with pytest.raises(ValueError, match="without identity terms"):
-        FactorizationSolver(space([0, 1, 2]))
+        FactorizationSolver(space(0, 1, 2))

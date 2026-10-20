@@ -201,12 +201,12 @@ class FactorizationCache(Generic[Element]):
         return tuple(self.group.apply(inverse, atom) for atom in factorization)
 
     def product(self, atoms: Iterable[AdditiveSequence[Element]]) -> AdditiveSequence[Element]:
-        """The product (sum of multisets) of ``atoms`` in the cache's space."""
+        """The product of ``atoms`` in the cache's space."""
 
-        result = self.space(())
+        result = self.space()
         for atom in atoms:
             self._check(atom)
-            result = result + atom
+            result = result * atom
         return result
 
     # solvers

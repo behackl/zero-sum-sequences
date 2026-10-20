@@ -10,25 +10,27 @@ Sage is optional.
 
 ## A first calculation
 
-Over $C_2\oplus C_4$, choose a five-term atom $A$ and form $B$ by negating
-each of its terms:
+Over $C_2\oplus C_4$, take the atom $A=(0,1)^3\cdot(1,0)\cdot(1,1)$ of
+length five and its negative $B=-A$. Sequences are written
+multiplicatively, as in the literature:
 
 ```{doctest}
 >>> from zero_sum_sequences import AdditiveSequenceSpace, FiniteAdditiveGroup
 >>> G = FiniteAdditiveGroup.cyclic_product(2, 4)
->>> S = AdditiveSequenceSpace(G, davenport_bound=5)
->>> A = S([(0, 1)] * 3 + [(1, 0), (1, 1)])
->>> B = S([(0, 3)] * 3 + [(1, 0), (1, 3)])
+>>> S = AdditiveSequenceSpace(G)
+>>> A = S((0, 1)) ** 3 * S((1, 0), (1, 1))
+>>> B = -A
+>>> B
+(0, 3)^3 · (1, 0) · (1, 3)
 >>> A.is_atom(), B.is_atom()
 (True, True)
->>> sorted((A + B).length_set())
+>>> sorted((A * B).length_set())
 [2, 4, 5]
 ```
 
-The library writes multiset multiplication as `A + B`. This sequence has
-ten terms, but its factorizations contain two, four, or five atom factors.
-There is no factorization into three atoms: a set of lengths need not be
-an interval.
+The product $AB$ has length ten, but its factorizations consist of two,
+four, or five atoms. There is no factorization into three atoms: a length
+set need not be an interval.
 The [getting-started guide](getting-started.md) explains the construction
 and installation options.
 

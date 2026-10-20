@@ -27,7 +27,7 @@ products use coordinate tuples, even in rank one.
 ```{doctest}
 >>> from zero_sum_sequences import AdditiveSequenceSpace, FiniteAdditiveGroup
 >>> S = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(3))
->>> sample = S([(1,)] * 3)
+>>> sample = S((1,)) ** 3
 >>> len(sample), sample.is_zero_sum(), sample.is_atom()
 (3, True, True)
 ```
@@ -41,7 +41,7 @@ The sequence $1^3 2^3$ has factorizations $(1^3)(2^3)$ and $(1\cdot2)^3$,
 of lengths 2 and 3.
 
 ```{doctest}
->>> sequence = S([(1,)] * 3 + [(2,)] * 3)
+>>> sequence = S((1,)) ** 3 * S((2,)) ** 3
 >>> sorted(sequence.length_set())
 [2, 3]
 ```

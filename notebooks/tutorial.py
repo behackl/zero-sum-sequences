@@ -34,6 +34,8 @@ def _(mo):
 
 @app.cell
 def _():
+    import math
+
     import marimo as mo
 
     from zero_sum_sequences import (
@@ -57,6 +59,7 @@ def _():
         davenport_constant,
         erdos_ginzburg_ziv_constant,
         eta_constant,
+        math,
         mo,
         zero_sum_constant,
     )
@@ -102,15 +105,16 @@ def _(mo):
     Terms are coerced through the group and stored as a canonical
     multiplicity table, so their input order is irrelevant. A nonempty
     zero-sum sequence is an *atom* if it has no proper nonempty zero-sum
-    subsequence. `map_terms(mapping)` applies a map term by term.
+    subsequence. `-S` negates every term; more generally,
+    `map_terms(mapping)` applies a map term by term.
     """)
     return
 
 
 @app.cell
 def _(C3):
-    sample = C3([2, 1, 2, 1])
-    negated_sample = sample.map_terms(lambda term: -term)
+    sample = C3(2, 1, 2, 1)
+    negated_sample = -sample
 
     print("sequence:", sample)
     print("parent is C3:", sample.parent() is C3)
@@ -118,7 +122,7 @@ def _(C3):
     print("length:", len(sample))
     print("support:", sample.support)
     print("multiplicities:", sample.multiplicities)
-    print("sum:", sample.total())
+    print("sum:", sample.sum())
     print("zero-sum:", sample.is_zero_sum())
     print("atom:", sample.is_atom())
     print("termwise negation:", negated_sample)
@@ -129,26 +133,27 @@ def _(C3):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    ## 3. Multiset arithmetic
+    ## 3. Products of sequences
 
-    Addition combines multiplicities, subtraction removes a subsequence, and
-    multiplication by a nonnegative integer repeats a sequence. `divides`
-    tests the subsequence relation. Results stay in the same sequence space.
+    Sequences are written multiplicatively: `S * T` is the product of two
+    sequences, `S ** k` the $k$-th power, and `S / T` is $S T^{-1}$ for a
+    divisor $T$ of $S$. `T.divides(S)` tests whether $T$ is a subsequence of
+    $S$. Results stay in the same sequence space.
     """)
     return
 
 
 @app.cell
 def _(C3, sample):
-    pair = C3([1, 2])
-    triple_pair = 3 * pair
+    pair = C3(1, 2)
+    pair_cubed = pair ** 3
 
     print("pair:", pair)
-    print("pair + pair:", pair + pair)
-    print("sample - pair:", sample - pair)
-    print("3 * pair:", triple_pair)
+    print("pair * pair:", pair * pair)
+    print("sample / pair:", sample / pair)
+    print("pair ** 3:", pair_cubed)
     print("pair divides sample:", pair.divides(sample))
-    print("triple pair divides sample:", triple_pair.divides(sample))
+    print("pair ** 3 divides sample:", pair_cubed.divides(sample))
     return
 
 
@@ -171,10 +176,10 @@ def _(mo):
 
 @app.cell
 def _(C3):
-    sequence = C3([1, 1, 1, 2, 2, 2])
-    one_cubed = C3([1, 1, 1])
-    two_cubed = C3([2, 2, 2])
-    mixed_pair = C3([1, 2])
+    one_cubed = C3(1) ** 3
+    two_cubed = C3(2) ** 3
+    mixed_pair = C3(1, 2)
+    sequence = one_cubed * two_cubed
 
 
     def format_factorization(factors):
@@ -289,16 +294,16 @@ def _(mo):
 
 
 @app.cell
-def _(C3, FactorizationSolver, format_factorization, sequence):
-    target = 3 * sequence
+def _(FactorizationSolver, format_factorization, math, sequence):
+    target = sequence ** 3
     targeted_solver = FactorizationSolver(target)
     witness = targeted_solver.factorization_witness(7)
     assert witness is not None and len(witness) == 7
-    assert sum(witness, C3()) == target
+    assert math.prod(witness) == target
     assert all(atom.is_atom() for atom in witness)
 
     print("length-7 witness:", format_factorization(witness))
-    print("correct product:", sum(witness, C3()) == target)
+    print("correct product:", math.prod(witness) == target)
     print("length-5 witness:", targeted_solver.factorization_witness(5))
     return target, targeted_solver
 
@@ -323,7 +328,7 @@ def _(mo):
 
 
 @app.cell
-def _(C3, format_factorization, target, targeted_solver):
+def _(format_factorization, math, target, targeted_solver):
     def is_cube(atom):
         return len(atom) == 3
 
@@ -332,7 +337,7 @@ def _(C3, format_factorization, target, targeted_solver):
         7, minimum_matching_factors=4, factor_predicate=is_cube
     )
     assert with_four_cubes is not None and len(with_four_cubes) == 7
-    assert sum(with_four_cubes, C3()) == target
+    assert math.prod(with_four_cubes) == target
     assert sum(map(is_cube, with_four_cubes)) >= 4
 
     impossible_profile = targeted_solver.factorization_witness(
@@ -463,24 +468,18 @@ def _(mo):
     complete when the catalogue contains every atom divisor of the input,
     as the full catalogue above does; this is not checked.
 
-    Take the length-five atom $A=(0,1)^3(1,0)(1,1)$ and its termwise negative
-    $B$. Their product has factorizations of lengths 2, 4, and 5, but not 3:
+    Take the length-five atom $A=(0,1)^3(1,0)(1,1)$ and its negative
+    $B=-A$. Their product has factorizations of lengths 2, 4, and 5, but not 3:
     a set of lengths need not be an interval.
     """)
     return
 
 
 @app.cell
-def _(
-    C2xC4,
-    FactorizationSolver,
-    c2_c4_catalogue,
-    format_factorization,
-    group,
-):
-    A = C2xC4([(0, 1)] * 3 + [(1, 0), (1, 1)])
-    B = A.map_terms(group.negate)
-    product = A + B
+def _(C2xC4, FactorizationSolver, c2_c4_catalogue, format_factorization):
+    A = C2xC4((0, 1)) ** 3 * C2xC4((1, 0), (1, 1))
+    B = -A
+    product = A * B
     catalogue_solver = FactorizationSolver(product, atom_catalogue=c2_c4_catalogue)
 
     print("A:", A)
@@ -510,7 +509,7 @@ def _(mo):
 
 @app.cell
 def _(A, AutomorphismAction, C2xC4, c2_c4_catalogue, group):
-    other_maximal_atom = C2xC4([(0, 1), (1, 0)] + [(1, 1)] * 3)
+    other_maximal_atom = C2xC4((0, 1), (1, 0)) * C2xC4((1, 1)) ** 3
     maximal_orbit = A.orbit()
     orbit_witness = A.orbit_witness(other_maximal_atom)
 
@@ -585,13 +584,14 @@ def _(
     e3,
     e4,
     format_factorization,
+    math,
     support_catalogue,
 ):
-    U = C3cubed([e1, e1, e2, e2, e3, e3, e4])
-    support_solver = FactorizationSolver(3 * U, atom_catalogue=support_catalogue)
+    U = C3cubed(e1, e1, e2, e2, e3, e3, e4)
+    support_solver = FactorizationSolver(U ** 3, atom_catalogue=support_catalogue)
     middle_witness = support_solver.factorization_witness(5)
     assert middle_witness is not None and len(middle_witness) == 5
-    assert sum(middle_witness, C3cubed()) == 3 * U
+    assert math.prod(middle_witness) == U ** 3
     assert support_solver.factorization_witness(4) is None
     assert support_solver.length_set() == {3, 5, 7}
 

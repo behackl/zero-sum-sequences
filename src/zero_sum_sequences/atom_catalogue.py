@@ -149,7 +149,7 @@ class AtomCatalogue(Generic[Element]):
 
         if max_length is not None:
             max_length = _non_negative_integer(max_length, name="maximum length")
-        allowed = None if support is None else set(self.space(support).support)
+        allowed = None if support is None else set(self.space.from_terms(support).support)
         return self.filter(
             lambda atom: (allowed is None or set(atom.support) <= allowed)
             and (max_length is None or len(atom) <= max_length)
