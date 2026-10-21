@@ -15,6 +15,11 @@ minor releases may contain breaking changes; they are listed first.
   separate atom tests; the C₃³ catalogue takes well under a second instead of
   about half a minute. `is_atom()` checks a single set of subsequence sums
   instead of enumerating subsequences.
+- Automorphism groups of image-table automorphisms, such as those built by
+  `AutomorphismGroup.closure()`, compute images, orbits, orbit minima,
+  stabilizers and transporters with integer keys instead of building image
+  sequences. Canonical forms over C₃³ are about fifty times faster;
+  `FactorizationCache` with symmetry benefits accordingly.
 
 ## [0.3.0] - 2026-10-20
 

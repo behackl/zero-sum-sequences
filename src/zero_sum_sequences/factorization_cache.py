@@ -180,7 +180,10 @@ class FactorizationCache(Generic[Element]):
             if isinstance(result, tuple):
                 return result
             return result, self.group.transporter(sequence, result)
-        form = self.group.canonical_form(sequence, witness="word")
+        # Image-table groups find the smallest witness by a cheap scan;
+        # otherwise a breadth-first word costs only the orbit size.
+        witness = "smallest" if self.group._indexed_images() is not None else "word"
+        form = self.group.canonical_form(sequence, witness=witness)
         return form.image, form.automorphism
 
     def _transport(self, automorphism, factorization):

@@ -437,3 +437,59 @@ def test_orbit_methods_use_a_parent_supplied_group():
     witness = source.orbit_witness(target)
     automorphism = automorphism_action(space).materialize_word(witness)
     assert materialized.apply(automorphism, source) == target
+
+
+def _general_path(group):
+    """A copy of ``group`` that never uses the integer-key fast paths."""
+
+    copy = AutomorphismGroup(
+        group.elements, apply_term=group._apply_term, compose=group._compose,
+        inverse=group._inverse, identity=group.identity, generators=group.generators,
+        key=group._key,
+    )
+    copy._indexed = False
+    return copy
+
+
+@pytest.mark.parametrize("moduli", [(2, 4), (3, 3), (2, 2, 2)])
+def test_integer_key_fast_paths_match_the_general_path(moduli):
+    rng = random.Random(len(moduli) * 10 + moduli[-1])
+    space = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(*moduli))
+    full = space.automorphism_group()
+    terms = list(space.base_parent)
+    sample = [space.from_terms(rng.choices(terms, k=rng.randrange(0, 6))) for _ in range(12)]
+    subgroup = full.stabilizer(sample[1])
+    for fast in (full, subgroup):
+        assert fast._indexed_images() is not None
+        slow = _general_path(fast)
+        objects = list(sample)
+        objects += [tuple(rng.sample(sample, 2)), tuple(rng.sample(sample, 3))]
+        for obj in objects:
+            for ordered in (False, True):
+                for element in rng.sample(fast.elements, min(5, len(fast))):
+                    assert fast.apply(element, obj, ordered=ordered) == slow.apply(element, obj, ordered=ordered)
+                assert fast.orbit(obj, ordered=ordered) == slow.orbit(obj, ordered=ordered)
+                assert fast.canonical(obj, ordered=ordered) == slow.canonical(obj, ordered=ordered)
+                assert fast.canonical_form(obj, ordered=ordered) == slow.canonical_form(obj, ordered=ordered)
+                assert fast.stabilizer(obj, ordered=ordered).elements == slow.stabilizer(obj, ordered=ordered).elements
+                target = fast.apply(rng.choice(fast.elements), obj, ordered=ordered)
+                assert fast.transporter(obj, target, ordered=ordered) == slow.transporter(obj, target, ordered=ordered)
+                other = rng.choice(objects)
+                if type(other) is type(obj):
+                    assert fast.transporter(obj, other, ordered=ordered) == slow.transporter(obj, other, ordered=ordered)
+        catalogue = list(space.enumerate_atom_catalogue())
+        assert fast.orbit_representatives(catalogue) == slow.orbit_representatives(catalogue)
+        assert fast.orbit_representatives(sample) == slow.orbit_representatives(sample)
+
+
+def test_groups_without_image_tables_use_the_general_path():
+    # Units of C_5 acting by multiplication, represented by the units themselves.
+    space = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(5))
+    group = AutomorphismGroup(
+        [1, 2, 3, 4], apply_term=lambda unit, term: ((unit * term[0]) % 5,),
+        compose=lambda a, b: a * b % 5,
+    )
+    assert group._indexed_images() is None
+    sequence = space((1,), (1,), (2,))
+    assert group.canonical(sequence) == min(group.orbit(sequence))
+    assert len(group.orbit(sequence)) == 4

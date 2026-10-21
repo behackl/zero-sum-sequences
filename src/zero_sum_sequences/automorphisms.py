@@ -52,7 +52,7 @@ _GROUP_UNAVAILABLE = "could not materialize an automorphism group for the additi
 class _ParentTable(Generic[Element]):
     """Shared lookup data for the image-table automorphisms of one parent."""
 
-    __slots__ = ("elements", "index", "generator_indices")
+    __slots__ = ("elements", "index", "generator_indices", "sorted")
 
     def __init__(self, parent) -> None:
         try:
@@ -64,8 +64,10 @@ class _ParentTable(Generic[Element]):
             ) from None
         try:
             self.elements = tuple(sorted(elements))
+            self.sorted = True
         except TypeError:
             self.elements = elements
+            self.sorted = False
         self.index = {term: position for position, term in enumerate(self.elements)}
         if len(self.index) != len(self.elements):
             raise ValueError("the parent contains repeated elements")
@@ -153,6 +155,62 @@ def _table_of(term_map: Callable[[Element], Element], data: _ParentTable) -> tup
     return table
 
 
+# Integer keys for image-table automorphisms
+
+
+class _IndexedImages:
+    """Images under image-table automorphisms of one parent, as integer keys.
+
+    A sequence's key is ``(length, pairs)``, where ``pairs`` are the sorted
+    ``(term index, -multiplicity)`` pairs. Since the parent table lists terms
+    in sorted order, keys compare exactly like sequences: for equal lengths,
+    the first smaller term, or more copies of the same term, comes first.
+    A tuple's key is the tuple of its sequences' keys, sorted unless ordered.
+    """
+
+    __slots__ = ("index", "terms", "tables")
+
+    def __init__(self, data: _ParentTable, elements) -> None:
+        self.index = data.index
+        self.terms = data.elements
+        self.tables = tuple(element._table for element in elements)
+
+    def positions(self, obj):
+        """Index form of a prepared object; ``KeyError`` for terms outside the table."""
+
+        index = self.index
+        if isinstance(obj, AdditiveSequence):
+            return (len(obj), tuple((index[term], -count) for term, count in obj._items))
+        return tuple(self.positions(item) for item in obj)
+
+    @staticmethod
+    def image(table, positions, *, ordered: bool, single: bool):
+        """The key of the image of ``positions`` under ``table``."""
+
+        if single:
+            length, pairs = positions
+            return length, tuple(sorted([(table[i], c) for i, c in pairs]))
+        keys = tuple(
+            (length, tuple(sorted([(table[i], c) for i, c in pairs])))
+            for length, pairs in positions
+        )
+        return keys if ordered else tuple(sorted(keys))
+
+    def object(self, key, template):
+        """The sequence or tuple of sequences with this key, in ``template``'s space."""
+
+        terms = self.terms
+        if isinstance(template, AdditiveSequence):
+            return AdditiveSequence._from_items(
+                template._space, tuple((terms[i], -c) for i, c in key[1])
+            )
+        space = template[0]._space
+        return tuple(
+            AdditiveSequence._from_items(space, tuple((terms[i], -c) for i, c in pairs))
+            for _, pairs in key
+        )
+
+
 # The group
 
 
@@ -193,6 +251,12 @@ class AutomorphismGroup(Generic[Element, Auto]):
     generators:
         A generating subset used for orbit traversals, whose cost is then
         proportional to the orbit size.  Defaults to all elements.
+
+    When every element is an :class:`Automorphism` of one parent (as for
+    groups built by :meth:`closure`), sequences are compared through integer
+    keys of their image tables. Orbits, orbit minima, stabilizers and
+    transporters are then found by scanning the group, at a small cost per
+    element; generator words still use breadth-first traversals.
     key:
         Optional sort key for the elements.  Defaults to their own order.
     """
@@ -219,6 +283,7 @@ class AutomorphismGroup(Generic[Element, Auto]):
         self._apply_term = apply_term
         self._compose = compose
         self._inverse = inverse
+        self._indexed: _IndexedImages | bool | None = None
         if identity is None:
             if all(isinstance(e, Automorphism) for e in ordered):
                 identity = next((e for e in ordered if e.is_identity()), None)
@@ -248,6 +313,50 @@ class AutomorphismGroup(Generic[Element, Auto]):
                 raise ValueError("generators must be elements of the group")
             if compose is not None and len(self._closure(self._generators)) != len(self):
                 raise ValueError("the supplied generators do not generate the group")
+
+    def _indexed_images(self) -> _IndexedImages | None:
+        """Integer-key images when all elements are image tables of one parent."""
+
+        if self._indexed is None:
+            first = self._elements[0]
+            data = getattr(first, "_data", None)
+            self._indexed = (
+                _IndexedImages(data, self._elements)
+                if self._apply_term is _apply_automorphism
+                and isinstance(data, _ParentTable)
+                and data.sorted
+                and all(
+                    isinstance(element, Automorphism) and element._data is data
+                    for element in self._elements
+                )
+                else False
+            )
+        return self._indexed or None
+
+    def _indexed_view(self, obj):
+        """``(images, positions)`` for a prepared object, or ``None`` for the general path."""
+
+        images = self._indexed_images()
+        if images is None:
+            return None
+        try:
+            return images, images.positions(obj)
+        except KeyError:
+            return None
+
+    def _image_keys(self, obj, ordered: bool):
+        """Yield ``(element, image key)`` for every element, or return ``None``."""
+
+        view = self._indexed_view(obj)
+        if view is None:
+            return None
+        images, positions = view
+        single = isinstance(obj, AdditiveSequence)
+        image = images.image
+        return images, positions, (
+            (element, image(table, positions, ordered=ordered, single=single))
+            for element, table in zip(self._elements, images.tables)
+        )
 
     def _closure(self, generators: Iterable[Auto]) -> set[Auto]:
         """The subgroup generated by ``generators`` (needs ``compose``)."""
@@ -341,6 +450,13 @@ class AutomorphismGroup(Generic[Element, Auto]):
         return elements of the parent.
         """
 
+        if isinstance(element, Automorphism) and isinstance(obj, (AdditiveSequence, tuple)):
+            view = self._indexed_view(obj)
+            if view is not None:
+                images, positions = view
+                single = isinstance(obj, AdditiveSequence)
+                key = images.image(element._table, positions, ordered=ordered, single=single)
+                return images.object(key, obj)
         if isinstance(obj, AdditiveSequence):
             return obj._map_canonical(
                 lambda term: _immutable_term(self._apply_term(element, term))
@@ -382,12 +498,25 @@ class AutomorphismGroup(Generic[Element, Auto]):
     def orbit(self, obj, *, ordered: bool = False) -> tuple:
         """All distinct images of ``obj``, sorted."""
 
+        obj = _prepare(obj, ordered)
+        scan = self._image_keys(obj, ordered)
+        if scan is not None:
+            images, _, pairs = scan
+            return tuple(images.object(key, obj) for key in sorted({key for _, key in pairs}))
         return tuple(sorted(self.orbit_words(obj, ordered=ordered)))
 
     def stabilizer(self, obj, *, ordered: bool = False) -> AutomorphismGroup[Element, Auto]:
         """The subgroup fixing ``obj`` (as an unordered collection for tuples)."""
 
         obj = _prepare(obj, ordered)
+        scan = self._image_keys(obj, ordered)
+        if scan is not None:
+            images, positions, pairs = scan
+            own = images.image(
+                range(len(images.terms)), positions, ordered=ordered,
+                single=isinstance(obj, AdditiveSequence),
+            )
+            return self.subgroup(element for element, key in pairs if key == own)
         return self.subgroup(
             e for e in self._elements if self.apply(e, obj, ordered=ordered) == obj
         )
@@ -397,6 +526,17 @@ class AutomorphismGroup(Generic[Element, Auto]):
 
         source = _prepare(source, ordered)
         target = _prepare(target, ordered)
+        scan = self._image_keys(source, ordered)
+        if scan is not None and type(source) is type(target):
+            images, _, pairs = scan
+            try:
+                wanted = images.image(
+                    range(len(images.terms)), images.positions(target), ordered=ordered,
+                    single=isinstance(target, AdditiveSequence),
+                )
+            except KeyError:
+                return None  # the target has a term outside the parent table
+            return next((element for element, key in pairs if key == wanted), None)
         for element in self._elements:
             if self.apply(element, source, ordered=ordered) == target:
                 return element
@@ -405,6 +545,11 @@ class AutomorphismGroup(Generic[Element, Auto]):
     def canonical(self, obj, *, ordered: bool = False):
         """The orbit minimum of ``obj``."""
 
+        obj = _prepare(obj, ordered)
+        scan = self._image_keys(obj, ordered)
+        if scan is not None:
+            images, _, pairs = scan
+            return images.object(min(key for _, key in pairs), obj)
         return min(self.orbit_words(obj, ordered=ordered))
 
     def canonical_form(
@@ -413,7 +558,8 @@ class AutomorphismGroup(Generic[Element, Auto]):
         """The orbit minimum together with an automorphism realising it.
 
         ``witness="smallest"`` scans the group for the smallest element
-        mapping ``obj`` to the minimum (cost: the group order).
+        mapping ``obj`` to the minimum (cost: the group order; cheap for
+        image-table groups, see the class documentation).
         ``witness="word"`` materializes the breadth-first generator word
         instead (cost: the orbit size; needs ``compose``); it is
         deterministic for a fixed generator list.
@@ -421,12 +567,22 @@ class AutomorphismGroup(Generic[Element, Auto]):
 
         if witness not in {"smallest", "word"}:
             raise ValueError("witness must be 'smallest' or 'word'")
-        words = self.orbit_words(obj, ordered=ordered)
-        image = min(words)
-        if witness == "smallest":
-            element = self.transporter(obj, image, ordered=ordered)
+        scan = self._image_keys(_prepare(obj, ordered), ordered) if witness == "smallest" else None
+        if scan is not None:
+            # The first element in group order attaining the minimal key.
+            images, _, pairs = scan
+            element, best = None, None
+            for candidate, key in pairs:
+                if best is None or key < best:
+                    element, best = candidate, key
+            image = images.object(best, _prepare(obj, ordered))
         else:
-            element = self.materialize(words[image])
+            words = self.orbit_words(obj, ordered=ordered)
+            image = min(words)
+            if witness == "smallest":
+                element = self.transporter(obj, image, ordered=ordered)
+            else:
+                element = self.materialize(words[image])
         permutation = None
         if isinstance(obj, tuple) and not ordered:
             # where each input position lands in the sorted image
@@ -441,8 +597,9 @@ class AutomorphismGroup(Generic[Element, Auto]):
     def orbit_representatives(self, objects: Iterable, *, ordered: bool = False) -> dict:
         """Group ``objects`` by orbit: canonical representative -> members.
 
-        Every orbit is traversed once, so the cost is proportional to the
-        total size of the orbits met, not to the group order.
+        Every orbit is computed once, from its first member met: by scanning
+        the group for image-table groups, otherwise by a traversal whose cost
+        is proportional to the orbit size.
         """
 
         canonical_of: dict = {}
@@ -451,10 +608,18 @@ class AutomorphismGroup(Generic[Element, Auto]):
             key = _prepare(obj, ordered)
             representative = canonical_of.get(key)
             if representative is None:
-                orbit = self.orbit_words(key, ordered=ordered)
-                representative = min(orbit)
-                for member in orbit:
-                    canonical_of[member] = representative
+                scan = self._image_keys(key, ordered)
+                if scan is not None:
+                    images, _, pairs = scan
+                    orbit_keys = {image_key for _, image_key in pairs}
+                    representative = images.object(min(orbit_keys), key)
+                    for image_key in orbit_keys:
+                        canonical_of[images.object(image_key, key)] = representative
+                else:
+                    orbit = self.orbit_words(key, ordered=ordered)
+                    representative = min(orbit)
+                    for member in orbit:
+                        canonical_of[member] = representative
             buckets.setdefault(representative, []).append(obj)
         return buckets
 
