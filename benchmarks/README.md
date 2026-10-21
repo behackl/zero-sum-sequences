@@ -33,25 +33,36 @@ python -m benchmarks.benchmark_factorization --enumerate
 
 ## Operations benchmark
 
-`benchmark_operations.py` times catalogue enumeration, atom tests,
-catalogue-backed length sets, and automorphism operations over `C_3^3`
-(27 911 atoms, 11 232 automorphisms), following the computations of the
-companion article. Setup enumerates the `C_3^3` catalogue once.
+`benchmark_operations.py` times catalogue enumeration, atom tests, length
+sets with and without a catalogue, automorphism operations, and zero-sum
+constants. The cases cover cyclic groups, groups of rank two, elementary
+abelian groups and `C_3^3` (27 911 atoms, 11 232 automorphisms), with both
+generic and highly symmetric inputs.
 
 ```console
 python -m benchmarks.benchmark_operations          # quick cases
 python -m benchmarks.benchmark_operations --large  # adds larger catalogues
 ```
 
-Reference timings in milliseconds (one core, Python 3.13, October 2026),
-before and after the performance work following 0.3.0:
+Reference timings in milliseconds for 0.3.0 and 0.3.1 (one core, Python
+3.13, October 2026), from comparable workloads run with both versions:
 
-| Case | 0.3.0 | Now |
+| Workload | 0.3.0 | 0.3.1 |
 |---|---:|---:|
-| catalogue `C_2^4` (323 atoms) | 118 | 1.9 |
-| catalogue `C_3^3` (27 911 atoms) | about 28 000 | 311 |
-| `is_atom`, 2000 `C_3^3` atoms | 652 | 25 |
-| catalogue-backed length sets, 100 triple products | 3 880 | 687 |
-| `apply`, 2000 automorphisms | 9.1 | 4.2 |
-| stabilizers of 10 length-7 atoms | 294 | 33 |
-| canonical forms of 5 pair products | 2 155 | 30 |
+| catalogue `C_12` | 18 000 | 1.9 |
+| catalogue `C_2 + C_8` | 11 700 | 9.2 |
+| catalogue `C_4 + C_4` | 1 210 | 7.4 |
+| catalogue `C_5 + C_5` | > 60 000 | 340 |
+| catalogue `C_3^3` | about 28 000 | 320 |
+| `is_atom`, 3000 random sequences over `C_5 + C_5` | 33 | 5.4 |
+| `is_atom`, high multiplicities over `C_200` | 17 | 11 |
+| length sets without catalogue over `C_5 + C_5` | 355 | 74 |
+| length set of `1^18 5^18 7^18` over `C_18` | 31 | 6.4 |
+| length sets with catalogue over `C_3^3`, 100 products | 3 880 | 725 |
+| canonical forms, generic sequences over `C_2^4` | 2 060 | 80 |
+| canonical forms, symmetric sequences over `C_2^4` | 1.0 | 0.2 |
+| canonical forms, generic sequences over `C_5 + C_5` | 95 | 2.1 |
+| canonical forms, atom pairs over `C_3^3` | 2 160 | 29 |
+| stabilizers, generic sequences over `C_2^4` | 359 | 64 |
+| orbit classes of 300 sequences over `C_5 + C_5` | 958 | 112 |
+| `eta(C_3^3)` | 3 780 | 850 |
