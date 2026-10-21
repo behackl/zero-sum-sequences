@@ -251,14 +251,16 @@ class AutomorphismGroup(Generic[Element, Auto]):
     generators:
         A generating subset used for orbit traversals, whose cost is then
         proportional to the orbit size.  Defaults to all elements.
+    key:
+        Optional sort key for the elements.  Defaults to their own order.
 
+    Notes
+    -----
     When every element is an :class:`Automorphism` of one parent (as for
     groups built by :meth:`closure`), sequences are compared through integer
     keys of their image tables. Orbits, orbit minima, stabilizers and
     transporters are then found by scanning the group, at a small cost per
     element; generator words still use breadth-first traversals.
-    key:
-        Optional sort key for the elements.  Defaults to their own order.
     """
 
     def __init__(
