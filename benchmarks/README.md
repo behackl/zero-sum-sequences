@@ -30,3 +30,15 @@ Run:
 ```console
 python -m benchmarks.benchmark_factorization --enumerate
 ```
+
+## Operations benchmark
+
+`benchmark_operations.py` times catalogue enumeration, atom tests,
+catalogue-backed length sets, and automorphism operations over `C_3^3`
+(27 911 atoms, 11 232 automorphisms), following the computations of the
+companion article. Setup enumerates the `C_3^3` catalogue once.
+
+```console
+python -m benchmarks.benchmark_operations          # quick cases
+python -m benchmarks.benchmark_operations --large  # adds larger catalogues
+```
