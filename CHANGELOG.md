@@ -20,6 +20,9 @@ minor releases may contain breaking changes; they are listed first.
   stabilizers and transporters with integer keys instead of building image
   sequences. Canonical forms over C₃³ are about fifty times faster;
   `FactorizationCache` with symmetry benefits accordingly.
+- The factorization solver packs remainder multiplicities into single integers
+  with guard bits, so testing whether an atom fits and computing the remainder
+  take one subtraction; solving is about two to three times faster.
 
 ## [0.3.0] - 2026-10-20
 

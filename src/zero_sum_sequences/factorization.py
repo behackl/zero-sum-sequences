@@ -13,6 +13,9 @@ from .atom_catalogue import AtomCatalogue
 
 Factorization: TypeAlias = tuple[AdditiveSequence[Element], ...]
 MultiplicityState: TypeAlias = tuple[int, ...]
+# A remainder's multiplicities packed into one integer: one fixed-width field
+# per support term, with a spare top bit used as a guard for subtraction.
+PackedState: TypeAlias = int
 
 
 def _atom_divisors(
@@ -48,6 +51,7 @@ class FactorizationStatistics:
 class _IndexedAtom(Generic[Element]):
     sequence: AdditiveSequence[Element]
     sparse_counts: tuple[tuple[int, int], ...]
+    packed: PackedState
 
 
 class FactorizationSolver(Generic[Element]):
@@ -104,6 +108,13 @@ class FactorizationSolver(Generic[Element]):
             multiplicities[term] for term in self.support
         )
         self.zero_state: MultiplicityState = (0,) * len(self.support)
+        # Field width: room for the largest multiplicity plus a guard bit.
+        self._width = max(self.initial_state, default=0).bit_length() + 1
+        self._field = (1 << (self._width - 1)) - 1
+        self._guards = 0
+        for index in range(len(self.support)):
+            self._guards |= 1 << (index * self._width + self._width - 1)
+        self._start = self._pack(enumerate(self.initial_state))
 
         candidates: Iterable[AdditiveSequence[Element]]
         if atom_catalogue is None:
@@ -118,12 +129,10 @@ class FactorizationSolver(Generic[Element]):
                 by_term[term_index].append(atom_index)
         self._atoms_by_term = tuple(tuple(indices) for indices in by_term)
         self._transitions: dict[
-            MultiplicityState, tuple[tuple[int, MultiplicityState], ...]
+            PackedState, tuple[tuple[int, PackedState], ...]
         ] | None = None
-        self._length_bits: dict[MultiplicityState, int] | None = None
-        self._fixed_length_results: dict[
-            tuple[MultiplicityState, int], bool
-        ] = {}
+        self._length_bits: dict[PackedState, int] | None = None
+        self._fixed_length_results: dict[tuple[PackedState, int], bool] = {}
         factor_lengths = tuple(len(atom.sequence) for atom in self._atoms)
         self._minimum_factor_length = min(factor_lengths, default=0)
         self._maximum_factor_length = max(factor_lengths, default=0)
@@ -143,6 +152,20 @@ class FactorizationSolver(Generic[Element]):
 
         return self.sequence.parent().davenport_bound
 
+    def _pack(self, counts: Iterable[tuple[int, int]]) -> PackedState:
+        """Pack ``(term index, count)`` pairs into a state."""
+
+        width, state = self._width, 0
+        for index, count in counts:
+            state |= count << (index * width)
+        return state
+
+    def _unpack(self, state: PackedState) -> MultiplicityState:
+        """The multiplicities of a packed state, in support order."""
+
+        width, field = self._width, self._field
+        return tuple((state >> (index * width)) & field for index in range(len(self.support)))
+
     def _index_atoms(
         self, atoms: Iterable[AdditiveSequence[Element]]
     ) -> tuple[_IndexedAtom[Element], ...]:
@@ -161,41 +184,39 @@ class FactorizationSolver(Generic[Element]):
             if not valid or not atom:
                 continue
             count_tuple = tuple(counts)
+            sparse_counts = tuple(
+                (index, count) for index, count in enumerate(count_tuple) if count
+            )
             indexed_by_counts[count_tuple] = _IndexedAtom(
                 sequence=atom,
-                sparse_counts=tuple(
-                    (index, count)
-                    for index, count in enumerate(count_tuple)
-                    if count
-                ),
+                sparse_counts=sparse_counts,
+                packed=self._pack(sparse_counts),
             )
-        return tuple(
-            sorted(
-                indexed_by_counts.values(),
-                key=lambda atom: (len(atom.sequence), tuple(atom.sequence)),
-            )
-        )
+        return tuple(sorted(indexed_by_counts.values(), key=lambda atom: atom.sequence))
 
     def _state_transitions(
-        self, state: MultiplicityState
-    ) -> tuple[tuple[int, MultiplicityState], ...]:
-        if state == self.zero_state:
+        self, state: PackedState
+    ) -> tuple[tuple[int, PackedState], ...]:
+        if not state:
             return ()
-        first_term = next(index for index, count in enumerate(state) if count)
+        # The field of the lowest set bit is the first term with positive count.
+        first_term = ((state & -state).bit_length() - 1) // self._width
+        guards = self._guards
+        raised = state | guards
+        atoms = self._atoms
         transitions = []
         for atom_index in self._atoms_by_term[first_term]:
-            atom = self._atoms[atom_index]
-            if all(state[index] >= count for index, count in atom.sparse_counts):
-                remainder = list(state)
-                for index, count in atom.sparse_counts:
-                    remainder[index] -= count
-                transitions.append((atom_index, tuple(remainder)))
+            # With guard bits set, subtracting fits exactly when no guard
+            # bit is borrowed; clearing the guards leaves the remainder.
+            difference = raised - atoms[atom_index].packed
+            if difference & guards == guards:
+                transitions.append((atom_index, difference ^ guards))
         return tuple(transitions)
 
     def _query_transitions(
         self,
-        state: MultiplicityState,
-    ) -> tuple[tuple[int, MultiplicityState], ...]:
+        state: PackedState,
+    ) -> tuple[tuple[int, PackedState], ...]:
         if self._transitions is not None:
             known = self._transitions.get(state)
             if known is not None:
@@ -204,7 +225,7 @@ class FactorizationSolver(Generic[Element]):
 
     def _known_fixed_length_result(
         self,
-        state: MultiplicityState,
+        state: PackedState,
         factor_count: int,
     ) -> bool | None:
         key = state, factor_count
@@ -219,11 +240,11 @@ class FactorizationSolver(Generic[Element]):
                 self._fixed_length_results[key] = result
                 return result
         if factor_count == 0:
-            result = state == self.zero_state
-        elif state == self.zero_state or not self._atoms:
+            result = not state
+        elif not state or not self._atoms:
             result = False
         else:
-            terms = sum(state)
+            terms = sum(self._unpack(state))
             result = None
             if (
                 terms < self._minimum_factor_length * factor_count
@@ -236,7 +257,7 @@ class FactorizationSolver(Generic[Element]):
 
     def _has_fixed_length_from_state(
         self,
-        state: MultiplicityState,
+        state: PackedState,
         factor_count: int,
     ) -> bool:
         known = self._known_fixed_length_result(state, factor_count)
@@ -245,9 +266,9 @@ class FactorizationSolver(Generic[Element]):
 
         frames: list[
             tuple[
-                MultiplicityState,
+                PackedState,
                 int,
-                tuple[tuple[int, MultiplicityState], ...],
+                tuple[tuple[int, PackedState], ...],
                 int,
             ]
         ] = [(state, factor_count, self._query_transitions(state), 0)]
@@ -300,13 +321,13 @@ class FactorizationSolver(Generic[Element]):
 
     def _build_state_graph(
         self,
-    ) -> dict[MultiplicityState, tuple[tuple[int, MultiplicityState], ...]]:
+    ) -> dict[PackedState, tuple[tuple[int, PackedState], ...]]:
         if self._transitions is None:
             transitions: dict[
-                MultiplicityState, tuple[tuple[int, MultiplicityState], ...]
+                PackedState, tuple[tuple[int, PackedState], ...]
             ] = {}
-            pending = [self.initial_state]
-            discovered = {self.initial_state}
+            pending = [self._start]
+            discovered = {self._start}
             while pending:
                 state = pending.pop()
                 state_transitions = self._state_transitions(state)
@@ -318,12 +339,12 @@ class FactorizationSolver(Generic[Element]):
             self._transitions = transitions
         return self._transitions
 
-    def _solve_lengths(self) -> dict[MultiplicityState, int]:
+    def _solve_lengths(self) -> dict[PackedState, int]:
         if self._length_bits is None:
             transitions = self._build_state_graph()
-            length_bits: dict[MultiplicityState, int] = {}
-            for state in sorted(transitions, key=sum):
-                if state == self.zero_state:
+            length_bits: dict[PackedState, int] = {}
+            for state in sorted(transitions):
+                if not state:
                     length_bits[state] = 1
                     continue
                 bits = 0
@@ -334,14 +355,15 @@ class FactorizationSolver(Generic[Element]):
         return self._length_bits
 
     def _sequence_from_state(
-        self, state: MultiplicityState
+        self, state: PackedState
     ) -> AdditiveSequence[Element]:
-        return self.sequence.parent().from_multiplicities(
-            {
-                term: state[index]
-                for index, term in enumerate(self.support)
-                if state[index]
-            }
+        return AdditiveSequence._from_items(
+            self.sequence.parent(),
+            tuple(
+                (term, count)
+                for term, count in zip(self.support, self._unpack(state))
+                if count
+            ),
         )
 
     @property
@@ -377,7 +399,7 @@ class FactorizationSolver(Generic[Element]):
         """Return the length set: the lengths of all factorizations."""
 
         length_bits = self._solve_lengths()
-        bits = length_bits[self.initial_state]
+        bits = length_bits[self._start]
         self._require_some_factorization(bits != 0)
         return {
             length
@@ -394,7 +416,7 @@ class FactorizationSolver(Generic[Element]):
 
         if self._length_bits is not None:
             minimum, _ = self._extreme_lengths_from_bits(
-                self._length_bits[self.initial_state]
+                self._length_bits[self._start]
             )
         else:
             if not self._minimum_length_is_solved:
@@ -405,11 +427,11 @@ class FactorizationSolver(Generic[Element]):
         return minimum
 
     def _shortest_factorization_length(self) -> int | None:
-        pending = deque(((self.initial_state, 0),))
-        discovered = {self.initial_state}
+        pending = deque(((self._start, 0),))
+        discovered = {self._start}
         while pending:
             state, length = pending.popleft()
-            if state == self.zero_state:
+            if not state:
                 return length
             for _, remainder in self._query_transitions(state):
                 if remainder not in discovered:
@@ -426,15 +448,15 @@ class FactorizationSolver(Generic[Element]):
 
         if self._length_bits is not None:
             _, maximum = self._extreme_lengths_from_bits(
-                self._length_bits[self.initial_state]
+                self._length_bits[self._start]
             )
             self._require_some_factorization(maximum is not None)
             return maximum
         if not self._maximum_length_is_solved:
             transitions = self._build_state_graph()
-            maxima: dict[MultiplicityState, int | None] = {}
-            for state in sorted(transitions, key=sum):
-                if state == self.zero_state:
+            maxima: dict[PackedState, int | None] = {}
+            for state in sorted(transitions):
+                if not state:
                     maxima[state] = 0
                     continue
                 best = None
@@ -443,7 +465,7 @@ class FactorizationSolver(Generic[Element]):
                     if child is not None and (best is None or child > best):
                         best = child
                 maxima[state] = None if best is None else best + 1
-            self._maximum_length = maxima[self.initial_state]
+            self._maximum_length = maxima[self._start]
             self._maximum_length_is_solved = True
         self._require_some_factorization(self._maximum_length is not None)
         return self._maximum_length
@@ -453,7 +475,7 @@ class FactorizationSolver(Generic[Element]):
 
         factor_count = _non_negative_integer(factor_count, name="factor count")
         return self._has_fixed_length_from_state(
-            self.initial_state,
+            self._start,
             factor_count,
         )
 
@@ -464,7 +486,7 @@ class FactorizationSolver(Generic[Element]):
         transitions = self._build_state_graph()
         witnesses = {}
         for length in sorted(self.length_set()):
-            state = self.initial_state
+            state = self._start
             remaining_length = length
             factors = []
             while remaining_length:
@@ -510,28 +532,28 @@ class FactorizationSolver(Generic[Element]):
                 "factor_predicate is required when matching factors are required"
             )
 
-        if not self._has_fixed_length_from_state(self.initial_state, factor_count):
+        if not self._has_fixed_length_from_state(self._start, factor_count):
             return None
 
         frames: list[
             tuple[
-                MultiplicityState,
+                PackedState,
                 int,
                 int,
-                tuple[tuple[int, MultiplicityState], ...],
+                tuple[tuple[int, PackedState], ...],
                 int,
             ]
         ] = [
             (
-                self.initial_state,
+                self._start,
                 factor_count,
                 minimum_matching_factors,
-                self._query_transitions(self.initial_state),
+                self._query_transitions(self._start),
                 0,
             )
         ]
         path: list[int] = []
-        dead: set[tuple[MultiplicityState, int, int]] = set()
+        dead: set[tuple[PackedState, int, int]] = set()
 
         while frames:
             state, remaining, required_matches, state_transitions, next_transition = (
@@ -540,7 +562,7 @@ class FactorizationSolver(Generic[Element]):
             key = (state, remaining, required_matches)
 
             if remaining == 0:
-                if state == self.zero_state and required_matches == 0:
+                if not state and required_matches == 0:
                     return tuple(self._atoms[index].sequence for index in path)
                 dead.add(key)
                 frames.pop()
@@ -601,10 +623,10 @@ class FactorizationSolver(Generic[Element]):
 
         found = False
         path: list[AdditiveSequence[Element]] = []
-        stack: list[tuple[MultiplicityState, int]] = [(self.initial_state, 0)]
+        stack: list[tuple[PackedState, int]] = [(self._start, 0)]
         while stack:
             state, next_atom = stack[-1]
-            if state == self.zero_state:
+            if not state:
                 if factor_count is None or len(path) == factor_count:
                     found = True
                     yield tuple(path)
@@ -632,12 +654,10 @@ class FactorizationSolver(Generic[Element]):
 
             stack[-1] = (state, next_atom + 1)
             atom = self._atoms[next_atom]
-            if all(state[index] >= count for index, count in atom.sparse_counts):
-                remainder = list(state)
-                for index, count in atom.sparse_counts:
-                    remainder[index] -= count
+            difference = (state | self._guards) - atom.packed
+            if difference & self._guards == self._guards:
                 path.append(atom.sequence)
-                stack.append((tuple(remainder), next_atom))
+                stack.append((difference ^ self._guards, next_atom))
         if factor_count is None:
             self._require_some_factorization(found)
 

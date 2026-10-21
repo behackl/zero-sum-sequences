@@ -1,4 +1,6 @@
+import functools
 import math
+import random
 from fractions import Fraction
 
 import pytest
@@ -233,3 +235,59 @@ def test_factorization_rejects_sequences_with_the_term_zero():
 
     with pytest.raises(ValueError, match="without the term 0"):
         FactorizationSolver(space(0, 1, 2))
+
+
+def _reference_factorizations(sequence, atoms):
+    """All factorizations (as sorted atom tuples) by memoized recursion."""
+
+    @functools.cache
+    def factorizations(remainder):
+        if not remainder:
+            return frozenset({()})
+        first = remainder.support[0]
+        found = set()
+        for atom in atoms:
+            if first in atom and atom.divides(remainder):
+                found |= {tuple(sorted((atom, *rest))) for rest in factorizations(remainder / atom)}
+        return frozenset(found)
+
+    return factorizations(sequence)
+
+
+@pytest.mark.parametrize("counts", [(3, 3), (7, 1), (8, 2), (15, 3), (16, 1), (31, 1), (32, 2), (6, 9), (12, 15)])
+def test_solver_matches_reference_across_field_widths(counts):
+    space = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(3))
+    ones, twos = counts
+    assert (ones + 2 * twos) % 3 == 0  # zero-sum inputs only
+    sequence = space((1,)) ** ones * space((2,)) ** twos
+    atoms = list(space.enumerate_atom_catalogue())
+    reference = _reference_factorizations(sequence, atoms)
+    _check_solver_against(sequence, reference)
+
+
+@pytest.mark.parametrize("seed", range(6))
+def test_solver_matches_reference_on_random_products(seed):
+    rng = random.Random(seed)
+    space = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(2, 4))
+    atoms = list(space.enumerate_atom_catalogue())
+    sequence = math.prod(rng.choices(atoms, k=rng.randrange(1, 5)), start=space())
+    _check_solver_against(sequence, _reference_factorizations(sequence, atoms))
+
+
+def _check_solver_against(sequence, reference):
+    lengths = {len(f) for f in reference}
+    solver = FactorizationSolver(sequence)
+    assert solver.length_set() == lengths
+    fresh = FactorizationSolver(sequence)
+    assert fresh.minimum_factorization_length() == min(lengths)
+    assert FactorizationSolver(sequence).maximum_factorization_length() == max(lengths)
+    targeted = FactorizationSolver(sequence)
+    for length in range(max(lengths) + 2):
+        assert targeted.has_factorization_of_length(length) == (length in lengths)
+        witness = FactorizationSolver(sequence).factorization_witness(length)
+        assert (witness is not None) == (length in lengths)
+        if witness is not None:
+            assert len(witness) == length and math.prod(witness, start=sequence.parent()()) == sequence
+    assert {tuple(sorted(f)) for f in solver.factorizations()} == set(reference)
+    for length, witness in solver.factorization_witnesses().items():
+        assert len(witness) == length and math.prod(witness, start=sequence.parent()()) == sequence
