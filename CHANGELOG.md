@@ -7,27 +7,45 @@ minor releases may contain breaking changes; they are listed first.
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-21
+
+A performance release with no API changes. Results are unchanged, except
+that symmetry-reduced factorization caches may return different (equally
+valid) witnesses.
+
 ### Changed
 
 - Faster sequence comparisons, which no longer expand the term lists, and
   faster catalogue divisor queries.
 - Atom catalogue enumeration extends only zero-sum free prefixes and needs no
-  separate atom tests; the C₃³ catalogue takes well under a second instead of
-  about half a minute. `is_atom()` checks a single set of subsequence sums
-  instead of enumerating subsequences.
+  separate atom tests; catalogues are tens to thousands of times faster, for
+  instance under a second instead of about half a minute for C₃³.
+  `is_atom()` checks a single set of subsequence sums instead of enumerating
+  subsequences.
 - Automorphism groups of image-table automorphisms, such as those built by
   `AutomorphismGroup.closure()`, compute images, orbits, orbit minima,
   stabilizers and transporters with integer keys instead of building image
-  sequences. Canonical forms over C₃³ are about fifty times faster;
-  `FactorizationCache` with symmetry benefits accordingly.
+  sequences. Small orbits are traversed through the generators, larger ones
+  found by scanning the group. Canonical forms of generic sequences are 25
+  to 70 times faster, stabilizers and orbit classification 3 to 9 times.
+  `FactorizationCache` with symmetry benefits accordingly; for such groups it
+  transports witnesses with the smallest automorphism realizing the
+  canonical form, so returned witnesses may differ from 0.3.0.
 - The factorization solver packs remainder multiplicities into single integers
   with guard bits, so testing whether an atom fits and computing the remainder
-  take one subtraction; solving is about two to three times faster.
+  take one subtraction. Together with the faster atom tests, length sets are
+  about four to five times faster.
 - Zero-sum constant searches with symmetry reduction find canonical forms
   without scanning the whole group at every step; η(C₃³) takes under a second
   instead of about four.
 - `sum()` and `subsequences()` no longer coerce terms that are already
   canonical.
+
+### Added
+
+- `benchmarks/benchmark_operations.py` times catalogue enumeration, atom
+  tests, length sets, automorphism operations, and zero-sum constants over
+  several kinds of groups.
 
 ## [0.3.0] - 2026-10-20
 
@@ -179,7 +197,8 @@ First release as a standalone package: sequences over configurable additive
 parents, factorization queries, exhaustive atom catalogue enumeration,
 automorphism orbits, and optional SageMath integration.
 
-[Unreleased]: https://github.com/behackl/zero-sum-sequences/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/behackl/zero-sum-sequences/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/behackl/zero-sum-sequences/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/behackl/zero-sum-sequences/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/behackl/zero-sum-sequences/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/behackl/zero-sum-sequences/compare/v0.1.1...v0.1.2
