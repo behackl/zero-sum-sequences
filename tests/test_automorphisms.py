@@ -458,6 +458,9 @@ def test_integer_key_fast_paths_match_the_general_path(moduli):
     full = space.automorphism_group()
     terms = list(space.base_parent)
     sample = [space.from_terms(rng.choices(terms, k=rng.randrange(0, 6))) for _ in range(12)]
+    # Very symmetric objects have small orbits, which are traversed instead of scanned.
+    everything = space.from_terms(terms)
+    sample += [everything, everything ** 2, everything * space.from_terms(terms[1:2])]
     subgroup = full.stabilizer(sample[1])
     for fast in (full, subgroup):
         assert fast._indexed_images() is not None
