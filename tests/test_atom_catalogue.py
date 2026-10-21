@@ -1,3 +1,4 @@
+import itertools
 import random
 from collections import Counter
 
@@ -276,3 +277,49 @@ def test_divisors_match_filtering_the_catalogue(moduli):
             sequence = space.from_terms(rng.choices(terms, k=size))
             expected = [atom for atom in catalogue if atom.divides(sequence)]
             assert list(catalogue.divisors(sequence)) == expected
+
+
+def _reference_atoms(space, support, bound):
+    """All atoms on ``support`` up to ``bound``, by brute force over multisets."""
+
+    zero = space.base_parent.zero()
+    terms = sorted(term for term in space.from_terms(support).support if term != zero)
+    found = set()
+    for length in range(1, bound + 1):
+        for chosen in itertools.combinations_with_replacement(terms, length):
+            sequence = space(*chosen)
+            if sequence.is_zero_sum() and not any(
+                sub.is_zero_sum() for sub in sequence.subsequences(proper=True)
+            ):
+                found.add(sequence)
+    return sorted(found)
+
+
+@pytest.mark.parametrize("columns", ["table", "elements"])
+@pytest.mark.parametrize("moduli, support", [
+    ((6,), None),
+    ((2, 4), None),
+    ((3, 3), None),
+    ((2, 2, 2), None),
+    ((3, 3), [(1, 0), (0, 1), (2, 2), (1, 1)]),
+    ((2, 6), [(1, 0), (0, 1), (1, 3), (0, 4)]),
+])
+def test_enumeration_matches_brute_force(monkeypatch, columns, moduli, support):
+    from zero_sum_sequences import _atoms
+
+    if columns == "elements":
+        monkeypatch.setattr(_atoms, "_TABLE_LIMIT", 0)
+    space = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(*moduli))
+    bound = space.davenport_bound
+    catalogue = space.enumerate_atom_catalogue(support=support)
+    expected = _reference_atoms(space, support or list(space.base_parent), bound)
+    assert list(catalogue) == expected
+
+
+def test_enumeration_with_a_custom_operation_matches_brute_force():
+    # Integer labels added by XOR: the Klein four-group with a non-default add.
+    space = AdditiveSequenceSpace(
+        FiniteAdditiveGroup(range(8), zero=0, add=lambda a, b: a ^ b)
+    )
+    catalogue = space.enumerate_atom_catalogue()
+    assert list(catalogue) == _reference_atoms(space, list(range(8)), space.davenport_bound)

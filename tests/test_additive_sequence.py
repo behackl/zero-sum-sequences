@@ -274,3 +274,44 @@ def test_order_matches_comparing_expanded_term_lists(moduli):
         for right in sequences:
             assert (left < right) == (reference(left) < reference(right))
     assert sorted(sequences) == sorted(sequences, key=reference)
+
+
+def _is_atom_by_subsequences(sequence):
+    """Reference: a nonempty zero-sum sequence without proper zero-sum subsequences."""
+
+    return bool(sequence) and sequence.is_zero_sum() and not any(
+        subsequence.is_zero_sum() for subsequence in sequence.subsequences(proper=True)
+    )
+
+
+@pytest.mark.parametrize("moduli", [(6,), (2, 4), (3, 3), (2, 2, 2)])
+def test_atom_test_matches_searching_subsequences(moduli):
+    rng = random.Random(sum(moduli))
+    space = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(*moduli))
+    terms = list(space.base_parent)  # includes zero
+    for _ in range(400):
+        sequence = space.from_terms(rng.choices(terms, k=rng.randrange(0, 9)))
+        assert sequence.is_atom() == _is_atom_by_subsequences(sequence), sequence
+    # Zero-sum sequences are the interesting case; build many from atoms.
+    atoms = list(space.enumerate_atom_catalogue())
+    for _ in range(200):
+        sequence = math.prod(rng.sample(atoms, rng.randrange(1, 3)), start=space())
+        assert sequence.is_atom() == _is_atom_by_subsequences(sequence)
+
+
+def test_atom_test_works_over_an_infinite_parent():
+    class Integers:
+        def __call__(self, value):
+            return int(value)
+
+        def zero(self):
+            return 0
+
+    space = AdditiveSequenceSpace(Integers())
+    for terms, expected in [
+        ((-2, 1, 1), True), ((-2, 1, 1, 0), False), ((0,), True), ((3, -1, -1, -1), True),
+        ((2, -1, -1, 1, -1), False), ((5, -5, 2, -2), False), ((1, 1), False),
+    ]:
+        sequence = space(*terms)
+        assert sequence.is_atom() is expected
+        assert _is_atom_by_subsequences(sequence) is expected

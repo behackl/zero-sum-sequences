@@ -11,7 +11,13 @@ from operator import index
 from typing import TYPE_CHECKING, Generic, Self, TypeVar
 
 from ._exceptions import _ArithmeticUnavailable, _ParentIterationUnavailable
-from ._parent_ops import _addition, _immutable_term, _is_finite, _iter_parent
+from ._parent_ops import (
+    _addition,
+    _canonical_addition,
+    _immutable_term,
+    _is_finite,
+    _iter_parent,
+)
 from ._validation import _non_negative_integer, _positive_integer
 
 if TYPE_CHECKING:
@@ -50,6 +56,7 @@ class AdditiveSequenceSpace(Generic[Element]):
         "_arithmetic_context",
         "_automorphism_action",
         "_automorphism_group",
+        "_canonical_add",
         "_pickle_token",
         "__weakref__",
     )
@@ -70,6 +77,7 @@ class AdditiveSequenceSpace(Generic[Element]):
         self._arithmetic_context = None
         self._automorphism_action = None
         self._automorphism_group = None
+        self._canonical_add = None
         self._pickle_token = None
 
     def __reduce__(self):
@@ -148,6 +156,13 @@ class AdditiveSequenceSpace(Generic[Element]):
         if self._addition_op is None:
             self._addition_op = _addition(self._parent)
         return self._addition_op
+
+    def _add_canonical(self):
+        """Addition of canonical terms, coercing only results (see ``_parent_ops``)."""
+
+        if self._canonical_add is None:
+            self._canonical_add = _canonical_addition(self._parent)
+        return self._canonical_add
 
     def _canonical_zero(self):
         """The zero element ``0`` as a canonical, immutable parent element."""
@@ -280,9 +295,11 @@ class AdditiveSequenceSpace(Generic[Element]):
         length one is excluded, as in :class:`AtomCatalogue`. Full enumeration with a
         derived bound also records the exact Davenport constant.
 
-        The search completes each sorted prefix with its uniquely determined
-        final term, then checks minimality. It can be expensive even when the
-        bound is small.
+        Every atom arises once, as its sorted terms without one copy of the
+        largest, which are zero-sum free, followed by that largest term. The
+        search therefore extends only zero-sum free sorted prefixes, tracking
+        their subsequence sums, and needs no separate atom test. Its cost
+        grows with the number of zero-sum free sequences on the support.
         """
 
         from .atom_catalogue import AtomCatalogue
@@ -307,7 +324,6 @@ class AdditiveSequenceSpace(Generic[Element]):
             )
         )
         zero = self._canonical_zero()
-        operation = self._add_operation()
 
         if support is None:
             allowed_terms = terms
@@ -317,32 +333,14 @@ class AdditiveSequenceSpace(Generic[Element]):
                 raise ValueError("support terms must belong to the ambient group")
         nonzero_terms = tuple(term for term in allowed_terms if term != zero)
 
-        # Compute inverses in the ambient group, not in the chosen support.
-        arithmetic = self._group_arithmetic()
-        completions = {arithmetic.negate(term): term for term in nonzero_terms}
-        term_index = {
-            term: position for position, term in enumerate(nonzero_terms)
-        }
+        # Sums and inverses are taken in the ambient group, not in the support.
+        from ._atoms import enumerate_atoms
 
-        atoms = []
-        for length in range(2, self.davenport_bound + 1):
-            for prefix_indices in itertools.combinations_with_replacement(
-                range(len(nonzero_terms)), length - 1
-            ):
-                prefix = tuple(
-                    nonzero_terms[position] for position in prefix_indices
-                )
-                prefix_total = _immutable_term(
-                    self._parent(reduce(operation, prefix, zero))
-                )
-                if prefix_total not in completions:
-                    continue
-                final = completions[prefix_total]
-                if term_index[final] < prefix_indices[-1]:
-                    continue
-                candidate = self(*prefix, final)
-                if candidate.is_atom():
-                    atoms.append(candidate)
+        arithmetic = self._group_arithmetic()
+        atoms = [
+            AdditiveSequence._from_items(self, items)
+            for items in enumerate_atoms(self, terms, nonzero_terms, self.davenport_bound)
+        ]
         catalogue = AtomCatalogue(self, atoms, verify=False)
         if support is None and self._davenport_bound is None:
             # A complete ambient catalogue determines D(G); D = 1 when trivial.
@@ -592,14 +590,9 @@ class AdditiveSequence(Generic[Element]):
 
         if not self or not self.is_zero_sum():
             return False
-        return not any(
-            subsequence.is_zero_sum()
-            for subsequence in self.subsequences(
-                nonempty=True,
-                proper=True,
-                max_length=len(self) // 2,
-            )
-        )
+        from ._atoms import is_atom_by_sums
+
+        return is_atom_by_sums(self)
 
     def factorization_solver(self, *, atom_catalogue=None):
         """Return a factorization solver for a sequence without the term ``0``.

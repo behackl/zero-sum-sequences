@@ -12,6 +12,7 @@ from math import gcd, lcm
 from ._exceptions import _ArithmeticUnavailable, _ParentIterationUnavailable
 from ._parent_ops import (
     _addition,
+    _canonical_addition,
     _immutable_term,
     _is_finite,
     _iter_parent,
@@ -96,6 +97,12 @@ class _GroupArithmetic:
         """Add two terms using the parent operation when supplied."""
 
         return _immutable_term(self._add(left, right))
+
+    @cached_property
+    def add_canonical(self):
+        """Addition of canonical, immutable elements, coercing only the result."""
+
+        return _canonical_addition(self.parent)
 
     @cached_property
     def elements(self):

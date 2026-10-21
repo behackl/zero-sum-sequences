@@ -71,6 +71,33 @@ def _native_term_arithmetic(parent) -> bool:
     return not callable(getattr(parent, "add", None))
 
 
+def _canonical_addition(parent):
+    """Addition of canonical, immutable elements, coercing only the result.
+
+    Package cyclic products add coordinates modulo their orders, which is
+    canonical by construction; other package groups coerce the result once.
+    """
+
+    if (
+        isinstance(parent, FiniteAdditiveGroup)
+        and type(parent).add is FiniteAdditiveGroup.add
+    ):
+        operation = parent._operation
+        if parent._cyclic_moduli is not None:
+            return operation
+
+        def add_package(left, right):
+            return parent(operation(left, right))
+
+        return add_package
+    add = _addition(parent)
+
+    def add_immutable(left, right):
+        return _immutable_term(add(left, right))
+
+    return add_immutable
+
+
 def _addition(parent):
     """Return addition with canonical outputs, without finite-group queries."""
 

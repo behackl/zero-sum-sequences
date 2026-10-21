@@ -11,6 +11,10 @@ minor releases may contain breaking changes; they are listed first.
 
 - Faster sequence comparisons, which no longer expand the term lists, and
   faster catalogue divisor queries.
+- Atom catalogue enumeration extends only zero-sum free prefixes and needs no
+  separate atom tests; the C₃³ catalogue takes well under a second instead of
+  about half a minute. `is_atom()` checks a single set of subsequence sums
+  instead of enumerating subsequences.
 
 ## [0.3.0] - 2026-10-20
 
