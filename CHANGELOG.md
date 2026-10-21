@@ -23,6 +23,9 @@ minor releases may contain breaking changes; they are listed first.
 - The factorization solver packs remainder multiplicities into single integers
   with guard bits, so testing whether an atom fits and computing the remainder
   take one subtraction; solving is about two to three times faster.
+- Zero-sum constant searches with symmetry reduction find canonical forms
+  without scanning the whole group at every step; η(C₃³) takes under a second
+  instead of about four.
 - `sum()` and `subsequences()` no longer coerce terms that are already
   canonical.
 

@@ -69,6 +69,7 @@ class _Symmetry:
         count = len(table.elements)
         if group is None:
             self.forward = self.inverse = (tuple(range(count)),)
+            self._by_preimage = self._group_by_preimage(count)
             return
         forward = []
         inverse = []
@@ -89,13 +90,37 @@ class _Symmetry:
             inverse.append(tuple(preimages))
         self.forward = tuple(forward)
         self.inverse = tuple(inverse)
+        self._by_preimage = self._group_by_preimage(count)
+
+    def _group_by_preimage(self, count: int) -> list[dict[int, list[int]]]:
+        """For each position, the automorphisms grouped by the term they bring there."""
+
+        by_preimage = []
+        for position in range(count):
+            groups: dict[int, list[int]] = {}
+            for candidate, preimages in enumerate(self.inverse):
+                groups.setdefault(preimages[position], []).append(candidate)
+            by_preimage.append(groups)
+        return by_preimage
 
     def canonical(self, multiplicities: tuple[int, ...]):
         """Return a canonical vector and the indices of automorphisms realizing it."""
 
-        candidates = range(len(self.inverse))
+        candidates = None  # while None, every automorphism still realizes the prefix
         key = []
         for position in range(len(multiplicities)):
+            if candidates is None:
+                # Without scanning: the best value is the largest multiplicity
+                # among terms brought here, realized by their automorphisms.
+                groups = self._by_preimage[position]
+                best = max(multiplicities[preimage] for preimage in groups)
+                key.append(best)
+                selected = [preimage for preimage in groups if multiplicities[preimage] == best]
+                if len(selected) < len(groups):
+                    candidates = sorted(
+                        candidate for preimage in selected for candidate in groups[preimage]
+                    )
+                continue
             best, kept = -1, []
             for candidate in candidates:
                 value = multiplicities[self.inverse[candidate][position]]
@@ -105,6 +130,8 @@ class _Symmetry:
                     kept.append(candidate)
             key.append(best)
             candidates = kept
+        if candidates is None:
+            candidates = list(range(len(self.inverse)))
         return tuple(key), candidates
 
     def extension_terms(self, realising: list[int]) -> list[int]:
