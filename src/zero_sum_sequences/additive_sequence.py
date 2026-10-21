@@ -6,7 +6,6 @@ import functools
 import itertools
 from collections import Counter
 from collections.abc import Callable, Iterable, Iterator, Mapping
-from functools import reduce
 from operator import index
 from typing import TYPE_CHECKING, Generic, Self, TypeVar
 
@@ -467,7 +466,11 @@ class AdditiveSequence(Generic[Element]):
         """Return the sum ``σ(S)`` of the terms, in the base parent."""
 
         space = self._space
-        return reduce(space._add_operation(), self, space._canonical_zero())
+        add, total = space._add_canonical(), space._canonical_zero()
+        for term, count in self._items:
+            for _ in range(count):
+                total = add(total, term)
+        return total
 
     def is_zero_sum(self) -> bool:
         """Return whether this is a zero-sum sequence, ``σ(S) = 0``."""
@@ -577,12 +580,14 @@ class AdditiveSequence(Generic[Element]):
                 continue
             if proper and chosen_length == len(self):
                 continue
-            yield self._space.from_multiplicities(
-                {
-                    term: count
+            # Terms are canonical and stay in order: no coercion or sorting.
+            yield AdditiveSequence._from_items(
+                self._space,
+                tuple(
+                    (term, count)
                     for (term, _), count in zip(self._items, chosen_counts)
                     if count
-                }
+                ),
             )
 
     def is_atom(self) -> bool:

@@ -23,6 +23,8 @@ minor releases may contain breaking changes; they are listed first.
 - The factorization solver packs remainder multiplicities into single integers
   with guard bits, so testing whether an atom fits and computing the remainder
   take one subtraction; solving is about two to three times faster.
+- `sum()` and `subsequences()` no longer coerce terms that are already
+  canonical.
 
 ## [0.3.0] - 2026-10-20
 

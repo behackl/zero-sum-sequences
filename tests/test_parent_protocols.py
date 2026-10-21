@@ -108,7 +108,8 @@ def test_native_group_totals_do_not_coerce_an_already_canonical_result():
     native_coercions = len(coercions)
     coercions.clear()
     assert sequence.sum() == expected
-    assert len(coercions) == native_coercions
+    # Canonical terms are not coerced again: at most the native count.
+    assert len(coercions) <= native_coercions
 
 
 def test_totals_do_not_require_a_finite_parent():
