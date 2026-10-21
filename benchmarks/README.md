@@ -42,3 +42,16 @@ companion article. Setup enumerates the `C_3^3` catalogue once.
 python -m benchmarks.benchmark_operations          # quick cases
 python -m benchmarks.benchmark_operations --large  # adds larger catalogues
 ```
+
+Reference timings in milliseconds (one core, Python 3.13, October 2026),
+before and after the performance work following 0.3.0:
+
+| Case | 0.3.0 | Now |
+|---|---:|---:|
+| catalogue `C_2^4` (323 atoms) | 118 | 1.9 |
+| catalogue `C_3^3` (27 911 atoms) | about 28 000 | 311 |
+| `is_atom`, 2000 `C_3^3` atoms | 652 | 25 |
+| catalogue-backed length sets, 100 triple products | 3 880 | 687 |
+| `apply`, 2000 automorphisms | 9.1 | 4.2 |
+| stabilizers of 10 length-7 atoms | 294 | 33 |
+| canonical forms of 5 pair products | 2 155 | 30 |
