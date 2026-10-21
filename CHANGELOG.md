@@ -7,6 +7,11 @@ minor releases may contain breaking changes; they are listed first.
 
 ## [Unreleased]
 
+### Changed
+
+- Faster sequence comparisons, which no longer expand the term lists, and
+  faster catalogue divisor queries.
+
 ## [0.3.0] - 2026-10-20
 
 Sequences now use the multiplicative notation of the literature, and the

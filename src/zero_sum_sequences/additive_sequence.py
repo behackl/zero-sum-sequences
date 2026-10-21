@@ -792,7 +792,17 @@ class AdditiveSequence(Generic[Element]):
         if not isinstance(other, AdditiveSequence):
             return NotImplemented
         self._require_same_space(other)
-        return (self._length, tuple(self)) < (other._length, tuple(other))
+        if self._length != other._length:
+            return self._length < other._length
+        # Equal lengths: compare the sorted term lists without expanding them.
+        # At the first difference, the smaller term, or more copies of the same
+        # term, comes first in the expanded list.
+        for (term, count), (other_term, other_count) in zip(self._items, other._items):
+            if term != other_term:
+                return term < other_term
+            if count != other_count:
+                return count > other_count
+        return False
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, AdditiveSequence):

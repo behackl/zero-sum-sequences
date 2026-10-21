@@ -1,3 +1,4 @@
+import random
 from collections import Counter
 
 import pytest
@@ -262,3 +263,16 @@ def test_subcatalogues_do_not_reverify_atoms(monkeypatch):
     monkeypatch.setattr(AdditiveSequence, "is_atom", forbidden)
     assert catalogue.filter(lambda atom: True).atoms == catalogue.atoms
     assert catalogue.restrict(max_length=2).atoms == (catalogue[0],)
+
+
+@pytest.mark.parametrize("moduli", [(2, 4), (3, 3), (2, 2, 2)])
+def test_divisors_match_filtering_the_catalogue(moduli):
+    rng = random.Random(sum(moduli))
+    space = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(*moduli))
+    catalogue = space.enumerate_atom_catalogue()
+    terms = [term for term in space.base_parent if any(term)]
+    for size in range(1, 10):
+        for _ in range(20):
+            sequence = space.from_terms(rng.choices(terms, k=size))
+            expected = [atom for atom in catalogue if atom.divides(sequence)]
+            assert list(catalogue.divisors(sequence)) == expected

@@ -1,4 +1,5 @@
 import math
+import random
 from fractions import Fraction
 
 import pytest
@@ -254,3 +255,22 @@ def test_nonorderable_terms_keep_the_construction_error():
 
     with pytest.raises(TypeError, match="mutually orderable"):
         AdditiveSequenceSpace(Parent()).from_multiplicities({1: 1, "a": 1})
+
+
+@pytest.mark.parametrize("moduli", [(5,), (3, 3), (2, 2, 2)])
+def test_order_matches_comparing_expanded_term_lists(moduli):
+    rng = random.Random(len(moduli))
+    space = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(*moduli))
+    terms = list(space.base_parent)[:4]
+    # Few terms and short lengths make equal lengths and shared prefixes common.
+    sequences = [
+        space.from_terms(rng.choices(terms, k=rng.randrange(0, 6))) for _ in range(150)
+    ]
+
+    def reference(sequence):
+        return len(sequence), tuple(sequence)
+
+    for left in sequences:
+        for right in sequences:
+            assert (left < right) == (reference(left) < reference(right))
+    assert sorted(sequences) == sorted(sequences, key=reference)

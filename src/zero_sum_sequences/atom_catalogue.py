@@ -82,15 +82,16 @@ class AtomCatalogue(Generic[Element]):
         self._term_index = {
             term: index for index, term in enumerate(self.terms)
         }
-        by_support_mask: dict[int, list[AdditiveSequence[Element]]] = defaultdict(list)
-        for atom in self.atoms:
+        # Catalogue positions by support mask; positions sort like the atoms.
+        by_support_mask: dict[int, list[int]] = defaultdict(list)
+        for position, atom in enumerate(self.atoms):
             support_mask = 0
             for term in atom.support:
                 support_mask |= 1 << self._term_index[term]
-            by_support_mask[support_mask].append(atom)
+            by_support_mask[support_mask].append(position)
         self._by_support_mask = {
-            mask: tuple(mask_atoms)
-            for mask, mask_atoms in by_support_mask.items()
+            mask: tuple(positions)
+            for mask, positions in by_support_mask.items()
         }
         self.annotations: dict[AdditiveSequence[Element], dict] = {}
         for atom, annotation in annotations or ():
@@ -171,29 +172,28 @@ class AtomCatalogue(Generic[Element]):
         if sequence.parent() is not self.space:
             raise TypeError("atom catalogue and sequence use different spaces")
 
-        target_counts = sequence.multiplicities
+        target_counts = dict(sequence._items)
         target_mask = 0
-        for term in sequence.support:
+        for term in target_counts:
             index = self._term_index.get(term)
             if index is not None:
                 target_mask |= 1 << index
 
-        candidates = []
+        positions = []
         # Enumerate the smaller of the target's submasks and occupied masks.
         if (1 << target_mask.bit_count()) - 1 <= len(self._by_support_mask):
             submask = target_mask
             while submask:
-                candidates.extend(self._by_support_mask.get(submask, ()))
+                positions.extend(self._by_support_mask.get(submask, ()))
                 submask = (submask - 1) & target_mask
         else:
-            for mask, atoms in self._by_support_mask.items():
+            for mask, found in self._by_support_mask.items():
                 if mask & target_mask == mask:
-                    candidates.extend(atoms)
-        for atom in sorted(candidates):
-            if all(
-                target_counts.get(term, 0) >= count
-                for term, count in atom.multiplicities.items()
-            ):
+                    positions.extend(found)
+        atoms = self.atoms
+        for position in sorted(positions):
+            atom = atoms[position]
+            if all(target_counts.get(term, 0) >= count for term, count in atom._items):
                 yield atom
 
     # automorphisms
