@@ -19,15 +19,13 @@ def _(mo):
     mo.md(r"""
     # Tutorial: additive and zero-sum sequences
 
-    `zero_sum_sequences` computes with sequences over finite additive groups:
+    `zero_sum_sequences` computes with sequences over finite abelian groups:
     minimal zero-sum sequences (atoms), factorizations and their length
     sets, automorphism orbits, and zero-sum constants. The examples use $C_3$, $C_2\oplus C_4$,
     a four-point support in $C_3^3$, and finally a few small groups for
     zero-sum constants.
 
-    This is a [marimo](https://marimo.io) notebook: when you edit a cell, the
-    cells that depend on it rerun automatically. It runs in ordinary Python,
-    or in the browser from the documentation.
+    Edit any cell: the cells depending on it rerun automatically.
     """)
     return
 
@@ -68,19 +66,12 @@ def _():
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    ## 1. Configure a sequence space
+    ## 1. A sequence space over $C_3$
 
-    A finite abelian group can be given by its elements and its addition.
-    An `AdditiveSequenceSpace` over it constructs sequences over the group:
-    by a sequence, we mean a finite unordered sequence of terms, with
-    repetition of terms allowed. `S(g, h)` is the sequence $g\cdot h$.
-
-    Enumerating atoms needs an upper bound for the Davenport constant
-    $D(G)$, the maximal length of an atom. When none is supplied, the space
-    derives one without an exhaustive search; here $C_3$ is recognized as
-    cyclic, so the bound is $D(C_3)=3$. An explicit `davenport_bound=` is used
-    as given. A bound below $D(G)$ can make results incomplete; factorization
-    queries raise an error when the available atoms provably do not suffice.
+    We start with the cyclic group $C_3$, with elements $0, 1, 2$ and
+    addition modulo 3. An `AdditiveSequenceSpace` over it constructs
+    sequences: finite unordered sequences of group elements, with repetition
+    allowed. `C3(g, h)` is the sequence $g\cdot h$.
     """)
     return
 
@@ -88,14 +79,10 @@ def _(mo):
 @app.cell
 def _(AdditiveSequenceSpace, FiniteAdditiveGroup):
     modulo_three = FiniteAdditiveGroup(
-        range(3),
-        zero=0,
-        add=lambda left, right: (left + right) % 3,
-        coerce=lambda value: int(value) % 3,
+        range(3), zero=0, add=lambda left, right: (left + right) % 3
     )
     C3 = AdditiveSequenceSpace(modulo_three)
-    print("group order:", modulo_three.order())
-    print("Davenport bound:", C3.davenport_bound)
+    print(C3(1, 2, 1))
     return (C3,)
 
 
@@ -429,10 +416,16 @@ def _(mo):
     mo.md(r"""
     ## 8. Enumerate atoms
 
-    Every atom over a finite group $G$ has length at most $D(G)$.
-    `enumerate_atom_catalogue()` lists all atoms up to the space's Davenport
-    bound. Like the factorization queries, it works over
-    $G^\bullet=G\setminus\{0\}$ and omits the atom $0$ of length one.
+    Products of cyclic groups have a shortcut,
+    `FiniteAdditiveGroup.cyclic_product(...)`, whose elements are coordinate
+    tuples and which knows its automorphisms.
+
+    Every atom over a finite group $G$ has length at most the Davenport
+    constant $D(G)$. `enumerate_atom_catalogue()` lists all atoms up to an
+    upper bound for $D(G)$, which the space derives automatically; a bound
+    passed as `davenport_bound=` is used as given, and if it is too small,
+    results are incomplete. Like the factorization queries, the catalogue
+    omits the atom $0$ of length one.
 
     For $C_2\oplus C_4$ the derived bound is exact,
     $D(C_2\oplus C_4)=1+(2-1)+(4-1)=5$, and the complete enumeration is

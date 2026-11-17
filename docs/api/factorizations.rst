@@ -41,5 +41,5 @@ build a new :class:`FactorizationSolver` on every call.
 
 .. py:data:: Factorization
 
-   A factorization: a tuple of atoms, sorted, whose product is the
-   factorized sequence. Returned by the witness and enumeration queries.
+   A factorization: a tuple of atoms whose product is the factorized
+   sequence. Returned by the witness and enumeration queries.
