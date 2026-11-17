@@ -4,23 +4,31 @@ Citations beside a definition or formula identify the result being used.
 References to related computational work do not mean that the package
 implements the algorithms in those sources.
 
+## Monographs
+
+For zero-sum theory and factorization theory in Krull monoids, we refer
+to the monographs
+{cite:p}`geroldinger-halter-koch-2006,grynkiewicz-2013,grynkiewicz-2022,geroldinger-grynkiewicz-zhong-2026`.
+
 ## Definitions and mathematical results
 
 - The definitions of the Davenport, Erdős–Ginzburg–Ziv and eta constants
   follow {cite:t}`gao-geroldinger-2006`, Definition 2.1. This survey uses
-  both `d(G)` and `D(G)`, with `D(G) = d(G) + 1`.
-- The exact Davenport formulas for abelian p-groups and groups of rank at
-  most two are due to Kruyswijk and Olson; see
-  {cite:t}`gao-geroldinger-2006`, Theorem 3.1, and the original Olson
-  papers {cite:p}`olson-1969-i,olson-1969-ii`.
-- The logarithmic upper bound is due to
-  {cite:t}`van-emde-boas-kruyswijk-1969`, Theorem 7.1, p. 21.
-  Their `mu(G)` is the package's `D(G)`. The result is also recorded in
-  {cite:t}`gao-geroldinger-2006`, Theorem 3.6(1).
+  both the small Davenport constant `d(G)` and the large Davenport
+  constant `D(G)`, with `D(G) = d(G) + 1`. Furthermore, `s(G)` is the
+  Erdős–Ginzburg–Ziv constant and `eta(G)` the eta constant, with
+  `eta(G) <= s(G) - exp(G) + 1`. Equality holds for groups of rank at most
+  two, and no group is known where the inequality is strict.
+- Proofs of the exact Davenport formulas for abelian p-groups and groups of
+  rank at most two, and of the logarithmic upper bound
+  `D(G) <= exp(G) * (1 + ln(|G| / exp(G)))`, can be found in
+  {cite:p}`geroldinger-halter-koch-2006,geroldinger-grynkiewicz-zhong-2026,grynkiewicz-2013`;
+  see also {cite:t}`gao-geroldinger-2006`, Theorems 3.1 and 3.6(1).
   {py:attr}`zero_sum_sequences.AdditiveSequenceSpace.davenport_bound`
   uses a conservative integer relaxation, not the original real-valued bound.
-- {cite:t}`geroldinger-halter-koch-2006` provides the factorization-theoretic
-  background, including atoms and length sets.
+- For the factorization-theoretic background, including atoms and length
+  sets, we refer to
+  {cite:p}`geroldinger-halter-koch-2006,geroldinger-grynkiewicz-zhong-2026`.
 
 ## Related computational work
 

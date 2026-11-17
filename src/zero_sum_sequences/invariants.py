@@ -305,9 +305,10 @@ def davenport_constant(
     -----
     For known invariant factors ``1 < n_1 | ... | n_r``, the formula
     ``D(G) = 1 + sum(n_i - 1)`` is used for p-groups and groups of rank at
-    most two. This is the result of Kruyswijk and Olson recorded in
-    :cite:p:`gao-geroldinger-2006`, Theorem 3.1; see also
-    :cite:p:`olson-1969-i,olson-1969-ii`. A group known to be cyclic has
+    most two; see :cite:p:`gao-geroldinger-2006`, Theorem 3.1, and for
+    proofs
+    :cite:p:`geroldinger-halter-koch-2006,geroldinger-grynkiewicz-zhong-2026,grynkiewicz-2013`.
+    A group known to be cyclic has
     ``D(G) = |G|``, and the trivial group has ``D(G) = 1``.
 
     An exact result can tighten an automatically derived

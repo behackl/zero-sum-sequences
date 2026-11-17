@@ -7,6 +7,13 @@ minor releases may contain breaking changes; they are listed first.
 
 ## [Unreleased]
 
+### Changed
+
+- The documentation cites recent monographs (Grynkiewicz 2013 and 2022;
+  Geroldinger–Grynkiewicz–Zhong 2026) for the Davenport formulas, the
+  logarithmic bound and the factorization-theoretic background.
+  The references also relate the eta and Erdős–Ginzburg–Ziv constants.
+
 ## [0.3.1] - 2026-10-21
 
 A performance release with no API changes. Results are unchanged, except

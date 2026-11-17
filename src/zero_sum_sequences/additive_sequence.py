@@ -192,11 +192,11 @@ class AdditiveSequenceSpace(Generic[Element]):
         :func:`davenport_constant`); else, for order ``n`` and known exponent
         ``e``, return ``min(n, e * (1 + ceil(log2(n / e))))``; else ``n``.
 
-        The logarithmic estimate ``D(G) <= e * (1 + ln(n / e))`` is due to
-        van Emde Boas and Kruyswijk (:cite:p:`van-emde-boas-kruyswijk-1969`,
-        Theorem 7.1, p. 21; see also :cite:p:`gao-geroldinger-2006`, Theorem
-        3.6(1)). The base-two ceiling is a conservative relaxation chosen
-        here, not the original estimate.
+        For the logarithmic estimate ``D(G) <= e * (1 + ln(n / e))``, see
+        :cite:p:`gao-geroldinger-2006`, Theorem 3.6(1), and for proofs
+        :cite:p:`geroldinger-halter-koch-2006,geroldinger-grynkiewicz-zhong-2026,grynkiewicz-2013`.
+        The base-two ceiling is a conservative relaxation chosen here, not
+        the original estimate.
 
         Deriving a bound never starts an exhaustive search, although finding
         ``n`` may enumerate the group. Derived bounds are cached and tighten

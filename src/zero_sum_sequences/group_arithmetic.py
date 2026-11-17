@@ -334,8 +334,8 @@ class _GroupArithmetic:
             elif n % e:
                 raise ValueError("the group exponent must divide its order")
             else:
-                # van Emde Boas–Kruyswijk (1969), Theorem 7.1, p. 21:
-                # D(G) <= e * (1 + ln(n/e)). Their mu(G) is our D(G).
+                # Gao–Geroldinger (2006), Theorem 3.6(1):
+                # D(G) <= e * (1 + ln(n/e)).
                 # ceil(log2(n/e)) >= ln(n/e) gives a conservative integer bound.
                 self._bound = min(n, e * (1 + (n // e - 1).bit_length()))
         return self._bound
