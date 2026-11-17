@@ -3,10 +3,10 @@ Groups and sequences
 
 .. currentmodule:: zero_sum_sequences
 
-Start here. :class:`FiniteAdditiveGroup` describes the group, an
-:class:`AdditiveSequenceSpace` constructs sequences over it, and
-:class:`AdditiveSequence` provides the everyday queries: zero-sum and atom
-tests, factorizations, length sets and orbits.
+A :class:`FiniteAdditiveGroup` describes the base group; compatible Sage
+parents can be used instead. An :class:`AdditiveSequenceSpace` constructs
+sequences over a group, and :class:`AdditiveSequence` carries the
+per-sequence queries: arithmetic, atom tests, factorizations and orbits.
 
 .. autosummary::
    :nosignatures:

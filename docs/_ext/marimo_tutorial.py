@@ -8,6 +8,9 @@ writes, under ``<outdir>/tutorial/``:
     installs a wheel built from the same checkout, so the browser runtime
     matches the documented code. Precomputing runs the notebook in an
     isolated environment created by ``uv``, which must be on ``PATH``.
+``edit/index.html``
+    A redirect to ``index.html``. Releases up to 0.3.1 served the editable
+    notebook here, and published links point to it.
 ``tutorial.py``
     A download whose script header installs this commit from GitHub.
 ``tutorial.ipynb``
@@ -29,6 +32,18 @@ ROOT = Path(__file__).resolve().parents[2]
 NOTEBOOK = ROOT / "notebooks" / "tutorial.py"
 REPOSITORY = "https://github.com/behackl/zero-sum-sequences"
 HEADER_END = "# ///\n"
+REDIRECT = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tutorial</title>
+<link rel="canonical" href="../">
+<meta http-equiv="refresh" content="0; url=../">
+<script>location.replace("../" + location.search + location.hash);</script>
+</head>
+<body><p>The tutorial has moved <a href="../">here</a>.</p></body>
+</html>
+"""
 
 
 def _run(*args: str, cwd: Path = ROOT) -> str:
@@ -93,8 +108,11 @@ def export_tutorial(destination: Path) -> None:
             "-o", str(destination), "--mode", "edit", "--execute",
             "--force",
         )
-    # Instructions for marimo's AI assistant; not part of the published site.
+    # The WebAssembly export copies marimo's rules file for AI coding
+    # assistants (marimo/_static/CLAUDE.md); it does not belong on the site.
     (destination / "CLAUDE.md").unlink(missing_ok=True)
+    (destination / "edit").mkdir(exist_ok=True)
+    (destination / "edit" / "index.html").write_text(REDIRECT, encoding="utf-8")
 
     _run(
         "-m", "marimo", "export", "ipynb", str(NOTEBOOK),

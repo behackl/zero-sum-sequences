@@ -3,12 +3,10 @@ Automorphisms and orbits
 
 .. currentmodule:: zero_sum_sequences
 
-Automorphisms of the group act on sequences term by term. For groups from
-:meth:`FiniteAdditiveGroup.cyclic_product`, the full automorphism group is
-available without setup, and :meth:`AdditiveSequence.orbit` and
-:meth:`AdditiveSequenceSpace.automorphism_group` are the usual entry
-points. The classes below are needed for custom groups of automorphisms
-and for canonical forms.
+Automorphisms act on sequences term by term. Groups from
+:meth:`FiniteAdditiveGroup.cyclic_product` provide their full automorphism
+group, available as :meth:`AdditiveSequenceSpace.automorphism_group`;
+:meth:`AdditiveSequence.orbit` and related methods use it by default.
 
 .. autosummary::
    :nosignatures:

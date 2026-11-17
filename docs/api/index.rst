@@ -3,12 +3,13 @@ API reference
 
 .. py:module:: zero_sum_sequences
 
-Everything is imported from :mod:`zero_sum_sequences`. A typical session
-builds a :class:`FiniteAdditiveGroup` and an :class:`AdditiveSequenceSpace`
-over it, constructs sequences, and calls their methods, such as
-:meth:`~AdditiveSequence.length_set` or :meth:`~AdditiveSequence.orbit`.
-The remaining classes are for reusing work across many queries and for
-finer control.
+All public names are importable from :mod:`zero_sum_sequences`.
+
+- :doc:`sequences`: groups, sequence spaces and sequences.
+- :doc:`factorizations`: atom catalogues, factorization queries and
+  relations between factorizations.
+- :doc:`symmetry`: automorphism groups, orbits and canonical forms.
+- :doc:`constants`: exact zero-sum constants.
 
 .. toctree::
    :maxdepth: 1

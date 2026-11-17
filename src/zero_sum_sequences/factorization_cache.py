@@ -94,7 +94,12 @@ class AnchoredCanonicalizer(Generic[Element]):
 
 
 class FactorizationCache(Generic[Element]):
-    """Cached factorization queries over one catalogue.
+    """Factorization queries about many sequences over one catalogue.
+
+    Keeps the length set of every queried sequence and a bounded number of
+    :class:`FactorizationSolver` objects for follow-up queries. With
+    ``symmetry``, automorphic images share one entry. Length sets can be
+    saved to and loaded from JSONL.
 
     Parameters
     ----------

@@ -3,30 +3,22 @@ Atoms and factorizations
 
 .. currentmodule:: zero_sum_sequences
 
-The sequence methods such as :meth:`AdditiveSequence.length_set` are
-enough for single queries. For several queries about one sequence, keep a
-:class:`FactorizationSolver`. For many sequences over one group, enumerate
-an :class:`AtomCatalogue` once and answer queries through a
-:class:`FactorizationCache`.
+Atom catalogues, factorization queries and relations between
+factorizations. The factorization methods of :class:`AdditiveSequence`
+build a new :class:`FactorizationSolver` on every call.
 
 .. autosummary::
    :nosignatures:
 
    FactorizationSolver
-   AtomCatalogue
    FactorizationCache
+   AtomCatalogue
    FactorizationRelation
 
 .. autoclass:: FactorizationSolver
    :members:
 
 .. autoclass:: FactorizationStatistics
-   :members:
-
-.. autoclass:: AtomCatalogue
-   :members:
-
-.. autoclass:: AtomOrbit
    :members:
 
 .. autoclass:: FactorizationCache
@@ -36,6 +28,12 @@ an :class:`AtomCatalogue` once and answer queries through a
    :members:
 
 .. autoclass:: AnchoredCanonicalizer
+   :members:
+
+.. autoclass:: AtomCatalogue
+   :members:
+
+.. autoclass:: AtomOrbit
    :members:
 
 .. autoclass:: FactorizationRelation

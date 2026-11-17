@@ -55,7 +55,11 @@ class _IndexedAtom(Generic[Element]):
 
 
 class FactorizationSolver(Generic[Element]):
-    """Find atom factorizations of a sequence without the term ``0``.
+    """Factorization queries about one sequence without the term ``0``.
+
+    The solver keeps its atoms and remainder graph, so repeated queries about
+    the same sequence share work. For many sequences over one catalogue, use
+    :class:`FactorizationCache`.
 
     A supplied :class:`AtomCatalogue` is used without resolving a Davenport
     bound. It must contain every atom divisor of the input for complete

@@ -5,7 +5,7 @@ Zero-sum constants
 
 Exact values of the Davenport, eta and Erdős–Ginzburg–Ziv constants, and
 the general constant ``s_L(G)`` for a finite set ``L`` of allowed
-subsequence lengths. See :doc:`../definitions` for the definitions.
+subsequence lengths; see :doc:`../definitions`.
 
 .. autosummary::
    :nosignatures:
