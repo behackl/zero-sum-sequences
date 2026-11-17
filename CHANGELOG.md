@@ -7,16 +7,25 @@ minor releases may contain breaking changes; they are listed first.
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-11-17
+
+A documentation release with no code or API changes.
+
 ### Changed
 
-- The documentation cites recent monographs (Grynkiewicz 2013 and 2022;
+- Getting started follows one example over `C₂ ⊕ C₄` through the main
+  features. Central classes, functions and methods have examples.
+- New how-to guides for common research tasks, and a page on scope and
+  performance: when results are complete, measured timings and memory, and
+  when symmetry reduction pays off.
+- The tutorial opens directly as an editable notebook in the browser; the
+  read-only export is gone, and the old `tutorial/edit/` address redirects.
+  It starts with the sequences instead of the bound policy.
+- The API pages open with a short description and a summary table.
+- The references cite recent monographs (Grynkiewicz 2013 and 2022;
   Geroldinger–Grynkiewicz–Zhong 2026) for the Davenport formulas, the
-  logarithmic bound and the factorization-theoretic background.
-  The references also relate the eta and Erdős–Ginzburg–Ziv constants.
-- The documentation adds how-to guides for common research tasks and a
-  page on scope and performance. Getting started follows one example over
-  `C₂ ⊕ C₄`, central classes and functions have examples, and the tutorial
-  opens directly in the browser; the old `tutorial/edit/` address redirects.
+  logarithmic bound and the factorization-theoretic background, and relate
+  the eta and Erdős–Ginzburg–Ziv constants.
 
 ## [0.3.1] - 2026-10-21
 
@@ -208,7 +217,8 @@ First release as a standalone package: sequences over configurable additive
 parents, factorization queries, exhaustive atom catalogue enumeration,
 automorphism orbits, and optional SageMath integration.
 
-[Unreleased]: https://github.com/behackl/zero-sum-sequences/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/behackl/zero-sum-sequences/compare/v0.3.2...HEAD
+[0.3.2]: https://github.com/behackl/zero-sum-sequences/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/behackl/zero-sum-sequences/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/behackl/zero-sum-sequences/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/behackl/zero-sum-sequences/compare/v0.1.2...v0.2.0
