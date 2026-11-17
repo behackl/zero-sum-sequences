@@ -22,18 +22,20 @@ set cannot be detected this way.
 
 ## What is feasible
 
-Timings on one core of a 2024 laptop (Apple M4), version 0.3.1.
+Single runs of version 0.3.1 on one core of a 2024 laptop (Apple M4).
+Other machines differ; a desktop with an AMD Ryzen 7 7700X took 10–30%
+longer. Memory is given where it exceeds a few hundred megabytes.
 
-| Computation | Time |
-|---|---:|
-| all atoms of $C_5^2$ (31 028) or $C_3^3$ (27 911) | 0.3 s |
-| all atoms of $C_6^2$ (390 860) | 6 s |
-| all atoms of $C_7^2$ (9.5 million) | 4 min |
-| length set of a product of two atoms, $C_3^3$, with catalogue | < 1 ms |
-| length set of $(AB)^6$, $\lvert AB\rvert=14$, $C_3^3$ | 0.6 s |
-| $\eta(C_3^3)$, $\eta(C_7^2)$ | 1 s, 7 s |
-| $\mathsf s(C_3^3)$, $\mathsf s(C_6^2)$ | 5 s, 2.5 min |
-| $\eta$ or $\mathsf s$ of $C_2^5$ | > 4 min |
+| Computation | Time | Memory |
+|---|---:|---:|
+| all atoms of $C_5^2$ (31 028) or $C_3^3$ (27 911) | 0.3 s | |
+| all atoms of $C_6^2$ (390 860) | 6 s | 0.4 GB |
+| all atoms of $C_7^2$ (9.5 million) | 4–5 min | 8 GB |
+| length set of a product of two atoms, $C_3^3$, with catalogue | < 1 ms | |
+| length set of $(AB)^6$, $\lvert AB\rvert=14$, $C_3^3$ | 0.6 s | |
+| $\eta(C_3^3)$, $\eta(C_7^2)$ | 1 s, 7 s | |
+| $\mathsf s(C_3^3)$, $\mathsf s(C_6^2)$ | 5 s, 2.5 min | 1 GB |
+| $\eta$ or $\mathsf s$ of $C_2^5$ | > 10 min | |
 
 The atoms are usually the limit: their number grows rapidly with the
 group, and a catalogue must fit in memory. A
@@ -58,7 +60,7 @@ while the length set of a product of two atoms takes 0.2 ms. Hence:
   set of $(AB)^3$ over $C_3^3$ already takes as long as a representative.
 - **For many short sequences in no particular order**, leave symmetry
   off. Over $C_3^3$, the 13 104 products above take 2 s without symmetry
-  and 90 s with full canonical forms;
+  and 1.5–2 min with full canonical forms;
   {py:class}`~zero_sum_sequences.AnchoredCanonicalizer` is a cheaper
   compromise at 3 s.
 
@@ -69,4 +71,4 @@ result.
 
 The repository's
 [benchmark suite](https://github.com/behackl/zero-sum-sequences/blob/main/benchmarks/README.md)
-measures these workloads and records reference timings.
+measures related workloads and records reference timings.
