@@ -24,7 +24,7 @@ $1$ has length zero and sum zero. We write
 $-S=(-g_1)\cdot\ldots\cdot(-g_\ell)$.
 
 In code, `S(g, h)` is the sequence $g\cdot h$, `S * T` is the product,
-`S ** k` the $k$-th power, `S / T` is $ST^{-1}$, `-S` is the negative, and
+`S**k` the $k$-th power, `S / T` is $ST^{-1}$, `-S` is the negative, and
 `S.sum()` is $\sigma(S)$.
 
 ## Zero-sum sequences and atoms

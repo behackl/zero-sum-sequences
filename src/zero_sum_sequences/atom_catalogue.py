@@ -48,6 +48,26 @@ class AtomCatalogue(Generic[Element]):
     Orbit methods take ``group=``, an :class:`AutomorphismGroup` defaulting
     to the automorphism group of the space; the catalogue must be closed
     under it.
+
+    Examples
+    --------
+    Catalogues are usually built by
+    :meth:`AdditiveSequenceSpace.enumerate_atom_catalogue`:
+
+    >>> from zero_sum_sequences import AdditiveSequenceSpace, FiniteAdditiveGroup
+    >>> S = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(2, 4))
+    >>> atoms = S.enumerate_atom_catalogue()
+    >>> atoms
+    AtomCatalogue(38 atoms)
+    >>> atoms[0], atoms.index(atoms[0])
+    ((0, 1) · (0, 3), 0)
+    >>> A = S((0, 1))**3 * S((1, 0), (1, 1))
+    >>> len(list(atoms.divisors(A * -A)))
+    7
+    >>> len(atoms.orbits())
+    11
+    >>> sorted((A * -A).length_set(atom_catalogue=atoms))
+    [2, 4, 5]
     """
 
     def __init__(

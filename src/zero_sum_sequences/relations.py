@@ -73,9 +73,25 @@ class FactorizationRelation(Generic[Element]):
     """An oriented equality between two unordered factorizations.
 
     Factorizations are formal products of atoms, so their factors are
-    sorted, but the source and target sides are not interchanged. The constructor verifies compatible sequence spaces
-    and equal sequence products. It assumes, without recomputing, that the
-    supplied factors are atoms when atom factorizations are required.
+    sorted, but the source and target sides are not interchanged. The
+    constructor verifies compatible sequence spaces and equal sequence
+    products. It assumes, without recomputing, that the supplied factors are
+    atoms when atom factorizations are required.
+
+    Examples
+    --------
+    Over ``C_3``, the sequence ``1^3 2^3`` factors as ``(1^3)(2^3)`` and as
+    ``(1 · 2)^3``:
+
+    >>> from zero_sum_sequences import AdditiveSequenceSpace, FiniteAdditiveGroup
+    >>> from zero_sum_sequences import FactorizationRelation
+    >>> S = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(3))
+    >>> relation = FactorizationRelation(
+    ...     source=(S((1,))**3, S((2,))**3), target=(S((1,), (2,)),) * 3)
+    >>> relation.product
+    (1,)^3 · (2,)^3
+    >>> relation.distance
+    3
     """
 
     source: Factorization[Element]

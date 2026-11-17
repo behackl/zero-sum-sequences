@@ -261,6 +261,23 @@ class AutomorphismGroup(Generic[Element, Auto]):
     keys of their image tables. Orbits, orbit minima, stabilizers and
     transporters are then found by scanning the group, at a small cost per
     element; generator words still use breadth-first traversals.
+
+    Examples
+    --------
+    The full automorphism group of ``C_2 ⊕ C_4``:
+
+    >>> from zero_sum_sequences import AdditiveSequenceSpace, FiniteAdditiveGroup
+    >>> S = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(2, 4))
+    >>> group = S.automorphism_group()
+    >>> group
+    AutomorphismGroup(order=8)
+    >>> A = S((0, 1))**3 * S((1, 0), (1, 1))
+    >>> group.canonical(-A)
+    (0, 1)^3 · (1, 0) · (1, 1)
+    >>> group.transporter(A, -A)
+    Automorphism(generator_images=((1, 0), (0, 3)))
+    >>> group.stabilizer(S((0, 1), (0, 3)))
+    AutomorphismGroup(order=4)
     """
 
     def __init__(

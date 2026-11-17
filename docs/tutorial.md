@@ -1,29 +1,31 @@
 # Tutorial
 
-The tutorial is a [marimo](https://marimo.io) notebook. It covers sequence
-construction, factorizations and targeted witnesses, a NetworkX/Matplotlib
-view of the factorization graph, atom catalogues, automorphism orbits, and
-zero-sum constants. It uses ordinary Python, without Sage.
+The tutorial is an interactive [marimo](https://marimo.io) notebook that
+runs in your browser. Edit any cell and the results update.
 
-- <a href="tutorial/index.html">Read the tutorial</a>, with precomputed outputs.
-- <a href="tutorial/edit/index.html">Open it in the browser</a> to edit and
-  rerun the examples. Python runs on your device via Pyodide; the first start
-  downloads the runtime and can take a minute. The installed package is built
-  from the same commit as this documentation.
-- Download it as a <a href="tutorial/tutorial.py" download>marimo notebook</a>
-  or a <a href="tutorial/tutorial.ipynb" download>Jupyter notebook</a>.
+**<a href="tutorial/index.html">Open the tutorial →</a>** The first start
+downloads a Python runtime and can take a minute.
 
-The downloaded marimo notebook declares its dependencies, including this
-version of the package, so it runs in an isolated environment with
-[uv](https://docs.astral.sh/uv/):
+It takes you from a first sequence to the main computations:
+
+1. Sequences over $C_3$: construction, products, atoms
+2. Factorizations and length sets, relations between factorizations
+3. Targeted queries: a factorization of a given length, with constraints
+4. The factorization graph, drawn with NetworkX
+5. All atoms over $C_2\oplus C_4$, and a catalogue for reuse
+6. Automorphism orbits
+7. Atoms on a prescribed support in $C_3^3$
+8. Zero-sum constants for a group of your choice
+
+## Run it locally
+
+Download the <a href="tutorial/tutorial.py" download>marimo notebook</a>
+and open it with [uv](https://docs.astral.sh/uv/); it installs its own
+dependencies:
 
 ```console
 uvx marimo edit --sandbox tutorial.py
 ```
 
-From a checkout, install the tutorial dependencies and open the source:
-
-```console
-python -m pip install --editable '.[tutorial]'
-marimo edit notebooks/tutorial.py
-```
+A <a href="tutorial/tutorial.ipynb" download>Jupyter version</a> is also
+available.

@@ -2,117 +2,133 @@
 
 ## Installation
 
-The package requires Python 3.12 or newer. Install the latest release from
-PyPI:
+The package requires Python 3.12 or newer:
 
 ```console
 python -m pip install zero-sum-sequences
 ```
 
-The [changelog](changelog.md) lists the changes in each release. To use the
-development version on the `main` branch, install it from GitHub:
+## Groups and sequences
 
-```console
-python -m pip install "zero-sum-sequences @ git+https://github.com/behackl/zero-sum-sequences"
-```
-
-or, from a checkout, `python -m pip install --editable .`.
-
-## A small sequence space
-
-Build the cyclic group $C_3$ and a constructor for its sequences. Cyclic
-products use coordinate tuples, even in rank one.
+We work over $G=C_2\oplus C_4$, whose elements are coordinate tuples. A
+sequence space constructs sequences over $G$; as in the literature, they
+are written multiplicatively.
 
 ```{doctest}
 >>> from zero_sum_sequences import AdditiveSequenceSpace, FiniteAdditiveGroup
->>> S = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(3))
->>> sample = S((1,)) ** 3
->>> len(sample), sample.is_zero_sum(), sample.is_atom()
-(3, True, True)
+>>> G = FiniteAdditiveGroup.cyclic_product(2, 4)
+>>> S = AdditiveSequenceSpace(G)
+>>> A = S((0, 1))**3 * S((1, 0), (1, 1))
+>>> A
+(0, 1)^3 · (1, 0) · (1, 1)
+>>> len(A), A.sum(), A.is_atom()
+(5, (0, 0), True)
 ```
 
-An atom is a minimal zero-sum sequence. A sequence is a finite unordered
-sequence of terms with repetition allowed, so the order of the arguments
-is irrelevant.
+$A$ is an atom, a minimal zero-sum sequence: its sum is zero, but no
+proper nontrivial subsequence sums to zero.
 
-## Factorizations and their lengths
+## Factorizations
 
-The sequence $1^3 2^3$ has factorizations $(1^3)(2^3)$ and $(1\cdot2)^3$,
-of lengths 2 and 3.
+Every zero-sum sequence factors into atoms, usually in several ways. The
+**length** of a factorization is its number of atoms. Take $B=-A$:
 
 ```{doctest}
->>> sequence = S((1,)) ** 3 * S((2,)) ** 3
->>> sorted(sequence.length_set())
-[2, 3]
+>>> B = -A
+>>> B
+(0, 3)^3 · (1, 0) · (1, 3)
+>>> sorted((A * B).length_set())
+[2, 4, 5]
 ```
 
-The sequence has six terms; the numbers 2 and 3 count **atom factors**, not
-terms. See [Definitions](definitions.md) for this distinction and the
-convention for the term $0$.
-
-## A zero-sum constant
-
-For allowed subsequence lengths $L=\{3\}$, compute $s_L(C_3)$:
+So $AB$ factors into two, four or five atoms, but not three. For several
+questions about one sequence, keep a solver:
 
 ```{doctest}
->>> from zero_sum_sequences import zero_sum_constant
->>> result = zero_sum_constant(S, {3}, symmetry=False)
->>> result.value
-5
->>> all(len(extremal) == 4 for extremal in result.extremal)
+>>> from zero_sum_sequences import FactorizationSolver
+>>> solver = FactorizationSolver(A * B)
+>>> solver.factorization_witness(3) is None
 True
+>>> for atom in solver.factorization_witness(4):
+...     print(atom)
+(0, 1) · (0, 3)
+(0, 1) · (0, 3)
+(0, 1) · (1, 0) · (1, 3)
+(0, 3) · (1, 0) · (1, 1)
 ```
 
-The result also contains the extremal sequences. Here `symmetry=False`
-keeps all of them; symmetry reduction instead keeps one representative
-per orbit.
+## All atoms and their orbits
 
-## Bounds and completeness
-
-The space derives a certified Davenport upper bound lazily when needed:
+$G$ has 38 atoms besides the sequence $0$. The longest have length
+$D(G)=5$, the Davenport constant.
 
 ```{doctest}
->>> S.davenport_bound
-3
+>>> atoms = S.enumerate_atom_catalogue()
+>>> len(atoms), max(map(len, atoms))
+(38, 5)
 ```
 
-An explicit `davenport_bound=...` remains authoritative for enumeration
-and local atom discovery. If too small, it can make catalogues and
-factorization results incomplete; an incomplete supplied catalogue has
-the same limitation. The atom predicate and exact zero-sum constants
-ignore enumeration bounds. Automatic bound resolution does not launch an
-exhaustive exact search.
+Automorphisms of $G$ act on sequences term by term. The orbit of $A$
+consists of the eight atoms of length five, and all 38 atoms fall into
+eleven orbits.
 
-For the precise bound policy, see
-{py:attr}`zero_sum_sequences.AdditiveSequenceSpace.davenport_bound`;
-for the invariant search, see {py:func}`zero_sum_sequences.zero_sum_constant`.
+```{doctest}
+>>> len(A.orbit()), A.is_in_same_orbit(B)
+(8, True)
+>>> len(atoms.orbits())
+11
+```
 
-## Optional Sage support
+## Zero-sum constants
 
-Compatible Sage parents can be used directly. If you do not already have a
-Sage environment, the `sage` extra installs its runtime on supported platforms:
+The Davenport, eta and Erdős–Ginzburg–Ziv constants are computed exactly:
+
+```{doctest}
+>>> from zero_sum_sequences import (
+...     davenport_constant, erdos_ginzburg_ziv_constant, eta_constant)
+>>> davenport_constant(S)
+5
+>>> eta_constant(S)
+6
+>>> erdos_ginzburg_ziv_constant(S)
+9
+```
+
+{py:func}`~zero_sum_sequences.zero_sum_constant` handles arbitrary sets of
+allowed subsequence lengths and also returns the extremal sequences.
+
+## Next steps
+
+- The [tutorial](tutorial.md) continues these examples interactively in
+  the browser, including the factorization graph and atoms on a prescribed
+  support.
+- [Definitions](definitions.md) fixes the notation.
+- The [API reference](api/index.rst) documents every class and function.
+
+All results are exact. Atom searches are limited by an upper bound for
+$D(G)$, which the space derives automatically. If you supply your own
+`davenport_bound=` or atom catalogue, results are complete only if it
+suffices; see {py:class}`~zero_sum_sequences.FactorizationSolver`.
+
+## SageMath
+
+Compatible Sage parents, such as `GF(3)**2`, can be used directly in place
+of `FiniteAdditiveGroup`. Sage is optional; on supported platforms, the
+`sage` extra installs its runtime:
 
 ```console
-python -m pip install --editable '.[sage]'
+python -m pip install 'zero-sum-sequences[sage]'
 ```
-
-Sage is not needed for the ordinary-Python examples or the tutorial.
 
 ## Development
 
-From a checkout, install the locked development environment and run the tests:
+From a checkout, install the locked environment and run the tests:
 
 ```console
 uv sync --locked
 uv run --locked python -m pytest
 ```
 
-The default `dev` group includes the test tools and the tutorial dependencies,
-including marimo. Add `--extra sage` to `uv sync` to include the Sage
-integration.
-Without uv, use `python -m pip install --editable . --group dev` (pip 25.1+).
-
-For performance measurements, run
-`uv run --locked python -m benchmarks.benchmark_factorization --enumerate`.
-The [benchmark guide](https://github.com/behackl/zero-sum-sequences/blob/main/benchmarks/README.md)
-describes the corpus and its mathematical expectations.
+Add `--extra sage` to `uv sync` for the Sage integration. The
+[benchmark guide](https://github.com/behackl/zero-sum-sequences/blob/main/benchmarks/README.md)
+describes the performance measurements.

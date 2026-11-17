@@ -18,7 +18,7 @@ multiplicatively, as in the literature:
 >>> from zero_sum_sequences import AdditiveSequenceSpace, FiniteAdditiveGroup
 >>> G = FiniteAdditiveGroup.cyclic_product(2, 4)
 >>> S = AdditiveSequenceSpace(G)
->>> A = S((0, 1)) ** 3 * S((1, 0), (1, 1))
+>>> A = S((0, 1))**3 * S((1, 0), (1, 1))
 >>> B = -A
 >>> B
 (0, 3)^3 · (1, 0) · (1, 3)
@@ -31,8 +31,10 @@ multiplicatively, as in the literature:
 The product $AB$ has length ten, but its factorizations consist of two,
 four, or five atoms. There is no factorization into three atoms: a length
 set need not be an interval.
-The [getting-started guide](getting-started.md) explains the construction
-and installation options.
+
+**New here?** [Getting started](getting-started.md) continues this example
+step by step. The [tutorial](tutorial.md) is an interactive notebook that
+runs in your browser, no installation needed.
 
 ## What you can compute
 
@@ -62,10 +64,10 @@ conditions and which queries are targeted.
 
 ## Explore the documentation
 
-- **[Getting started](getting-started.md)** — installation, a small calculation,
-  optional Sage support, and development setup.
-- **[Tutorial](tutorial.md)** — a longer tour with examples and a graph
-  visualization.
+- **[Getting started](getting-started.md)** — installation and a first
+  walk through the main features.
+- **[Tutorial](tutorial.md)** — an interactive notebook in the browser,
+  covering every main feature.
 - **[Definitions](definitions.md)** — the notation and conventions used here.
 - **[API reference](api/index.rst)** — parameters, examples, and computational
   notes, generated from the code's docstrings.

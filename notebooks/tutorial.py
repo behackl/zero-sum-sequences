@@ -138,7 +138,7 @@ def _(mo):
     ## 3. Products of sequences
 
     Sequences are written multiplicatively: `S * T` is the product of two
-    sequences, `S ** k` the $k$-th power, and `S / T` is $S T^{-1}$ for a
+    sequences, `S**k` the $k$-th power, and `S / T` is $S T^{-1}$ for a
     divisor $T$ of $S$. `T.divides(S)` tests whether $T$ is a subsequence of
     $S$. Results stay in the same sequence space.
     """)
@@ -148,14 +148,14 @@ def _(mo):
 @app.cell
 def _(C3, sample):
     pair = C3(1, 2)
-    pair_cubed = pair ** 3
+    pair_cubed = pair**3
 
     print("pair:", pair)
     print("pair * pair:", pair * pair)
     print("sample / pair:", sample / pair)
-    print("pair ** 3:", pair_cubed)
+    print("pair**3:", pair_cubed)
     print("pair divides sample:", pair.divides(sample))
-    print("pair ** 3 divides sample:", pair_cubed.divides(sample))
+    print("pair**3 divides sample:", pair_cubed.divides(sample))
     return
 
 
@@ -178,8 +178,8 @@ def _(mo):
 
 @app.cell
 def _(C3):
-    one_cubed = C3(1) ** 3
-    two_cubed = C3(2) ** 3
+    one_cubed = C3(1)**3
+    two_cubed = C3(2)**3
     mixed_pair = C3(1, 2)
     sequence = one_cubed * two_cubed
 
@@ -297,7 +297,7 @@ def _(mo):
 
 @app.cell
 def _(FactorizationSolver, format_factorization, math, sequence):
-    target = sequence ** 3
+    target = sequence**3
     targeted_solver = FactorizationSolver(target)
     witness = targeted_solver.factorization_witness(7)
     assert witness is not None and len(witness) == 7
@@ -479,7 +479,7 @@ def _(mo):
 
 @app.cell
 def _(C2xC4, FactorizationSolver, c2_c4_catalogue, format_factorization):
-    A = C2xC4((0, 1)) ** 3 * C2xC4((1, 0), (1, 1))
+    A = C2xC4((0, 1))**3 * C2xC4((1, 0), (1, 1))
     B = -A
     product = A * B
     catalogue_solver = FactorizationSolver(product, atom_catalogue=c2_c4_catalogue)
@@ -511,7 +511,7 @@ def _(mo):
 
 @app.cell
 def _(A, AutomorphismAction, C2xC4, c2_c4_catalogue, group):
-    other_maximal_atom = C2xC4((0, 1), (1, 0)) * C2xC4((1, 1)) ** 3
+    other_maximal_atom = C2xC4((0, 1), (1, 0)) * C2xC4((1, 1))**3
     maximal_orbit = A.orbit()
     orbit_witness = A.orbit_witness(other_maximal_atom)
 
@@ -590,10 +590,10 @@ def _(
     support_catalogue,
 ):
     U = C3cubed(e1, e1, e2, e2, e3, e3, e4)
-    support_solver = FactorizationSolver(U ** 3, atom_catalogue=support_catalogue)
+    support_solver = FactorizationSolver(U**3, atom_catalogue=support_catalogue)
     middle_witness = support_solver.factorization_witness(5)
     assert middle_witness is not None and len(middle_witness) == 5
-    assert math.prod(middle_witness) == U ** 3
+    assert math.prod(middle_witness) == U**3
     assert support_solver.factorization_witness(4) is None
     assert support_solver.length_set() == {3, 5, 7}
 

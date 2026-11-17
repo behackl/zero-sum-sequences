@@ -120,6 +120,20 @@ class FactorizationCache(Generic[Element]):
     maxsize:
         Number of solver objects kept alive (least recently used eviction),
         or ``None`` for no limit. Length sets are always kept.
+
+    Examples
+    --------
+    With symmetry, automorphic images share one cached result:
+
+    >>> from zero_sum_sequences import AdditiveSequenceSpace, FiniteAdditiveGroup
+    >>> S = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(2, 4))
+    >>> cache = S.factorization_cache(S.enumerate_atom_catalogue(), symmetry=True)
+    >>> A = S((0, 1))**3 * S((1, 0), (1, 1))
+    >>> B = S((0, 1), (1, 0)) * S((1, 1))**3
+    >>> sorted(cache.length_set(A * -A)), sorted(cache.length_set(B * -B))
+    ([2, 4, 5], [2, 4, 5])
+    >>> cache.statistics.solver_builds
+    1
     """
 
     def __init__(

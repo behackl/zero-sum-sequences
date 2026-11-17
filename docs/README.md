@@ -48,17 +48,26 @@ section as the GitHub release notes.
 
 ## Keep the site small
 
-- **Getting started:** a few executable examples, not a second tutorial.
+- **Getting started:** one guided example over `C₂ ⊕ C₄`, ending in
+  pointers to the tutorial and the API; not a second tutorial.
+- **Docstrings:** central classes, functions and methods have a short
+  `Examples` section.
 - **Tutorial:** one canonical marimo source, `notebooks/tutorial.py`. The HTML
   build exports it under `tutorial/` (see `docs/_ext/marimo_tutorial.py`): a
-  static reading view, a browser-editable WebAssembly notebook installing a
-  wheel built from the same checkout, and `.py`/`.ipynb` downloads. The
+  browser-editable WebAssembly notebook installing a wheel built from the
+  same checkout, and `.py`/`.ipynb` downloads. The
   exports need `uv` on `PATH`; set `ZSS_SKIP_TUTORIAL_EXPORT=1` to skip them.
 - **Definitions:** terminology needed to read the API, not a literature review.
 - **API reference:** docstrings grouped by subject, without a duplicate prose
   explanation of each algorithm or inline execution widgets.
 - **References:** the shared, reviewed bibliography and acknowledgements.
 - **Changelog:** included from `CHANGELOG.md`; see above.
+
+Code in examples, docstrings, and the tutorial follows PEP 8 with one
+convention: write `**` without surrounding spaces and keep spaces around
+the other binary operators, as PEP 8 allows for operators of different
+priority. Write `S((0, 1))**3 * S((1, 0), (1, 1))` and `S**k`, not
+`S((0, 1)) ** 3 * ...`.
 
 Use NumPy-style docstrings. Keep mathematical, completeness, and caching
 qualifications where they help users understand behavior. Cite the actual

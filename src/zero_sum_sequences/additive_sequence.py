@@ -45,6 +45,19 @@ class AdditiveSequenceSpace(Generic[Element]):
         (see :class:`FactorizationSolver`).
         If omitted, :attr:`davenport_bound` derives a bound when needed,
         without starting an exhaustive constant search.
+
+    Examples
+    --------
+    Sequences over ``C_2 ⊕ C_4``, whose elements are coordinate tuples:
+
+    >>> from zero_sum_sequences import AdditiveSequenceSpace, FiniteAdditiveGroup
+    >>> S = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(2, 4))
+    >>> S((0, 1), (1, 0), (0, 1))
+    (0, 1)^2 · (1, 0)
+    >>> S.from_multiplicities({(0, 1): 4})
+    (0, 1)^4
+    >>> S.davenport_bound
+    5
     """
 
     __slots__ = (
@@ -299,6 +312,16 @@ class AdditiveSequenceSpace(Generic[Element]):
         search therefore extends only zero-sum free sorted prefixes, tracking
         their subsequence sums, and needs no separate atom test. Its cost
         grows with the number of zero-sum free sequences on the support.
+
+        Examples
+        --------
+        >>> from zero_sum_sequences import AdditiveSequenceSpace, FiniteAdditiveGroup
+        >>> S = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(2, 4))
+        >>> atoms = S.enumerate_atom_catalogue()
+        >>> len(atoms), max(map(len, atoms))
+        (38, 5)
+        >>> S.enumerate_atom_catalogue(support=[(0, 1), (1, 0)])
+        AtomCatalogue(2 atoms)
         """
 
         from .atom_catalogue import AtomCatalogue
@@ -381,9 +404,23 @@ class AdditiveSequence(Generic[Element]):
     repetition of terms allowed: an element ``g_1 · … · g_l`` of the free
     abelian monoid over the parent. Construct sequences by calling their
     space, ``S(g, h, ...)``. Sequences are immutable and written
-    multiplicatively: ``S * T``, ``S ** k``, ``S / T`` for a divisor ``T``,
+    multiplicatively: ``S * T``, ``S**k``, ``S / T`` for a divisor ``T``,
     and ``-S``. Terms are coerced through the parent, copied when necessary
     to make them immutable, and stored with their multiplicities.
+
+    Examples
+    --------
+    >>> from zero_sum_sequences import AdditiveSequenceSpace, FiniteAdditiveGroup
+    >>> S = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(2, 4))
+    >>> A = S((0, 1))**3 * S((1, 0), (1, 1))
+    >>> A, len(A), A.sum()
+    ((0, 1)^3 · (1, 0) · (1, 1), 5, (0, 0))
+    >>> A.multiplicities
+    {(0, 1): 3, (1, 0): 1, (1, 1): 1}
+    >>> -A
+    (0, 3)^3 · (1, 0) · (1, 3)
+    >>> A / S((0, 1)), S((0, 1)).divides(A)
+    ((0, 1)^2 · (1, 0) · (1, 1), True)
     """
 
     __slots__ = ("_space", "_items", "_length", "_hash")
@@ -506,6 +543,17 @@ class AdditiveSequence(Generic[Element]):
         :class:`AutomorphismAction`, or an iterable of callable generators.
         When omitted, the parent's automorphisms are resolved lazily and
         cached on the sequence space.
+
+        Examples
+        --------
+        >>> from zero_sum_sequences import AdditiveSequenceSpace, FiniteAdditiveGroup
+        >>> S = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(2, 4))
+        >>> A = S((0, 1))**3 * S((1, 0), (1, 1))
+        >>> orbit = A.orbit()
+        >>> len(orbit), orbit[:2]
+        (8, ((0, 1)^3 · (1, 0) · (1, 1), (0, 1)^3 · (1, 2) · (1, 3)))
+        >>> A.is_in_same_orbit(-A)
+        True
         """
 
         from .orbits import orbit
@@ -591,7 +639,19 @@ class AdditiveSequence(Generic[Element]):
             )
 
     def is_atom(self) -> bool:
-        """Return whether this is a minimal zero-sum sequence (an atom)."""
+        """Return whether this is a minimal zero-sum sequence (an atom).
+
+        Examples
+        --------
+        >>> from zero_sum_sequences import AdditiveSequenceSpace, FiniteAdditiveGroup
+        >>> S = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(2, 4))
+        >>> S((0, 1), (0, 3)).is_atom()
+        True
+        >>> (S((0, 1), (0, 3))**2).is_atom()
+        False
+        >>> S((0, 1)).is_atom()
+        False
+        """
 
         if not self or not self.is_zero_sum():
             return False
@@ -628,6 +688,15 @@ class AdditiveSequence(Generic[Element]):
         """Yield each unordered atom factorization, optionally of one length.
 
         Builds a new solver on every call; see :meth:`factorization_solver`.
+
+        Examples
+        --------
+        >>> from zero_sum_sequences import AdditiveSequenceSpace, FiniteAdditiveGroup
+        >>> S = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(2, 4))
+        >>> A = S((0, 1))**3 * S((1, 0), (1, 1))
+        >>> for factorization in (A * -A).factorizations(factor_count=4):
+        ...     print(" * ".join(map(str, factorization)))
+        (0, 1) · (0, 3) * (0, 1) · (0, 3) * (0, 1) · (1, 0) · (1, 3) * (0, 3) · (1, 0) · (1, 1)
         """
 
         yield from self.factorization_solver(
@@ -638,6 +707,14 @@ class AdditiveSequence(Generic[Element]):
         """Return the length set: the lengths of all factorizations.
 
         Builds a new solver on every call; see :meth:`factorization_solver`.
+
+        Examples
+        --------
+        >>> from zero_sum_sequences import AdditiveSequenceSpace, FiniteAdditiveGroup
+        >>> S = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(2, 4))
+        >>> A = S((0, 1))**3 * S((1, 0), (1, 1))
+        >>> sorted((A * -A).length_set())
+        [2, 4, 5]
         """
 
         return self.factorization_solver(atom_catalogue=atom_catalogue).length_set()

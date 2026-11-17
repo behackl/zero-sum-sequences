@@ -38,6 +38,17 @@ class ZeroSumConstant(Generic[Element]):
         sequence order. With symmetry reduction, this contains the minimum
         of each orbit under the chosen group; otherwise it contains every
         extremal sequence. It is empty when ``value`` is infinite.
+
+    Examples
+    --------
+    >>> from zero_sum_sequences import AdditiveSequenceSpace, FiniteAdditiveGroup
+    >>> S = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(2, 4))
+    >>> from zero_sum_sequences import zero_sum_constant
+    >>> result = zero_sum_constant(S, {1, 2, 3, 4})
+    >>> result.value
+    6
+    >>> result.extremal
+    ((0, 1)^3 · (1, 0) · (1, 1),)
     """
 
     lengths: frozenset[int]
@@ -348,6 +359,14 @@ def erdos_ginzburg_ziv_constant(
     with that single allowed length. No Davenport bound is used or derived.
     The search can take long (see :func:`zero_sum_constant`); ``symmetry``
     is passed through unchanged.
+
+    Examples
+    --------
+    >>> from zero_sum_sequences import AdditiveSequenceSpace, FiniteAdditiveGroup
+    >>> S = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(2, 4))
+    >>> from zero_sum_sequences import erdos_ginzburg_ziv_constant
+    >>> erdos_ginzburg_ziv_constant(S)
+    9
     """
 
     return zero_sum_constant(space, {exponent(space)}, symmetry=symmetry).value
@@ -364,6 +383,14 @@ def eta_constant(
     searches with allowed lengths ``1, ..., exp(G)``. No Davenport bound is
     used or derived. The search can take long (see :func:`zero_sum_constant`);
     ``symmetry`` is passed through unchanged.
+
+    Examples
+    --------
+    >>> from zero_sum_sequences import AdditiveSequenceSpace, FiniteAdditiveGroup
+    >>> S = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(2, 4))
+    >>> from zero_sum_sequences import eta_constant
+    >>> eta_constant(S)
+    6
     """
 
     return zero_sum_constant(space, range(1, exponent(space) + 1), symmetry=symmetry).value

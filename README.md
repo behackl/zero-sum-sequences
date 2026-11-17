@@ -23,15 +23,19 @@ from zero_sum_sequences import AdditiveSequenceSpace, FiniteAdditiveGroup
 
 G = FiniteAdditiveGroup.cyclic_product(2, 4)
 S = AdditiveSequenceSpace(G)
-A = S((0, 1)) ** 3 * S((1, 0), (1, 1))
+A = S((0, 1))**3 * S((1, 0), (1, 1))
 B = -A
 
 A.is_atom(), B.is_atom()        # (True, True)
 sorted((A * B).length_set())    # [2, 4, 5]
 ```
 
-**[Documentation][docs]** — installation options, tutorial, definitions, and
-API reference.
+**[Documentation][docs]**: [getting started][start], an
+[interactive tutorial][tutorial] that runs in the browser, and the API
+reference.
+
+[start]: https://zero-sum-sequences.readthedocs.io/en/latest/getting-started.html
+[tutorial]: https://zero-sum-sequences.readthedocs.io/en/latest/tutorial.html
 
 [MIT License](https://github.com/behackl/zero-sum-sequences/blob/main/LICENSE).
 

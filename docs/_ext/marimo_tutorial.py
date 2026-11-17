@@ -4,8 +4,6 @@ The canonical source is ``notebooks/tutorial.py``. After an HTML build this
 writes, under ``<outdir>/tutorial/``:
 
 ``index.html``
-    A static, executed reading view.
-``edit/``
     A browser-editable WebAssembly notebook with precomputed outputs. It
     installs a wheel built from the same checkout, so the browser runtime
     matches the documented code. Precomputing runs the notebook in an
@@ -92,16 +90,12 @@ def export_tutorial(destination: Path) -> None:
         )
         _run(
             "-m", "marimo", "export", "html-wasm", str(browser_notebook),
-            "-o", str(destination / "edit"), "--mode", "edit", "--execute",
+            "-o", str(destination), "--mode", "edit", "--execute",
             "--force",
         )
     # Instructions for marimo's AI assistant; not part of the published site.
-    (destination / "edit" / "CLAUDE.md").unlink(missing_ok=True)
+    (destination / "CLAUDE.md").unlink(missing_ok=True)
 
-    _run(
-        "-m", "marimo", "export", "html", str(NOTEBOOK),
-        "-o", str(destination / "index.html"), "--force",
-    )
     _run(
         "-m", "marimo", "export", "ipynb", str(NOTEBOOK),
         "-o", str(destination / "tutorial.ipynb"), "--include-outputs", "--force",

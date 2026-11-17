@@ -77,6 +77,26 @@ class FactorizationSolver(Generic[Element]):
     Queries reuse solutions for equal remainder sequences. Complete length
     sets and graph queries build the remainder graph; targeted existence and
     witness queries can avoid building it in full.
+
+    Examples
+    --------
+    >>> from zero_sum_sequences import AdditiveSequenceSpace, FiniteAdditiveGroup
+    >>> S = AdditiveSequenceSpace(FiniteAdditiveGroup.cyclic_product(2, 4))
+    >>> from zero_sum_sequences import FactorizationSolver
+    >>> A = S((0, 1))**3 * S((1, 0), (1, 1))
+    >>> solver = FactorizationSolver(A * -A)
+    >>> solver.has_factorization_of_length(3)
+    False
+    >>> solver.minimum_factorization_length()
+    2
+    >>> for atom in solver.factorization_witness(4):
+    ...     print(atom)
+    (0, 1) · (0, 3)
+    (0, 1) · (0, 3)
+    (0, 1) · (1, 0) · (1, 3)
+    (0, 3) · (1, 0) · (1, 1)
+    >>> sorted(solver.length_set())
+    [2, 4, 5]
     """
 
     def __init__(
