@@ -57,10 +57,9 @@ runs in your browser, no installation needed.
   lengths and inspect the extremal sequences. See
   [Zero-sum constants](api/constants.rst).
 
-These are explicit computations intended for small examples, not a
-replacement for structural theorems or a large-scale computation service.
-Exhaustive searches can grow quickly; the API documents their completeness
-conditions and which queries are targeted.
+These are exact computations for small groups, not a replacement for
+structural theorems. [Scope and performance](performance.md) describes
+what is feasible.
 
 ## Explore the documentation
 
@@ -68,7 +67,10 @@ conditions and which queries are targeted.
   walk through the main features.
 - **[Tutorial](tutorial.md)** — an interactive notebook in the browser,
   covering every main feature.
+- **[How-to guides](how-to/index.md)** — recipes for common research tasks.
 - **[Definitions](definitions.md)** — the notation and conventions used here.
+- **[Scope and performance](performance.md)** — completeness of results and
+  what is feasible.
 - **[API reference](api/index.rst)** — parameters, examples, and computational
   notes, generated from the code's docstrings.
 - **[References](references.md)** — mathematical background and attribution.
@@ -80,7 +82,9 @@ conditions and which queries are targeted.
 
 getting-started
 tutorial
+how-to/index
 definitions
+performance
 api/index
 references
 changelog

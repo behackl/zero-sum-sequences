@@ -13,6 +13,10 @@ minor releases may contain breaking changes; they are listed first.
   Geroldinger–Grynkiewicz–Zhong 2026) for the Davenport formulas, the
   logarithmic bound and the factorization-theoretic background.
   The references also relate the eta and Erdős–Ginzburg–Ziv constants.
+- The documentation adds how-to guides for common research tasks and a
+  page on scope and performance. Getting started follows one example over
+  `C₂ ⊕ C₄`, central classes and functions have examples, and the tutorial
+  opens directly in the browser; the old `tutorial/edit/` address redirects.
 
 ## [0.3.1] - 2026-10-21
 

@@ -57,7 +57,13 @@ section as the GitHub release notes.
   browser-editable WebAssembly notebook installing a wheel built from the
   same checkout, and `.py`/`.ipynb` downloads. The
   exports need `uv` on `PATH`; set `ZSS_SKIP_TUTORIAL_EXPORT=1` to skip them.
+- **How-to guides:** one page per research task that combines several parts
+  of the library; a single method call belongs in its docstring instead.
+  Each guide states its goal, gives short doctested steps and links to the
+  API. Remove a guide when its task no longer fits.
 - **Definitions:** terminology needed to read the API, not a literature review.
+- **Scope and performance:** completeness conditions and measured costs;
+  update the timings table at releases that change performance.
 - **API reference:** docstrings grouped by subject, without a duplicate prose
   explanation of each algorithm or inline execution widgets.
 - **References:** the shared, reviewed bibliography and acknowledgements.

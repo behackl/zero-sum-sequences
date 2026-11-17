@@ -102,13 +102,11 @@ allowed subsequence lengths and also returns the extremal sequences.
 - The [tutorial](tutorial.md) continues these examples interactively in
   the browser, including the factorization graph and atoms on a prescribed
   support.
-- [Definitions](definitions.md) fixes the notation.
+- The [how-to guides](how-to/index.md) solve common research tasks.
+- [Definitions](definitions.md) fixes the notation, and
+  [Scope and performance](performance.md) explains when results are
+  complete and what is feasible.
 - The [API reference](api/index.rst) documents every class and function.
-
-All results are exact. Atom searches are limited by an upper bound for
-$D(G)$, which the space derives automatically. If you supply your own
-`davenport_bound=` or atom catalogue, results are complete only if it
-suffices; see {py:class}`~zero_sum_sequences.FactorizationSolver`.
 
 ## SageMath
 
