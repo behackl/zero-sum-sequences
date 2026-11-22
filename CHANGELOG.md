@@ -7,6 +7,12 @@ minor releases may contain breaking changes; they are listed first.
 
 ## [Unreleased]
 
+### Added
+
+- A `CITATION.cff` and a "Citing" section in the README and the references
+  page. They point to the companion article (arXiv:2611.21699), which
+  introduces the package.
+
 ## [0.3.2] - 2026-11-17
 
 A documentation release with no code or API changes.

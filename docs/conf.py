@@ -26,6 +26,9 @@ root_doc = "index"
 exclude_patterns = ["_build", "README.md"]
 myst_enable_extensions = ["colon_fence", "dollarmath"]
 myst_heading_anchors = 3
+# Let MathJax typeset \(...\) in plain text, such as bibliography entries;
+# MyST would otherwise mark every section as mathjax_ignore.
+myst_update_mathjax = False
 
 # API pages render the source docstrings, including their Notes and citations.
 autodoc_member_order = "bysource"
@@ -46,3 +49,9 @@ html_theme_options = {
     "github_url": "https://github.com/behackl/zero-sum-sequences",
 }
 html_show_sourcelink = False
+
+
+def setup(app):
+    # Load MathJax on every page, not only on pages with math nodes, so that
+    # \(...\) in bibliography entries (plain text from pybtex) is typeset.
+    app.set_html_assets_policy("always")

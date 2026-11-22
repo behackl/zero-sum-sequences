@@ -4,6 +4,25 @@ Citations beside a definition or formula identify the result being used.
 References to related computational work do not mean that the package
 implements the algorithms in those sources.
 
+## Citing the package
+
+If you use the package in your research, please cite
+{cite:t}`geroldinger-hackl-zhong-2026`. Section 4 of the article
+introduces the package.
+
+```bibtex
+@misc{geroldinger-hackl-zhong-2026,
+  author = {Geroldinger, Alfred and Hackl, Benjamin and Zhong, Qinghai},
+  title = {The system of length sets of transfer {Krull} monoids over
+           {$C_3 \oplus C_3 \oplus C_3$}},
+  year = {2026},
+  eprint = {2611.21699},
+  archivePrefix = {arXiv},
+  primaryClass = {math.GR},
+  doi = {10.48550/arXiv.2611.21699}
+}
+```
+
 ## Monographs
 
 For zero-sum theory and factorization theory in Krull monoids, we refer
