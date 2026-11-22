@@ -44,7 +44,8 @@ documentation includes it as `changelog.md`. Commits that change behavior or
 the public API add a line under `## [Unreleased]`, breaking changes first. At
 a release, rename that section to `## [x.y.z] - YYYY-MM-DD`, add a new empty
 `Unreleased` section and the comparison links at the bottom, and use the
-section as the GitHub release notes.
+section as the GitHub release notes. Also bump `version` in `CITATION.cff`;
+the release workflow checks that it matches `pyproject.toml`.
 
 ## Keep the site small
 

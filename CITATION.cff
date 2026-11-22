@@ -1,0 +1,47 @@
+cff-version: 1.2.0
+message: >-
+  If you use this software, please cite the article below, which
+  introduces the package in Section 4.
+type: software
+title: zero-sum-sequences
+abstract: >-
+  A Python library for computing with sequences over finite additive
+  groups: minimal zero-sum sequences (atoms), factorizations and their
+  length sets, automorphism orbits, and zero-sum constants.
+authors:
+  - family-names: Hackl
+    given-names: Benjamin
+    orcid: "https://orcid.org/0000-0003-2998-9599"
+    affiliation: University of Graz
+version: 0.3.2
+license: MIT
+url: "https://zero-sum-sequences.readthedocs.io/"
+repository-code: "https://github.com/behackl/zero-sum-sequences"
+keywords:
+  - zero-sum sequences
+  - additive combinatorics
+  - factorization theory
+  - Krull monoids
+preferred-citation:
+  type: article
+  title: >-
+    The system of length sets of transfer Krull monoids over
+    $C_3 \oplus C_3 \oplus C_3$
+  authors:
+    - family-names: Geroldinger
+      given-names: Alfred
+      orcid: "https://orcid.org/0000-0003-0026-2273"
+      affiliation: University of Graz
+    - family-names: Hackl
+      given-names: Benjamin
+      orcid: "https://orcid.org/0000-0003-2998-9599"
+      affiliation: University of Graz
+    - family-names: Zhong
+      given-names: Qinghai
+      orcid: "https://orcid.org/0000-0003-2096-0810"
+      affiliation: Xidian University
+  year: 2026
+  month: 11
+  journal: arXiv preprint
+  doi: 10.48550/arXiv.2611.21699
+  url: "https://arxiv.org/abs/2611.21699"

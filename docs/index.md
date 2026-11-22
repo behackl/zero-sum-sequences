@@ -73,7 +73,8 @@ what is feasible.
   what is feasible.
 - **[API reference](api/index.rst)** — parameters, examples, and computational
   notes, generated from the code's docstrings.
-- **[References](references.md)** — mathematical background and attribution.
+- **[References](references.md)** — mathematical background, attribution, and
+  how to cite the package.
 - **[Changelog](changelog.md)** — changes in each release.
 
 ```{toctree}

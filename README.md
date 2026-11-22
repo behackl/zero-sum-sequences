@@ -37,6 +37,18 @@ reference.
 [start]: https://zero-sum-sequences.readthedocs.io/en/latest/getting-started.html
 [tutorial]: https://zero-sum-sequences.readthedocs.io/en/latest/tutorial.html
 
+## Citing
+
+If you use the package in your research, please cite the article that
+introduces it (Section 4):
+
+> A. Geroldinger, B. Hackl, and Q. Zhong, *The system of length sets of
+> transfer Krull monoids over C₃ ⊕ C₃ ⊕ C₃*, preprint,
+> [arXiv:2611.21699](https://arxiv.org/abs/2611.21699), 2026.
+
+BibTeX and other formats are available from GitHub's "Cite this
+repository" button, generated from [`CITATION.cff`](https://github.com/behackl/zero-sum-sequences/blob/main/CITATION.cff).
+
 [MIT License](https://github.com/behackl/zero-sum-sequences/blob/main/LICENSE).
 
 [docs]: https://zero-sum-sequences.readthedocs.io/
